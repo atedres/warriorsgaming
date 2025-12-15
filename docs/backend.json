@@ -1,0 +1,232 @@
+{
+  "entities": {
+    "Client": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Client",
+      "type": "object",
+      "description": "Represents a client of the CyberHub gaming center.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the client.",
+          "format": "uuid"
+        },
+        "firstName": {
+          "type": "string",
+          "description": "First name of the client."
+        },
+        "lastName": {
+          "type": "string",
+          "description": "Last name of the client."
+        },
+        "phoneNumber": {
+          "type": "string",
+          "description": "Phone number of the client."
+        },
+        "email": {
+          "type": "string",
+          "description": "Email address of the client.",
+          "format": "email"
+        },
+        "qrCode": {
+          "type": "string",
+          "description": "The QR code associated with the client, used for check-in and bonus redemption."
+        },
+        "subscriptionHours": {
+          "type": "number",
+          "description": "Number of subscription hours remaining for the client.",
+          "format": "number"
+        },
+        "bonusPoints": {
+          "type": "number",
+          "description": "Number of bonus points accumulated by the client.",
+          "format": "number"
+        }
+      },
+      "required": [
+        "id",
+        "firstName",
+        "lastName",
+        "phoneNumber",
+        "qrCode"
+      ]
+    },
+    "Station": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Station",
+      "type": "object",
+      "description": "Represents a gaming station (PS5, PC, VIP PS5, VR Simulator).",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the station.",
+          "format": "uuid"
+        },
+        "type": {
+          "type": "string",
+          "description": "Type of gaming station (PS5, PC, VIP PS5, VR Simulator)."
+        },
+        "status": {
+          "type": "string",
+          "description": "Current status of the station (available, in use, maintenance)."
+        }
+      },
+      "required": [
+        "id",
+        "type",
+        "status"
+      ]
+    },
+    "Reservation": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Reservation",
+      "type": "object",
+      "description": "Represents a reservation for a gaming station.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the reservation.",
+          "format": "uuid"
+        },
+        "clientId": {
+          "type": "string",
+          "description": "Reference to Client. (Relationship: Client 1:N Reservation)"
+        },
+        "stationId": {
+          "type": "string",
+          "description": "Reference to Station. (Relationship: Station 1:N Reservation)"
+        },
+        "startTime": {
+          "type": "string",
+          "description": "Start time of the reservation.",
+          "format": "date-time"
+        },
+        "endTime": {
+          "type": "string",
+          "description": "End time of the reservation.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "clientId",
+        "stationId",
+        "startTime",
+        "endTime"
+      ]
+    },
+    "UsageLog": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "UsageLog",
+      "type": "object",
+      "description": "Represents a log of station usage.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the usage log entry.",
+          "format": "uuid"
+        },
+        "clientId": {
+          "type": "string",
+          "description": "Reference to Client. (Relationship: Client 1:N UsageLog)"
+        },
+        "stationId": {
+          "type": "string",
+          "description": "Reference to Station. (Relationship: Station 1:N UsageLog)"
+        },
+        "startTime": {
+          "type": "string",
+          "description": "Start time of the station usage.",
+          "format": "date-time"
+        },
+        "endTime": {
+          "type": "string",
+          "description": "End time of the station usage.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "clientId",
+        "stationId",
+        "startTime",
+        "endTime"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/clients/{clientId}",
+        "definition": {
+          "entityName": "Client",
+          "schema": {
+            "$ref": "#/backend/entities/Client"
+          },
+          "description": "Stores client profiles. Accessible to admins and potentially to the client themselves. Includes denormalized fields if needed for specific query requirements.",
+          "params": [
+            {
+              "name": "clientId",
+              "description": "The unique identifier of the client."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/stations/{stationId}",
+        "definition": {
+          "entityName": "Station",
+          "schema": {
+            "$ref": "#/backend/entities/Station"
+          },
+          "description": "Stores station information. Read-only for clients, writable by admins.",
+          "params": [
+            {
+              "name": "stationId",
+              "description": "The unique identifier of the gaming station."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/reservations/{reservationId}",
+        "definition": {
+          "entityName": "Reservation",
+          "schema": {
+            "$ref": "#/backend/entities/Reservation"
+          },
+          "description": "Stores reservation data. Contains references to Client and Station.",
+          "params": [
+            {
+              "name": "reservationId",
+              "description": "The unique identifier of the reservation."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/usageLogs/{usageLogId}",
+        "definition": {
+          "entityName": "UsageLog",
+          "schema": {
+            "$ref": "#/backend/entities/UsageLog"
+          },
+          "description": "Stores usage log data. Contains references to Client and Station.",
+          "params": [
+            {
+              "name": "usageLogId",
+              "description": "The unique identifier of the usage log entry."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore structure is designed to manage data for the CyberHub gaming center application, focusing on clients, stations, reservations, and usage logs. The structure emphasizes authorization independence and supports the application's core features, including real-time station monitoring, online reservations, QR code management, and usage analytics.\n\n**Authorization Independence:**\nAuthorization Independence is achieved by leveraging path-based ownership for private user data (e.g., client profiles) and avoiding hierarchical authorization dependencies (`get()` calls in security rules). There is no explicit collaborative data, so membership maps are not currently required.\n\n**Structural Segregation:**\nData with different access needs is segregated into separate collections. This simplifies security rules by ensuring that all documents within a collection share the same security posture. For instance, client profiles are stored in a dedicated collection (`clients`), separate from station data or reservation information.\n\n**Access Modeling:**\n- **Client Data:** Each client has their own document in the `clients` collection, accessible to admins for management and potentially to the client themselves (if self-service features are implemented). However, the user request does not indicate the need for user-owned client data.\n- **Station Data:** Station data is stored in the `stations` collection, and is generally read-only by clients but writable by admins.\n- **Reservations and Usage Logs:** Reservations and usage logs are stored in separate collections (`reservations` and `usageLogs`, respectively). Each document contains references to the relevant client and station, facilitating efficient querying and reporting.\n\n**QAPs (Rules are not Filters):**\nThe structure supports secure `list` operations by ensuring that clients cannot list reservations or usage logs for other clients. Admin can list all clients, stations, reservations, and usage logs.\n\nThe structure also supports the integrity of ownership, timestamps, and denormalized data by using atomic operations (transactions/batches) when updating related documents.\n"
+  }
+}
