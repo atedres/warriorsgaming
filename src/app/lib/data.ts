@@ -3,6 +3,7 @@ export type Station = {
   type: 'PC' | 'PS5' | 'PS5 VIP' | 'VR Simulator';
   status: 'available' | 'in use' | 'maintenance';
   currentClientId?: string | null;
+  games?: string[];
 };
 
 export type Client = {

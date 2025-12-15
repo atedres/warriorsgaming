@@ -32,6 +32,7 @@ import { Gamepad2, Monitor, Headset } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { useToast } from '@/hooks/use-toast';
+import { Badge } from '@/components/ui/badge';
 
 function StationStatusSelector({ station }: { station: Station }) {
   const firestore = useFirestore();
@@ -114,6 +115,7 @@ export default function StationsPage() {
               <TableRow>
                 <TableHead>Station ID</TableHead>
                 <TableHead>Type</TableHead>
+                <TableHead>Games</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>
                   <span className="sr-only">Actions</span>
@@ -124,7 +126,7 @@ export default function StationsPage() {
               {isLoading &&
                 Array.from({ length: 5 }).map((_, i) => (
                   <TableRow key={i}>
-                    <TableCell colSpan={4}>
+                    <TableCell colSpan={5}>
                       <div className="h-8 w-full animate-pulse rounded-md bg-muted" />
                     </TableCell>
                   </TableRow>
@@ -137,6 +139,13 @@ export default function StationsPage() {
                       <div className="flex items-center gap-2">
                         {getIcon(station.type)}
                         {station.type}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex flex-wrap gap-1 max-w-xs">
+                        {station.games?.map(game => (
+                          <Badge key={game} variant="secondary">{game}</Badge>
+                        ))}
                       </div>
                     </TableCell>
                     <TableCell>

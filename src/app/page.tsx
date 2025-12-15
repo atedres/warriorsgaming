@@ -34,22 +34,6 @@ export default function Home() {
     }
   };
 
-  const getGamesForStation = (type: Station['type']) => {
-    switch (type) {
-      case 'PC':
-        return 'Fortnite, Valorant, LoL';
-      case 'PS5':
-        return 'FC24, Spider-Man 2, COD';
-       case 'PS5 VIP':
-        return 'FC24, Spider-Man 2, COD';
-      case 'VR Simulator':
-        return 'Beat Saber, Half-Life: Alyx';
-      default:
-        return 'N/A';
-    }
-  }
-
-
   return (
     <div className="flex min-h-screen w-full flex-col">
       <ClientHeader />
@@ -116,10 +100,10 @@ export default function Home() {
                       </p>
                       <div className='mt-2'>
                         <h4 className='text-xs font-semibold text-muted-foreground'>Jeux disponibles</h4>
-                        <p className='text-sm'>{getGamesForStation(station.type)}</p>
+                        <p className='text-sm'>{station.games?.join(', ') || 'N/A'}</p>
                       </div>
                       <Badge
-                        className={cn('mt-4 text-white', {
+                        className={cn('mt-4 text-white w-full justify-center py-1', {
                           'bg-green-500 hover:bg-green-500/80':
                             station.status === 'available',
                           'bg-red-500 hover:bg-red-500/80':

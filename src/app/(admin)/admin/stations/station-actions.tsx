@@ -37,13 +37,15 @@ import {
 import { Input } from "@/components/ui/input";
 import type { Station } from "@/app/lib/data";
 import { useToast } from "@/hooks/use-toast";
-import { addDocumentNonBlocking, deleteDocumentNonBlocking, setDocumentNonBlocking, updateDocumentNonBlocking } from "@/firebase/non-blocking-updates";
+import { deleteDocumentNonBlocking, setDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 
 const stationFormSchema = z.object({
   id: z.string().min(1, { message: "Station ID cannot be empty." }),
   type: z.enum(["PC", "PS5", "PS5 VIP", "VR Simulator"]),
   status: z.enum(["available", "in use", "maintenance"]),
+  games: z.string().optional(),
 });
 
 type StationFormValues = z.infer<typeof stationFormSchema>;
@@ -74,11 +76,12 @@ function StationForm({
   const form = useForm<StationFormValues>({
     resolver: zodResolver(stationFormSchema),
     defaultValues: station
-      ? { ...station }
+      ? { ...station, games: station.games?.join(", ") || "" }
       : {
           id: "",
           type: "PC",
           status: "available",
+          games: "",
         },
   });
 
@@ -143,6 +146,25 @@ function StationForm({
             </FormItem>
           )}
         />
+        <FormField
+          control={form.control}
+          name="games"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Available Games</FormLabel>
+              <FormControl>
+                <Textarea
+                  placeholder="Fortnite, Valorant, LoL..."
+                  {...field}
+                />
+              </FormControl>
+              <p className="text-sm text-muted-foreground">
+                Enter game titles separated by a comma.
+              </p>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
         <DialogFooter>
           <Button type="button" variant="outline" onClick={onClose}>
             Cancel
@@ -168,11 +190,19 @@ export function StationActions({ mode, station }: StationActionsProps) {
     
     try {
       const stationRef = doc(firestore, 'stations', data.id);
+      
+      const gamesArray = data.games ? data.games.split(',').map(game => game.trim()).filter(game => game) : [];
+
+      const stationData = {
+        ...data,
+        games: gamesArray,
+      };
+
       if (mode === "add") {
-        setDocumentNonBlocking(stationRef, data, { merge: false });
+        setDocumentNonBlocking(stationRef, stationData, { merge: false });
         toast({ title: "Station created", description: `Station ${data.id} has been added.` });
       } else if (mode === "actions" && station) {
-        setDocumentNonBlocking(stationRef, data, { merge: true });
+        setDocumentNonBlocking(stationRef, stationData, { merge: true });
         toast({ title: "Station updated", description: `Station ${station.id} has been updated.` });
       }
       setDialogOpen(false);

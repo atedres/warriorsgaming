@@ -69,6 +69,13 @@
         "status": {
           "type": "string",
           "description": "Current status of the station (available, in use, maintenance)."
+        },
+        "games": {
+          "type": "array",
+          "description": "List of games available on the station.",
+          "items": {
+            "type": "string"
+          }
         }
       },
       "required": [
