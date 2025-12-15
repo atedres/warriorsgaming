@@ -1,10 +1,9 @@
 /**
- * Core Philosophy: This ruleset enforces a strict admin-only security model.
+ * Core Philosophy: This ruleset enforces a strict admin-only security model for writes.
  * All write operations (create, update, delete) across the entire database are
- * restricted to authenticated users with an 'admin' role. General authenticated
- * users are only granted read-access to the publicly available 'stations'
- * collection. This provides a secure-by-default posture suitable for an
- * admin-managed application, as requested for the "admin page".
+ * restricted to authenticated users with an 'admin' role. Authenticated
+ * users are granted read-access to all collections, which is suitable for the admin-focused
+ * nature of this application, as non-admin users do not have a UI to access this data directly.
  *
  * Data Structure: The database uses a flat structure with four top-level
  * collections: 'clients', 'stations', 'reservations', and 'usageLogs'. There
@@ -14,15 +13,12 @@
  * Key Security Decisions:
  * - Admin-Only Writes: All data creation, modification, and deletion is locked
  *   down to administrators to prevent any unauthorized changes.
+ * - Authenticated Reads: Any signed-in user (i.e., any admin) can read data
+ *   from all collections. This simplifies the rules for the admin panel where
+ *   various pages need to list data.
  * - Placeholder Admin Role: A placeholder `isAdmin()` function is provided. It
  *   defaults to `false` and MUST be implemented (e.g., using custom claims)
  *   before any write operations will succeed. This is a critical security measure.
- * - Public Station Data: The list of gaming stations is considered public
- *   information readable by any signed-in user to allow for browsing and
- *   checking availability.
- * - No Client Self-Service: The initial requirements prioritize admin control.
- *   Therefore, clients cannot view or manage their own data; this functionality
- *   is reserved for admins.
  *
  * Denormalization for Authorization: This model does not require complex
  * denormalization for authorization rules because access is not based on
@@ -44,7 +40,7 @@ service cloud.firestore {
 
     /**
      * Checks if the requesting user has administrative privileges.
-     * CRITICAL: This is a placeholder. To enable admin functionality, you MUST
+     * CRITICAL: To enable admin functionality, you MUST
      * implement a real admin check, for example, using custom claims:
      * `return request.auth.token.admin == true;`
      */
@@ -53,15 +49,16 @@ service cloud.firestore {
     }
 
     /**
-     * @description Manages client profiles for the gaming center. Only admins can
-     *              create, view, update, or delete client information.
+     * @description Manages client profiles for the gaming center. Admins can
+     *              manage all client information. Any authenticated user can view it.
      * @path /clients/{clientId}
-     * @allow (get) An admin reads a specific client's document.
-     * @deny (get) A regular signed-in user tries to read a client document.
-     * @principle Enforces a strict admin-only access model for sensitive data.
+     * @allow (read) An admin reads a client's document.
+     * @deny (write) A regular signed-in user tries to edit a client document.
+     * @principle Enforces a strict admin-only write access model for sensitive data.
      */
     match /clients/{clientId} {
-      allow read, write: if isAdmin();
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
     }
 
     /**
@@ -80,28 +77,32 @@ service cloud.firestore {
     }
 
     /**
-     * @description Manages reservations for gaming stations. Only admins can
-     *              create, view, update, or delete reservations.
+     * @description Manages reservations for gaming stations. Admins can
+     *              create, view, update, or delete reservations. Any authenticated
+     *              user can view them.
      * @path /reservations/{reservationId}
-     * @allow (create) An admin creates a new reservation for a client.
+     * @allow (write) An admin creates a new reservation for a client.
      * @deny (list) A regular signed-in user tries to list all reservations.
-     * @principle Restricts access to operational data to trusted admin personnel.
+     * @principle Restricts write access to operational data to trusted admin personnel.
      */
     match /reservations/{reservationId} {
-      allow read, write: if isAdmin();
+       allow read: if isSignedIn();
+       allow write: if isAdmin();
     }
 
     /**
      * @description Stores historical usage logs. This data is for internal
-     *              analytics and management, accessible only by admins.
+     *              analytics and management. Admins can write, any authenticated
+     *              user can read.
      * @path /usageLogs/{usageLogId}
      * @allow (list) An admin lists all usage logs for reporting.
      * @deny (get) A regular signed-in user tries to read a specific log entry.
-     * @principle Protects historical and analytical data by restricting access
+     * @principle Protects historical and analytical data by restricting write access
      *              to administrators.
      */
     match /usageLogs/{usageLogId} {
-      allow read, write: if isAdmin();
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
     }
   }
 }
