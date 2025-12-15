@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -60,52 +61,130 @@ type ClientActionsProps =
       client: Client;
     };
 
+// Separate component for the form to manage its own state
+function ClientForm({ client, onFormSubmit, isSubmitting }: { client?: Client, onFormSubmit: (data: ClientFormValues) => void, isSubmitting: boolean }) {
+  const form = useForm<ClientFormValues>({
+    resolver: zodResolver(clientFormSchema),
+    defaultValues: client
+      ? {
+          name: client.name,
+          email: client.email,
+          phone: client.phone,
+          subscriptionTier: client.subscriptionTier,
+        }
+      : {
+          name: "",
+          email: "",
+          phone: "",
+          subscriptionTier: "Basic",
+        },
+  });
+
+  return (
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onFormSubmit)} className="space-y-4">
+        <FormField
+          control={form.control}
+          name="name"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Name</FormLabel>
+              <FormControl>
+                <Input placeholder="John Doe" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="email"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Email</FormLabel>
+              <FormControl>
+                <Input placeholder="john@example.com" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="phone"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Phone</FormLabel>
+              <FormControl>
+                <Input placeholder="123-456-7890" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+         <FormField
+          control={form.control}
+          name="subscriptionTier"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Subscription Tier</FormLabel>
+               <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a subscription tier" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  <SelectItem value="Basic">Basic</SelectItem>
+                  <SelectItem value="Premium">Premium</SelectItem>
+                  <SelectItem value="VIP">VIP</SelectItem>
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <DialogFooter>
+          <DialogClose asChild>
+              <Button variant="outline">Cancel</Button>
+          </DialogClose>
+          <Button type="submit" disabled={isSubmitting}>
+            {isSubmitting ? "Saving..." : "Save Changes"}
+          </Button>
+        </DialogFooter>
+      </form>
+    </Form>
+  )
+}
+
+
 export function ClientActions({ mode, client }: ClientActionsProps) {
-  const [open, setOpen] = useState(false);
-  const [dialogMode, setDialogMode] = useState<"qr" | "edit" | "add">("add");
+  const [isAddEditDialogOpen, setAddEditDialogOpen] = useState(false);
+  const [isQrDialogOpen, setQrDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const firestore = useFirestore();
   const { toast } = useToast();
 
-  const form = useForm<ClientFormValues>({
-    resolver: zodResolver(clientFormSchema),
-    defaultValues:
-      mode === "actions" && client
-        ? {
-            name: client.name,
-            email: client.email,
-            phone: client.phone,
-            subscriptionTier: client.subscriptionTier,
-          }
-        : {
-            name: "",
-            email: "",
-            phone: "",
-            subscriptionTier: "Basic",
-          },
-  });
-
-  const onSubmit = async (data: ClientFormValues) => {
+  const handleFormSubmit = async (data: ClientFormValues) => {
     if (!firestore) return;
     setIsSubmitting(true);
     
     try {
-      if (dialogMode === "add") {
+      if (mode === "add") {
         const clientData = {
           ...data,
           memberSince: new Date().toISOString().split("T")[0],
           subscriptionHours: 0,
           usageData: "New client.",
         };
-        const docRef = await addDocumentNonBlocking(collection(firestore, 'clients'), clientData);
+        await addDocumentNonBlocking(collection(firestore, 'clients'), clientData);
         toast({ title: "Client created", description: `${data.name} has been added.` });
-      } else if (dialogMode === "edit" && client) {
+      } else if (mode === "actions" && client) {
         const clientRef = doc(firestore, "clients", client.id);
         updateDocumentNonBlocking(clientRef, data);
         toast({ title: "Client updated", description: `${data.name}'s profile has been updated.` });
       }
-      setOpen(false);
-      form.reset();
+      setAddEditDialogOpen(false);
     } catch (error) {
       console.error("Error submitting form:", error);
       toast({ variant: "destructive", title: "Error", description: "Something went wrong." });
@@ -125,150 +204,82 @@ export function ClientActions({ mode, client }: ClientActionsProps) {
     })
   }
   
-  const openDialog = (mode: "qr" | "edit" | "add") => {
-    setDialogMode(mode);
-    setOpen(true);
-  }
-
-  const qrCodeUrl = client ? `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(
-    JSON.stringify({ clientId: client.id, name: client.name })
-  )}` : "";
-
-  const handleWhatsAppShare = () => {
-    if (!client) return;
-    const message = `Here is the QR code for ${client.name}: ${qrCodeUrl}`;
-    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
-    window.open(whatsappUrl, '_blank');
-  };
-
-  const renderDialogContent = () => {
-    switch(dialogMode){
-      case 'qr':
-        return (
-          <>
-            <DialogHeader>
-              <DialogTitle>QR Code for {client?.name}</DialogTitle>
-              <DialogDescription>
-                This QR code is unique to {client?.name}. Scan it for check-ins and
-                rewards.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="flex items-center justify-center p-4">
-              {client && <Image src={qrCodeUrl} width={250} height={250} alt={`QR Code for ${client.name}`} className="rounded-lg"/>}
-            </div>
-            <DialogFooter className="sm:justify-center">
-                <Button variant="outline">Share via Email</Button>
-                <Button onClick={handleWhatsAppShare}>Share via WhatsApp</Button>
-            </DialogFooter>
-          </>
-        );
-      case 'edit':
-      case 'add':
-        return (
-          <>
-            <DialogHeader>
-              <DialogTitle>{dialogMode === 'add' ? 'Add New Client' : 'Edit Client'}</DialogTitle>
-              <DialogDescription>
-                {dialogMode === 'add' ? "Enter the client's details to create their profile." : `Editing profile for ${client?.name}.`}
-              </DialogDescription>
-            </DialogHeader>
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                <FormField
-                  control={form.control}
-                  name="name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Name</FormLabel>
-                      <FormControl>
-                        <Input placeholder="John Doe" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="email"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Email</FormLabel>
-                      <FormControl>
-                        <Input placeholder="john@example.com" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="phone"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Phone</FormLabel>
-                      <FormControl>
-                        <Input placeholder="123-456-7890" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                 <FormField
-                  control={form.control}
-                  name="subscriptionTier"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Subscription Tier</FormLabel>
-                       <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select a subscription tier" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="Basic">Basic</SelectItem>
-                          <SelectItem value="Premium">Premium</SelectItem>
-                          <SelectItem value="VIP">VIP</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <DialogFooter>
-                  <DialogClose asChild>
-                      <Button variant="outline">Cancel</Button>
-                  </DialogClose>
-                  <Button type="submit" disabled={isSubmitting}>
-                    {isSubmitting ? "Saving..." : "Save Changes"}
-                  </Button>
-                </DialogFooter>
-              </form>
-            </Form>
-          </>
-        )
-    }
-  }
-
-
   if (mode === "add") {
     return (
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog open={isAddEditDialogOpen} onOpenChange={setAddEditDialogOpen}>
         <DialogTrigger asChild>
-          <Button size="sm" className="h-8 gap-1" onClick={() => openDialog('add')}>
+          <Button size="sm" className="h-8 gap-1">
             <PlusCircle className="h-3.5 w-3.5" />
             <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
               Add Client
             </span>
           </Button>
         </DialogTrigger>
-        <DialogContent>{renderDialogContent()}</DialogContent>
+        <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Add New Client</DialogTitle>
+              <DialogDescription>
+                Enter the client's details to create their profile.
+              </DialogDescription>
+            </DialogHeader>
+            <ClientForm onFormSubmit={handleFormSubmit} isSubmitting={isSubmitting} />
+        </DialogContent>
       </Dialog>
     );
   }
 
+  const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(
+    JSON.stringify({ clientId: client.id, name: client.name })
+  )}`;
+
+  const handleWhatsAppShare = () => {
+    const message = `Here is the QR code for ${client.name}: ${qrCodeUrl}`;
+    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
+    window.open(whatsappUrl, '_blank');
+  };
+
+  const handleDownloadQr = () => {
+    const link = document.createElement('a');
+    link.href = qrCodeUrl;
+    link.download = `qrcode-${client.name.replace(/\s+/g, '-')}.png`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <>
+      <Dialog open={isQrDialogOpen} onOpenChange={setQrDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+              <DialogTitle>QR Code for {client.name}</DialogTitle>
+              <DialogDescription>
+                This QR code is unique to {client.name}. Scan it for check-ins and
+                rewards.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex items-center justify-center p-4">
+              <Image src={qrCodeUrl} width={250} height={250} alt={`QR Code for ${client.name}`} className="rounded-lg"/>
+            </div>
+            <DialogFooter className="sm:justify-center">
+                <Button variant="outline" onClick={handleDownloadQr}>Download QR Code</Button>
+                <Button onClick={handleWhatsAppShare}>Share via WhatsApp</Button>
+            </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isAddEditDialogOpen} onOpenChange={setAddEditDialogOpen}>
+        <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Edit Client</DialogTitle>
+              <DialogDescription>
+                {`Editing profile for ${client.name}.`}
+              </DialogDescription>
+            </DialogHeader>
+            <ClientForm client={client} onFormSubmit={handleFormSubmit} isSubmitting={isSubmitting} />
+        </DialogContent>
+      </Dialog>
+
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button aria-haspopup="true" size="icon" variant="ghost">
@@ -278,20 +289,19 @@ export function ClientActions({ mode, client }: ClientActionsProps) {
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           <DropdownMenuLabel>Actions</DropdownMenuLabel>
-          <DropdownMenuItem onSelect={() => openDialog('qr')}>
+          <DropdownMenuItem onSelect={() => setQrDialogOpen(true)}>
             <QrCode className="mr-2 h-4 w-4" />
             View QR Code
           </DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => openDialog('edit')}>
+          <DropdownMenuItem onSelect={() => setAddEditDialogOpen(true)}>
             <FilePenLine className="mr-2 h-4 w-4" />
             Edit
           </DropdownMenuItem>
           <DropdownMenuItem className="text-red-500" onSelect={handleDelete}>Delete</DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
-      <DialogContent className="sm:max-w-[425px]">
-       {renderDialogContent()}
-      </DialogContent>
-    </Dialog>
+    </>
   );
 }
+
+    
