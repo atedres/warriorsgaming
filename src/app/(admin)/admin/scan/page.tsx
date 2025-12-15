@@ -58,6 +58,7 @@ export default function ScanPage() {
   const stopScanning = useCallback(() => {
     if (animationFrameId.current) {
         cancelAnimationFrame(animationFrameId.current);
+        animationFrameId.current = undefined;
     }
     setIsScanning(false);
   }, []);
@@ -72,22 +73,22 @@ export default function ScanPage() {
             if (foundClient) {
                 setScannedClient(foundClient);
                 toast({
-                    title: "Client Found",
-                    description: `${foundClient.name} has been scanned.`
+                    title: "Client Trouvé",
+                    description: `${foundClient.name} a été scanné.`
                 });
             } else {
                  toast({
                     variant: "destructive",
-                    title: "Scan Error",
-                    description: "Client ID from QR code not found.",
+                    title: "Erreur de Scan",
+                    description: "L'ID client du code QR n'a pas été trouvé.",
                 });
             }
         }
     } catch (e) {
         toast({
             variant: "destructive",
-            title: "Scan Error",
-            description: "Invalid QR code format.",
+            title: "Erreur de Scan",
+            description: "Format de code QR invalide.",
         });
     } finally {
         setLoading(false);
@@ -112,7 +113,7 @@ export default function ScanPage() {
 
             if (code) {
                 handleQrCodeScanned(code.data);
-                return; // Stop the loop
+                return; // Arrête la boucle
             }
         }
     }
@@ -124,6 +125,10 @@ export default function ScanPage() {
       if (!isScanning) {
           setScannedClient(null);
           setIsScanning(true);
+          // S'assure qu'une seule boucle de scan est active
+          if (animationFrameId.current) {
+            cancelAnimationFrame(animationFrameId.current);
+          }
           animationFrameId.current = requestAnimationFrame(scanLoop);
       }
   }, [isScanning, scanLoop]);
@@ -131,6 +136,14 @@ export default function ScanPage() {
 
   const getCameraPermission = useCallback(async (deviceId?: string) => {
     stopScanning();
+    if (streamRef.current && !deviceId) { // Si on a déjà un stream et qu'on ne change pas de caméra
+      if (videoRef.current) {
+        videoRef.current.srcObject = streamRef.current;
+        startScanning();
+      }
+      return;
+    }
+
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(track => track.stop());
     }
@@ -146,7 +159,10 @@ export default function ScanPage() {
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         videoRef.current.onloadedmetadata = () => {
-            startScanning();
+            // Ne démarre le scan que si ce n'est pas déjà fait
+            if (!isScanning) {
+              startScanning();
+            }
         }
       }
       
@@ -155,20 +171,19 @@ export default function ScanPage() {
       setVideoDevices(videoInputs);
       
       const currentTrack = stream.getVideoTracks()[0];
-      const currentDevice = videoInputs.find(d => d.label === currentTrack.label || d.deviceId === currentTrack.id);
-      setCurrentVideoDeviceId(currentDevice?.deviceId);
-
+      const currentSettings = currentTrack.getSettings();
+      setCurrentVideoDeviceId(currentSettings.deviceId);
 
     } catch (error) {
-      console.error('Error accessing camera:', error);
+      console.error('Erreur d\'accès à la caméra:', error);
       setHasCameraPermission(false);
       toast({
         variant: 'destructive',
-        title: 'Camera Access Denied',
-        description: 'Please enable camera permissions in your browser settings to use this app.',
+        title: 'Accès Caméra Refusé',
+        description: 'Veuillez activer les permissions de la caméra dans les paramètres de votre navigateur pour utiliser cette application.',
       });
     }
-  }, [toast, startScanning, stopScanning]);
+  }, [toast, startScanning, stopScanning, isScanning]);
 
 
   useEffect(() => {
@@ -178,33 +193,14 @@ export default function ScanPage() {
         stopScanning();
         if (streamRef.current) {
             streamRef.current.getTracks().forEach(track => track.stop());
+            streamRef.current = null;
         }
     }
-  }, [getCameraPermission, stopScanning]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
 
   const availableStations = stations?.filter(s => s.status === 'available') || [];
-
-  const handleManualScanTrigger = () => {
-    setLoading(true);
-    setScannedClient(null);
-    setSelectedStationId("");
-    
-    if (isScanning) {
-        stopScanning();
-    } else {
-        startScanning();
-    }
-    
-    // Kept for simulation if needed, but primary is auto-scan
-    setTimeout(() => {
-      if(!scannedClient && clients && clients.length > 0) {
-        const randomClient = clients[Math.floor(Math.random() * clients.length)];
-        handleQrCodeScanned(JSON.stringify({ clientId: randomClient.id }));
-      }
-      setLoading(false);
-    }, 1500);
-  };
 
   const handleAssignStation = () => {
     if(!firestore || !scannedClient || !selectedStationId) return;
@@ -216,8 +212,8 @@ export default function ScanPage() {
     updateDocumentNonBlocking(clientRef, { currentStationId: selectedStationId });
 
     toast({
-        title: "Station Assigned",
-        description: `${scannedClient.name} has been assigned to station ${stations?.find(s => s.id === selectedStationId)?.id}.`
+        title: "Poste Assigné",
+        description: `${scannedClient.name} a été assigné au poste ${stations?.find(s => s.id === selectedStationId)?.id}.`
     });
 
     setScannedClient(prev => prev ? { ...prev, currentStationId: selectedStationId } : null);
@@ -234,8 +230,8 @@ export default function ScanPage() {
     updateDocumentNonBlocking(clientRef, { currentStationId: null });
 
     toast({
-        title: "Station Released",
-        description: `Station ${scannedClient.currentStationId} is now available.`
+        title: "Poste Libéré",
+        description: `Le poste ${scannedClient.currentStationId} est maintenant disponible.`
     });
 
     setScannedClient(prev => prev ? { ...prev, currentStationId: undefined } : null);
@@ -256,8 +252,8 @@ export default function ScanPage() {
   return (
     <>
       <PageHeader
-        title="QR Code Scanner"
-        description="Scan a client's QR code to check them in or manage their account."
+        title="Scanneur de Code QR"
+        description="Scannez le code QR d'un client pour l'enregistrer ou gérer son compte."
         className="px-0"
       />
       <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
@@ -272,31 +268,31 @@ export default function ScanPage() {
               {hasCameraPermission === false && (
                   <div className="absolute flex flex-col items-center text-muted-foreground">
                       <VideoOff className="h-16 w-16 mb-4" />
-                      <p>Camera not available</p>
+                      <p>Caméra non disponible</p>
                   </div>
               )}
-               {isScanning && !scannedClient && (
-                  <div className="absolute inset-0 flex items-center justify-center">
+               {isScanning && (
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                       <div className="w-2/3 h-2/3 border-4 border-primary/50 rounded-lg animate-pulse" />
                   </div>
               )}
             </div>
             {hasCameraPermission === false && (
                 <Alert variant="destructive">
-                    <AlertTitle>Camera Access Required</AlertTitle>
+                    <AlertTitle>Accès Caméra Requis</AlertTitle>
                     <AlertDescription>
-                        Please allow camera access in your browser settings to use this feature.
+                        Veuillez autoriser l'accès à la caméra dans les paramètres de votre navigateur pour utiliser cette fonctionnalité.
                     </AlertDescription>
                 </Alert>
             )}
             <div className="flex gap-2 w-full max-w-xs">
-                <Button onClick={startScanning} disabled={isScanning || isLoadingClients || !hasCameraPermission} className="flex-grow">
+                <Button onClick={startScanning} disabled={isLoadingClients || !hasCameraPermission}>
                 {isScanning ? "Scanning..." : "Scan"}
                 </Button>
                 {videoDevices.length > 1 && (
                     <Button onClick={handleSwapCamera} variant="outline" size="icon">
                         <Camera className="h-5 w-5" />
-                        <span className="sr-only">Switch Camera</span>
+                        <span className="sr-only">Changer de Caméra</span>
                     </Button>
                 )}
             </div>
@@ -305,9 +301,9 @@ export default function ScanPage() {
 
         <Card className="lg:col-span-2">
           <CardHeader>
-            <CardTitle className="font-headline">Client Profile</CardTitle>
+            <CardTitle className="font-headline">Profil du Client</CardTitle>
             <CardDescription>
-              Client information will appear here after a successful scan.
+              Les informations du client apparaîtront ici après un scan réussi.
             </CardDescription>
           </CardHeader>
           <CardContent className="min-h-[300px]">
@@ -315,7 +311,7 @@ export default function ScanPage() {
               <div className="flex items-center justify-center h-full">
                 <div className="flex flex-col items-center gap-2">
                   <QrCode className="h-10 w-10 animate-pulse text-primary" />
-                  <p className="text-muted-foreground">Searching for client...</p>
+                  <p className="text-muted-foreground">Recherche du client...</p>
                 </div>
               </div>
             )}
@@ -335,42 +331,42 @@ export default function ScanPage() {
                 <Separator />
                 
                 <div className="grid gap-4">
-                  <h4 className="font-semibold">Station Management</h4>
+                  <h4 className="font-semibold">Gestion des Postes</h4>
                   {clientCurrentStation ? (
                      <div className="flex items-center gap-4 p-4 bg-muted/50 rounded-lg">
                         <Gamepad2 className="h-8 w-8 text-primary"/>
                         <div className="flex-grow">
-                            <p className="font-medium">Currently playing on:</p>
+                            <p className="font-medium">Joue actuellement sur :</p>
                             <p className="text-lg font-bold">{clientCurrentStation.id}</p>
                             <p className="text-sm text-muted-foreground">{clientCurrentStation.type}</p>
                         </div>
                         <Button variant="destructive" size="sm" onClick={handleReleaseStation}>
-                            <LogOut className="mr-2 h-4 w-4"/> Release
+                            <LogOut className="mr-2 h-4 w-4"/> Libérer
                         </Button>
                      </div>
                   ) : (
                     <div className="flex flex-col sm:flex-row gap-2 items-end">
                       <div className="grid gap-1.5 w-full sm:w-auto flex-grow">
-                        <Label htmlFor="station">Assign Station</Label>
+                        <Label htmlFor="station">Assigner un Poste</Label>
                         <Select value={selectedStationId} onValueChange={setSelectedStationId}>
                             <SelectTrigger id="station">
-                                <SelectValue placeholder="Select a station" />
+                                <SelectValue placeholder="Sélectionner un poste" />
                             </SelectTrigger>
                             <SelectContent>
-                                {isLoadingStations ? <SelectItem value="loading" disabled>Loading...</SelectItem> : 
+                                {isLoadingStations ? <SelectItem value="loading" disabled>Chargement...</SelectItem> : 
                                  availableStations.length > 0 ? (
                                     availableStations.map(station => (
                                         <SelectItem key={station.id} value={station.id}>{station.id} ({station.type})</SelectItem>
                                     ))
                                  ) : (
-                                    <SelectItem value="none" disabled>No available stations</SelectItem>
+                                    <SelectItem value="none" disabled>Aucun poste disponible</SelectItem>
                                  )
                                 }
                             </SelectContent>
                         </Select>
                       </div>
                       <Button onClick={handleAssignStation} disabled={!selectedStationId}>
-                        <CheckCircle className="mr-2 h-4 w-4" /> Assign
+                        <CheckCircle className="mr-2 h-4 w-4" /> Assigner
                       </Button>
                     </div>
                   )}
@@ -382,17 +378,17 @@ export default function ScanPage() {
                   <h4 className="font-semibold">Actions</h4>
                   <div className="flex flex-wrap gap-2">
                     <Button variant="secondary">
-                      <Gift className="mr-2 h-4 w-4" /> Add Bonus
+                      <Gift className="mr-2 h-4 w-4" /> Ajouter un Bonus
                     </Button>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="hours" className="flex items-center">
                         <Clock className="mr-2 h-4 w-4 text-muted-foreground"/>
-                        Manage Subscription Hours
+                        Gérer les Heures d'Abonnement
                     </Label>
                     <div className="flex gap-2">
-                        <Input id="hours" type="number" placeholder={`${scannedClient.subscriptionHours} hours`} />
-                        <Button variant="outline">Update</Button>
+                        <Input id="hours" type="number" placeholder={`${scannedClient.subscriptionHours} heures`} />
+                        <Button variant="outline">Mettre à jour</Button>
                     </div>
                   </div>
                 </div>
@@ -404,7 +400,7 @@ export default function ScanPage() {
               <div className="flex items-center justify-center h-full text-center">
                 <div className="flex flex-col items-center gap-2">
                     <User className="h-10 w-10 text-muted-foreground"/>
-                    <p className="text-muted-foreground">Waiting for scan...</p>
+                    <p className="text-muted-foreground">En attente d'un scan...</p>
                 </div>
               </div>
             )}
