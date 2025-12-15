@@ -159,8 +159,7 @@ function ClientForm({ client, onFormSubmit, isSubmitting }: { client?: Client, o
 
 
 export function ClientActions({ mode, client }: ClientActionsProps) {
-  const [isAddEditDialogOpen, setAddEditDialogOpen] = useState(false);
-  const [isQrDialogOpen, setQrDialogOpen] = useState(false);
+  const [isEditDialogOpen, setEditDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const firestore = useFirestore();
   const { toast } = useToast();
@@ -184,7 +183,7 @@ export function ClientActions({ mode, client }: ClientActionsProps) {
         updateDocumentNonBlocking(clientRef, data);
         toast({ title: "Client updated", description: `${data.name}'s profile has been updated.` });
       }
-      setAddEditDialogOpen(false);
+      setEditDialogOpen(false);
     } catch (error) {
       console.error("Error submitting form:", error);
       toast({ variant: "destructive", title: "Error", description: "Something went wrong." });
@@ -206,7 +205,7 @@ export function ClientActions({ mode, client }: ClientActionsProps) {
   
   if (mode === "add") {
     return (
-      <Dialog open={isAddEditDialogOpen} onOpenChange={setAddEditDialogOpen}>
+      <Dialog open={isEditDialogOpen} onOpenChange={setEditDialogOpen}>
         <DialogTrigger asChild>
           <Button size="sm" className="h-8 gap-1">
             <PlusCircle className="h-3.5 w-3.5" />
@@ -228,6 +227,44 @@ export function ClientActions({ mode, client }: ClientActionsProps) {
     );
   }
 
+  return (
+    <>
+      <Dialog open={isEditDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Edit Client</DialogTitle>
+              <DialogDescription>
+                {`Editing profile for ${client.name}.`}
+              </DialogDescription>
+            </DialogHeader>
+            <ClientForm client={client} onFormSubmit={handleFormSubmit} isSubmitting={isSubmitting} />
+        </DialogContent>
+      </Dialog>
+
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button aria-haspopup="true" size="icon" variant="ghost">
+            <MoreHorizontal className="h-4 w-4" />
+            <span className="sr-only">Toggle menu</span>
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuLabel>Actions</DropdownMenuLabel>
+          <DropdownMenuItem onSelect={() => setEditDialogOpen(true)}>
+            <FilePenLine className="mr-2 h-4 w-4" />
+            Edit
+          </DropdownMenuItem>
+          <DropdownMenuItem className="text-red-500" onSelect={handleDelete}>Delete</DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </>
+  );
+}
+
+
+export function QrCodeDialog({ client }: { client: Client }) {
+  const [isQrDialogOpen, setQrDialogOpen] = useState(false);
+
   const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(
     JSON.stringify({ clientId: client.id, name: client.name })
   )}`;
@@ -245,61 +282,31 @@ export function ClientActions({ mode, client }: ClientActionsProps) {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-  }
+  };
 
   return (
-    <>
-      <Dialog open={isAddEditDialogOpen} onOpenChange={setAddEditDialogOpen}>
-        <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Edit Client</DialogTitle>
-              <DialogDescription>
-                {`Editing profile for ${client.name}.`}
-              </DialogDescription>
-            </DialogHeader>
-            <ClientForm client={client} onFormSubmit={handleFormSubmit} isSubmitting={isSubmitting} />
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={isQrDialogOpen} onOpenChange={setQrDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-              <DialogTitle>QR Code for {client.name}</DialogTitle>
-              <DialogDescription>
-                This QR code is unique to {client.name}. Scan it for check-ins and
-                rewards.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="flex items-center justify-center p-4">
-              <Image src={qrCodeUrl} width={250} height={250} alt={`QR Code for ${client.name}`} className="rounded-lg"/>
-            </div>
-            <DialogFooter className="sm:justify-center">
-                <Button variant="outline" onClick={handleDownloadQr}>Download QR Code</Button>
-                <Button onClick={handleWhatsAppShare}>Share via WhatsApp</Button>
-            </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button aria-haspopup="true" size="icon" variant="ghost">
-            <MoreHorizontal className="h-4 w-4" />
-            <span className="sr-only">Toggle menu</span>
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuLabel>Actions</DropdownMenuLabel>
-          <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setQrDialogOpen(true); }}>
-            <QrCode className="mr-2 h-4 w-4" />
-            View QR Code
-          </DropdownMenuItem>
-          <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setAddEditDialogOpen(true); }}>
-            <FilePenLine className="mr-2 h-4 w-4" />
-            Edit
-          </DropdownMenuItem>
-          <DropdownMenuItem className="text-red-500" onSelect={handleDelete}>Delete</DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    </>
+    <Dialog open={isQrDialogOpen} onOpenChange={setQrDialogOpen}>
+      <DialogTrigger asChild>
+        <Button variant="outline" size="sm" className="ml-2">
+          <QrCode className="h-4 w-4" />
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+            <DialogTitle>QR Code for {client.name}</DialogTitle>
+            <DialogDescription>
+              This QR code is unique to {client.name}. Scan it for check-ins and
+              rewards.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex items-center justify-center p-4">
+            <Image src={qrCodeUrl} width={250} height={250} alt={`QR Code for ${client.name}`} className="rounded-lg"/>
+          </div>
+          <DialogFooter className="sm:justify-center">
+              <Button variant="outline" onClick={handleDownloadQr}>Download QR Code</Button>
+              <Button onClick={handleWhatsAppShare}>Share via WhatsApp</Button>
+          </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

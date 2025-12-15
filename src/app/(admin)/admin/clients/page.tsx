@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -16,7 +17,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { ClientActions } from './client-actions';
+import { ClientActions, QrCodeDialog } from './client-actions';
 import { PageHeader } from '@/components/page-header';
 import { useCollection, useFirestore } from '@/firebase';
 import { useMemoFirebase } from '@/firebase/provider';
@@ -74,7 +75,10 @@ export default function ClientsPage() {
                 clients.map((client) => (
                   <TableRow key={client.id}>
                     <TableCell className="font-medium">
-                      <div className="font-medium">{client.name}</div>
+                      <div className="flex items-center">
+                        <div className="font-medium">{client.name}</div>
+                        <QrCodeDialog client={client} />
+                      </div>
                       <div className="hidden text-sm text-muted-foreground md:inline">
                         {client.email}
                       </div>
