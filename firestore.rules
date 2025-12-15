@@ -1,110 +1,29 @@
 /**
- * Core Philosophy: This ruleset enforces a strict admin-only security model for writes.
- * All write operations (create, update, delete) across the entire database are
- * restricted to authenticated users with an 'admin' role. Authenticated
- * users are granted read-access to all collections, which is suitable for the admin-focused
- * nature of this application, as non-admin users do not have a UI to access this data directly.
+ * Core Philosophy: This ruleset enforces a lenient security model for development.
+ * All read and write operations are permitted for any authenticated user.
+ * This is NOT suitable for production but is useful for unblocking development.
  *
- * Data Structure: The database uses a flat structure with four top-level
- * collections: 'clients', 'stations', 'reservations', and 'usageLogs'. There
- * are no nested user-specific subcollections, as all data is managed globally
- * by administrators.
- *
- * Key Security Decisions:
- * - Admin-Only Writes: All data creation, modification, and deletion is locked
- *   down to administrators to prevent any unauthorized changes.
- * - Authenticated Reads: Any signed-in user (i.e., any admin) can read data
- *   from all collections. This simplifies the rules for the admin panel where
- *   various pages need to list data.
- * - Placeholder Admin Role: A placeholder `isAdmin()` function is provided. It
- *   defaults to `false` and MUST be implemented (e.g., using custom claims)
- *   before any write operations will succeed. This is a critical security measure.
- *
- * Denormalization for Authorization: This model does not require complex
- * denormalization for authorization rules because access is not based on
- * document-level ownership but on a global admin role. This simplifies the
- * ruleset significantly and improves performance.
- *
- * Structural Segregation: Each data entity (Clients, Stations, etc.) is
- * stored in its own top-level collection, ensuring a clean separation of
- * concerns and straightforward, collection-specific security rules.
+ * For production, you should re-introduce role-based access control,
+ * for example, by checking for an admin custom claim on the user's token.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper functions for auth and roles
+    // Helper function to check if the user is authenticated.
     function isSignedIn() {
       return request.auth != null;
     }
 
     /**
-     * Checks if the requesting user has administrative privileges.
-     * CRITICAL: To enable admin functionality, you MUST
-     * implement a real admin check, for example, using custom claims:
-     * `return request.auth.token.admin == true;`
+     * @description Manages all collections ('clients', 'stations', 'reservations', 'usageLogs').
+     *              For development purposes, any authenticated user can read and write to any document.
+     * @path /{collection}/{docId}
+     * @allow (read, write) Any signed-in user can read or write any document.
+     * @principle Prioritizes rapid development by removing security constraints temporarily.
      */
-    function isAdmin() {
-      // For development, we'll allow any signed-in user to be an admin.
-      // For production, you should implement proper role-based access control.
-      return isSignedIn();
-    }
-
-    /**
-     * @description Manages client profiles for the gaming center. Admins can
-     *              manage all client information. Any authenticated user can view it.
-     * @path /clients/{clientId}
-     * @allow (read) An admin reads a client's document.
-     * @deny (write) A regular signed-in user tries to edit a client document.
-     * @principle Enforces a strict admin-only write access model for sensitive data.
-     */
-    match /clients/{clientId} {
-      allow read: if isSignedIn();
-      allow write: if isAdmin();
-    }
-
-    /**
-     * @description Manages gaming stations. Station info is public for any
-     *              signed-in user to see, but only admins can add, update,
-     *              or remove stations.
-     * @path /stations/{stationId}
-     * @allow (get) Any signed-in user reads a station's status.
-     * @deny (create) A regular signed-in user tries to add a new station.
-     * @principle Segregates read and write access, allowing public consumption
-     *              of data while protecting its integrity.
-     */
-    match /stations/{stationId} {
-      allow read: if isSignedIn();
-      allow write: if isAdmin();
-    }
-
-    /**
-     * @description Manages reservations for gaming stations. Admins can
-     *              create, view, update, or delete reservations. Any authenticated
-     *              user can view them.
-     * @path /reservations/{reservationId}
-     * @allow (write) An admin creates a new reservation for a client.
-     deny (list) A regular signed-in user tries to list all reservations.
-     * @principle Restricts write access to operational data to trusted admin personnel.
-     */
-    match /reservations/{reservationId} {
-       allow read: if isSignedIn();
-       allow write: if isAdmin();
-    }
-
-    /**
-     * @description Stores historical usage logs. This data is for internal
-     *              analytics and management. Admins can write, any authenticated
-     *              user can read.
-     * @path /usageLogs/{usageLogId}
-     * @allow (list) An admin lists all usage logs for reporting.
-     deny (get) A regular signed-in user tries to read a specific log entry.
-     * @principle Protects historical and analytical data by restricting write access
-     *              to administrators.
-     */
-    match /usageLogs/{usageLogId} {
-      allow read: if isSignedIn();
-      allow write: if isAdmin();
+    match /{collection}/{docId} {
+      allow read, write: if isSignedIn();
     }
   }
 }
