@@ -67,6 +67,9 @@ export default function ScanPage() {
     stopScanning();
     setLoading(true);
     try {
+        if (navigator.vibrate) {
+          navigator.vibrate(200);
+        }
         const parsed = JSON.parse(code);
         if (parsed.clientId) {
             const foundClient = clients?.find(c => c.id === parsed.clientId);
@@ -135,13 +138,12 @@ export default function ScanPage() {
 
 
   const getCameraPermission = useCallback(async (deviceId?: string) => {
-    stopScanning();
-    if (streamRef.current && !deviceId) { // Si on a déjà un stream et qu'on ne change pas de caméra
-      if (videoRef.current) {
-        videoRef.current.srcObject = streamRef.current;
-        startScanning();
-      }
-      return;
+    // Ne pas arrêter le scan si on change juste de caméra pendant qu'il tourne
+    if (isScanning) {
+       if (animationFrameId.current) {
+        cancelAnimationFrame(animationFrameId.current);
+        animationFrameId.current = undefined;
+       }
     }
 
     if (streamRef.current) {
@@ -159,10 +161,9 @@ export default function ScanPage() {
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         videoRef.current.onloadedmetadata = () => {
-            // Ne démarre le scan que si ce n'est pas déjà fait
-            if (!isScanning) {
-              startScanning();
-            }
+             if (isScanning || !animationFrameId.current) {
+                animationFrameId.current = requestAnimationFrame(scanLoop);
+             }
         }
       }
       
@@ -177,13 +178,14 @@ export default function ScanPage() {
     } catch (error) {
       console.error('Erreur d\'accès à la caméra:', error);
       setHasCameraPermission(false);
+      setIsScanning(false);
       toast({
         variant: 'destructive',
         title: 'Accès Caméra Refusé',
         description: 'Veuillez activer les permissions de la caméra dans les paramètres de votre navigateur pour utiliser cette application.',
       });
     }
-  }, [toast, startScanning, stopScanning, isScanning]);
+  }, [toast, scanLoop, isScanning]);
 
 
   useEffect(() => {
@@ -286,11 +288,11 @@ export default function ScanPage() {
                 </Alert>
             )}
             <div className="flex gap-2 w-full max-w-xs">
-                <Button onClick={startScanning} disabled={isLoadingClients || !hasCameraPermission}>
-                {isScanning ? "Scanning..." : "Scan"}
+                <Button onClick={startScanning} disabled={isLoadingClients || !hasCameraPermission || isScanning}>
+                    {isScanning ? "Scanning..." : "Scan"}
                 </Button>
                 {videoDevices.length > 1 && (
-                    <Button onClick={handleSwapCamera} variant="outline" size="icon">
+                    <Button onClick={handleSwapCamera} variant="outline" size="icon" disabled={!hasCameraPermission}>
                         <Camera className="h-5 w-5" />
                         <span className="sr-only">Changer de Caméra</span>
                     </Button>
