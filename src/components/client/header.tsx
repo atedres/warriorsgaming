@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Gamepad2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Logo } from "../logo";
+import { ThemeToggle } from "../theme-toggle";
 
 export default function ClientHeader() {
   return (
@@ -10,7 +11,8 @@ export default function ClientHeader() {
         <Logo />
         <span className="sr-only">CyberHub Manager</span>
       </Link>
-      <nav className="ml-auto flex gap-4 sm:gap-6">
+      <nav className="ml-auto flex items-center gap-4 sm:gap-6">
+        <ThemeToggle />
         <Button asChild variant="outline" className="border-accent text-accent hover:bg-accent hover:text-accent-foreground">
           <Link
             href="/admin"
