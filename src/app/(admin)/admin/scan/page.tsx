@@ -263,8 +263,8 @@ export default function ScanPage() {
           <CardHeader>
             <CardTitle className="font-headline">Scanner</CardTitle>
           </CardHeader>
-          <CardContent className="flex flex-col items-center justify-center gap-6 text-center h-full min-h-[300px]">
-            <div className="w-full max-w-[300px] h-auto aspect-square bg-muted rounded-lg flex items-center justify-center overflow-hidden relative">
+          <CardContent className="flex flex-col items-center justify-center gap-4 text-center">
+             <div className="w-full max-w-[400px] aspect-square bg-muted rounded-lg flex items-center justify-center overflow-hidden relative group">
               <video ref={videoRef} className="w-full h-full object-cover" autoPlay muted playsInline />
                <canvas ref={canvasRef} className="hidden" />
               {hasCameraPermission === false && (
@@ -278,16 +278,7 @@ export default function ScanPage() {
                       <div className="w-2/3 h-2/3 border-4 border-primary/50 rounded-lg animate-pulse" />
                   </div>
               )}
-            </div>
-            {hasCameraPermission === false && (
-                <Alert variant="destructive">
-                    <AlertTitle>Accès Caméra Requis</AlertTitle>
-                    <AlertDescription>
-                        Veuillez autoriser l'accès à la caméra dans les paramètres de votre navigateur pour utiliser cette fonctionnalité.
-                    </AlertDescription>
-                </Alert>
-            )}
-            <div className="flex gap-2 w-full max-w-[300px]">
+              <div className="absolute bottom-4 left-4 right-4 flex justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                 <Button onClick={startScanning} disabled={isLoadingClients || !hasCameraPermission || isScanning} className="flex-grow">
                     {isScanning ? "Scanning..." : "Scan"}
                 </Button>
@@ -298,6 +289,15 @@ export default function ScanPage() {
                     </Button>
                 )}
             </div>
+            </div>
+            {hasCameraPermission === false && (
+                <Alert variant="destructive">
+                    <AlertTitle>Accès Caméra Requis</AlertTitle>
+                    <AlertDescription>
+                        Veuillez autoriser l'accès à la caméra dans les paramètres de votre navigateur pour utiliser cette fonctionnalité.
+                    </AlertDescription>
+                </Alert>
+            )}
           </CardContent>
         </Card>
 
