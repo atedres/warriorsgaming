@@ -10,20 +10,15 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper function to check if the user is authenticated.
-    function isSignedIn() {
-      return request.auth != null;
-    }
-
     /**
      * @description Manages all collections ('clients', 'stations', 'reservations', 'usageLogs').
-     *              For development purposes, any authenticated user can read and write to any document.
+     *              For development purposes, any user (even unauthenticated) can read and write.
      * @path /{collection}/{docId}
-     * @allow (read, write) Any signed-in user can read or write any document.
-     * @principle Prioritizes rapid development by removing security constraints temporarily.
+     * @allow (read, write) Anyone can read or write any document.
+     * @principle Prioritizes rapid development by removing all security constraints temporarily.
      */
-    match /{collection}/{docId} {
-      allow read, write: if isSignedIn();
+    match /{document=**} {
+      allow read, write: if true;
     }
   }
 }
