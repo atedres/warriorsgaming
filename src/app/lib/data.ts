@@ -22,3 +22,11 @@ export type Game = {
     id: string;
     name: string;
 }
+
+export type UsageLog = {
+    id?: string;
+    clientId: string;
+    stationId: string;
+    startTime: string;
+    endTime: string | null;
+}

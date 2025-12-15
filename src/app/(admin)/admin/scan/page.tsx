@@ -23,7 +23,7 @@ import { useCollection, useFirestore } from "@/firebase";
 import { useMemoFirebase } from "@/firebase/provider";
 import { collection, query, doc, where } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
-import { updateDocumentNonBlocking } from "@/firebase/non-blocking-updates";
+import { addDocumentNonBlocking, updateDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 
@@ -35,6 +35,7 @@ export default function ScanPage() {
   const [videoDevices, setVideoDevices] = useState<MediaDeviceInfo[]>([]);
   const [currentVideoDeviceId, setCurrentVideoDeviceId] = useState<string | undefined>();
   const [isScanning, setIsScanning] = useState(false);
+  const [hoursToAdd, setHoursToAdd] = useState<number | string>("");
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -60,11 +61,12 @@ export default function ScanPage() {
         cancelAnimationFrame(animationFrameId.current);
         animationFrameId.current = undefined;
     }
-    setIsScanning(false);
+    // Ne pas mettre setIsScanning(false) ici pour que la caméra reste active
   }, []);
 
   const handleQrCodeScanned = useCallback((code: string) => {
     stopScanning();
+    setIsScanning(false); // Arrêter l'indicateur de scan
     setLoading(true);
     try {
         if (navigator.vibrate) {
@@ -120,33 +122,23 @@ export default function ScanPage() {
             }
         }
     }
-    animationFrameId.current = requestAnimationFrame(scanLoop);
-  }, [handleQrCodeScanned]);
+    if(isScanning) {
+        animationFrameId.current = requestAnimationFrame(scanLoop);
+    }
+  }, [handleQrCodeScanned, isScanning]);
 
   
   const startScanning = useCallback(() => {
       if (!isScanning) {
           setScannedClient(null);
           setIsScanning(true);
-          // S'assure qu'une seule boucle de scan est active
-          if (animationFrameId.current) {
-            cancelAnimationFrame(animationFrameId.current);
-          }
           animationFrameId.current = requestAnimationFrame(scanLoop);
       }
   }, [isScanning, scanLoop]);
 
 
   const getCameraPermission = useCallback(async (deviceId?: string) => {
-    // Ne pas arrêter le scan si on change juste de caméra pendant qu'il tourne
-    if (isScanning) {
-       if (animationFrameId.current) {
-        cancelAnimationFrame(animationFrameId.current);
-        animationFrameId.current = undefined;
-       }
-    }
-
-    if (streamRef.current) {
+    if (streamRef.current && deviceId !== currentVideoDeviceId) {
       streamRef.current.getTracks().forEach(track => track.stop());
     }
 
@@ -160,11 +152,6 @@ export default function ScanPage() {
 
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
-        videoRef.current.onloadedmetadata = () => {
-             if (isScanning || !animationFrameId.current) {
-                animationFrameId.current = requestAnimationFrame(scanLoop);
-             }
-        }
       }
       
       const devices = await navigator.mediaDevices.enumerateDevices();
@@ -185,14 +172,16 @@ export default function ScanPage() {
         description: 'Veuillez activer les permissions de la caméra dans les paramètres de votre navigateur pour utiliser cette application.',
       });
     }
-  }, [toast, scanLoop, isScanning]);
+  }, [toast, currentVideoDeviceId]);
 
 
   useEffect(() => {
     getCameraPermission();
     
     return () => {
-        stopScanning();
+        if (animationFrameId.current) {
+            cancelAnimationFrame(animationFrameId.current);
+        }
         if (streamRef.current) {
             streamRef.current.getTracks().forEach(track => track.stop());
             streamRef.current = null;
@@ -200,6 +189,12 @@ export default function ScanPage() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  
+  useEffect(() => {
+    if (isScanning) {
+      scanLoop();
+    }
+  }, [isScanning, scanLoop])
 
 
   const availableStations = stations?.filter(s => s.status === 'available') || [];
@@ -208,6 +203,15 @@ export default function ScanPage() {
     if(!firestore || !scannedClient || !selectedStationId) return;
 
     const stationRef = doc(firestore, "stations", selectedStationId);
+    const stationData = stations?.find(s => s.id === selectedStationId);
+    
+    addDocumentNonBlocking(collection(firestore, "usageLogs"), {
+        clientId: scannedClient.id,
+        stationId: selectedStationId,
+        startTime: new Date().toISOString(),
+        endTime: null,
+    });
+
     updateDocumentNonBlocking(stationRef, { status: 'in use', currentClientId: scannedClient.id });
     
     const clientRef = doc(firestore, "clients", scannedClient.id);
@@ -215,7 +219,7 @@ export default function ScanPage() {
 
     toast({
         title: "Poste Assigné",
-        description: `${scannedClient.name} a été assigné au poste ${stations?.find(s => s.id === selectedStationId)?.id}.`
+        description: `${scannedClient.name} a été assigné au poste ${stationData?.id}.`
     });
 
     setScannedClient(prev => prev ? { ...prev, currentStationId: selectedStationId } : null);
@@ -238,6 +242,23 @@ export default function ScanPage() {
 
     setScannedClient(prev => prev ? { ...prev, currentStationId: undefined } : null);
   }
+
+  const handleUpdateHours = () => {
+    if (!firestore || !scannedClient || !hoursToAdd || +hoursToAdd <= 0) return;
+    
+    const newHours = (scannedClient.subscriptionHours || 0) + Number(hoursToAdd);
+    const clientRef = doc(firestore, "clients", scannedClient.id);
+    updateDocumentNonBlocking(clientRef, { subscriptionHours: newHours });
+
+    toast({
+        title: "Heures Mises à Jour",
+        description: `${hoursToAdd} heure(s) ont été ajoutées à l'abonnement de ${scannedClient.name}.`
+    });
+
+    setScannedClient(prev => prev ? { ...prev, subscriptionHours: newHours } : null);
+    setHoursToAdd("");
+  }
+
 
   const handleSwapCamera = () => {
     if (videoDevices.length > 1 && currentVideoDeviceId) {
@@ -268,7 +289,7 @@ export default function ScanPage() {
               <video ref={videoRef} className="w-full h-full object-cover" autoPlay muted playsInline />
                <canvas ref={canvasRef} className="hidden" />
               {hasCameraPermission === false && (
-                  <div className="absolute flex flex-col items-center text-muted-foreground">
+                  <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground z-10">
                       <VideoOff className="h-16 w-16 mb-4" />
                       <p>Caméra non disponible</p>
                   </div>
@@ -278,7 +299,7 @@ export default function ScanPage() {
                       <div className="w-2/3 h-2/3 border-4 border-primary/50 rounded-lg animate-pulse" />
                   </div>
               )}
-              <div className="absolute bottom-4 left-4 right-4 flex justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+              <div className="absolute bottom-4 left-4 right-4 flex justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-20">
                 <Button onClick={startScanning} disabled={isLoadingClients || !hasCameraPermission || isScanning} className="flex-grow">
                     {isScanning ? "Scanning..." : "Scan"}
                 </Button>
@@ -323,11 +344,15 @@ export default function ScanPage() {
                   <div className="flex-shrink-0">
                     <User className="h-12 w-12 text-primary" />
                   </div>
-                  <div>
+                  <div className="flex-grow">
                     <h3 className="text-xl font-semibold">{scannedClient.name}</h3>
                     <p className="text-muted-foreground">{scannedClient.email}</p>
                     <Badge variant="secondary" className="mt-2">{scannedClient.subscriptionTier}</Badge>
                   </div>
+                   <div className="text-right">
+                        <p className="text-sm text-muted-foreground">Heures Restantes</p>
+                        <p className="text-2xl font-bold">{scannedClient.subscriptionHours || 0}</p>
+                    </div>
                 </div>
                 
                 <Separator />
@@ -339,8 +364,7 @@ export default function ScanPage() {
                         <Gamepad2 className="h-8 w-8 text-primary"/>
                         <div className="flex-grow">
                             <p className="font-medium">Joue actuellement sur :</p>
-                            <p className="text-lg font-bold">{clientCurrentStation.id}</p>
-                            <p className="text-sm text-muted-foreground">{clientCurrentStation.type}</p>
+                            <p className="text-lg font-bold">{clientCurrentStation.id} ({clientCurrentStation.type})</p>
                         </div>
                         <Button variant="destructive" size="sm" onClick={handleReleaseStation}>
                             <LogOut className="mr-2 h-4 w-4"/> Libérer
@@ -376,26 +400,33 @@ export default function ScanPage() {
 
                 <Separator />
                 
-                <div className="grid gap-4">
-                  <h4 className="font-semibold">Actions</h4>
-                  <div className="flex flex-wrap gap-2">
-                    <Button variant="secondary">
-                      <Gift className="mr-2 h-4 w-4" /> Ajouter un Bonus
-                    </Button>
-                  </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="hours" className="flex items-center">
                         <Clock className="mr-2 h-4 w-4 text-muted-foreground"/>
                         Gérer les Heures d'Abonnement
                     </Label>
                     <div className="flex gap-2">
-                        <Input id="hours" type="number" placeholder={`${scannedClient.subscriptionHours} heures`} />
-                        <Button variant="outline">Mettre à jour</Button>
+                        <Input 
+                            id="hours" 
+                            type="number" 
+                            placeholder="ex: 5" 
+                            value={hoursToAdd}
+                            onChange={(e) => setHoursToAdd(e.target.value)}
+                        />
+                        <Button variant="outline" onClick={handleUpdateHours}>Mettre à jour</Button>
                     </div>
                   </div>
+                   <div className="space-y-2">
+                     <Label className="flex items-center">
+                        <Gift className="mr-2 h-4 w-4 text-muted-foreground"/>
+                        Actions Bonus
+                    </Label>
+                    <Button variant="secondary" className="w-full">
+                      Ajouter un Bonus
+                    </Button>
+                  </div>
                 </div>
-
-
               </div>
             )}
             {!loading && !scannedClient && (
