@@ -1,6 +1,6 @@
 'use client';
 import Image from 'next/image';
-import { Gamepad2, Headset, Monitor } from 'lucide-react';
+import { Gamepad2, Headset, Monitor, Instagram, MapPin, Phone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -11,6 +11,7 @@ import { useMemoFirebase } from '@/firebase/provider';
 import type { Station } from '@/app/lib/data';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
+import Link from 'next/link';
 
 export default function Home() {
   const [filter, setFilter] = useState('All');
@@ -65,7 +66,7 @@ export default function Home() {
           <div className="container px-4 md:px-6">
             <div className="flex flex-col items-center space-y-4 text-center">
               <h1 className="font-headline text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl lg:text-6xl/none text-shadow-lg">
-                Welcome to CyberHub
+                Welcome to Warriors Gaming
               </h1>
               <p className="mx-auto max-w-[700px] text-foreground/80 md:text-xl">
                 Your ultimate gaming destination. Check station availability and
@@ -162,10 +163,22 @@ export default function Home() {
           </div>
         </section>
       </main>
-      <footer className="flex flex-col gap-2 sm:flex-row py-6 w-full shrink-0 items-center px-4 md:px-6 border-t">
+      <footer className="flex flex-col gap-4 sm:flex-row py-6 w-full shrink-0 items-center px-4 md:px-6 border-t">
         <p className="text-xs text-muted-foreground">
-          &copy; 2024 CyberHub Manager. All rights reserved.
+          &copy; 2024 Warriors Gaming. All rights reserved.
         </p>
+        <div className="sm:ml-auto flex items-center gap-4 sm:gap-6">
+            <Link href="https://www.instagram.com/warriorsgaming.ma?igsh=MTZ0bmE2b3JuN25wbQ==" target="_blank" rel="noopener noreferrer" className="text-xs hover:underline underline-offset-4">
+                <Instagram className="h-5 w-5" />
+            </Link>
+             <Link href="https://www.google.com/maps?geocode=FYKdAAIdhx6M_w%3D%3D;FbWUAAIdLSuM_ynx9bK1_M2nDTHps7D3Opnfzg%3D%3D&daddr=20,+22+Rue+Rahal+Ben+Ahmed,+Casablanca+20250&saddr=33.5947536,-7.5943625&dirflg=dht&ftid=0xda7cdfcb5b2f5f1:0xcedf993af7b0b3e9&lucs=,94297695,94275415,94284460,94231188,94280568,47071704,94218641,94282134,94286869&g_ep=CAISEjI1LjQ5LjkuODM4ODk5MTgzMBgAILq3CypRLDk0Mjk3Njk1LDk0Mjc1NDE1LDk0Mjg0NDYwLDk0MjMxMTg4LDk0MjgwNTY4LDQ3MDcxNzA0LDk0MjE4NjQxLDk0MjgyMTM0LDk0Mjg2ODY5QgJNQQ%3D%3D&skid=5f37960f-5403-45c7-9ee0-8e4a082492c1&g_st=ic" target="_blank" rel="noopener noreferrer" className="text-xs hover:underline underline-offset-4">
+                <MapPin className="h-5 w-5" />
+            </Link>
+             <Link href="tel:0661962634" className="text-xs hover:underline underline-offset-4 flex items-center gap-1">
+                <Phone className="h-4 w-4" />
+                06 61 96 26 34
+            </Link>
+        </div>
       </footer>
     </div>
   );

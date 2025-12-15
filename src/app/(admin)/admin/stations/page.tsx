@@ -111,7 +111,7 @@ export default function StationsPage() {
                 <CardHeader>
                 <CardTitle className="font-headline">Stations</CardTitle>
                 <CardDescription>
-                    A list of all gaming stations in CyberHub.
+                    A list of all gaming stations in Warriors Gaming.
                 </CardDescription>
                 </CardHeader>
                 <CardContent>

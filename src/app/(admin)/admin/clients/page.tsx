@@ -44,7 +44,7 @@ export default function ClientsPage() {
         <CardHeader>
           <CardTitle className="font-headline">Clients</CardTitle>
           <CardDescription>
-            A list of all registered clients in CyberHub.
+            A list of all registered clients in Warriors Gaming.
           </CardDescription>
         </CardHeader>
         <CardContent>

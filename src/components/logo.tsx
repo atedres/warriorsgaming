@@ -4,7 +4,7 @@ export function Logo({ className }: { className?: string }) {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 100 20"
+      viewBox="0 0 140 20"
       className={cn("h-8 w-auto", className)}
     >
       <defs>
@@ -25,7 +25,7 @@ export function Logo({ className }: { className?: string }) {
         fontWeight="bold"
         fill="hsl(var(--foreground))"
       >
-        CyberHub
+        Warriors Gaming
       </text>
     </svg>
   );

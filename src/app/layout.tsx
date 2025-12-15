@@ -22,8 +22,8 @@ const fontCode = Source_Code_Pro({
 });
 
 export const metadata: Metadata = {
-  title: 'CyberHub Manager',
-  description: 'Manage your gaming lounge with ease.',
+  title: 'Warriors Gaming',
+  description: 'Warriors Gaming - Your ultimate gaming destination.',
 };
 
 export default function RootLayout({
