@@ -162,6 +162,41 @@ export default function Home() {
             </div>
           </div>
         </section>
+        
+        <section id="location" className="w-full py-12 md:py-24 lg:py-32 bg-muted">
+            <div className="container px-4 md:px-6">
+                <div className="flex flex-col items-center justify-center space-y-4 text-center">
+                    <div className="space-y-2">
+                        <div className="inline-block rounded-lg bg-secondary px-3 py-1 text-sm">Notre Emplacement</div>
+                        <h2 className="font-headline text-3xl font-bold tracking-tighter sm:text-5xl">Retrouvez-nous</h2>
+                        <p className="max-w-[900px] text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
+                            Nous sommes situés au cœur de Casablanca, prêts à vous accueillir pour une expérience de jeu inoubliable.
+                        </p>
+                    </div>
+                    <div className="mx-auto w-full max-w-sm space-y-2">
+                        <Card>
+                            <CardContent className="p-6">
+                                <div className="flex items-start gap-4">
+                                    <MapPin className="h-8 w-8 text-primary mt-1"/>
+                                    <div>
+                                        <h3 className="font-semibold">Warriors Gaming</h3>
+                                        <address className="text-sm text-muted-foreground not-italic">
+                                            20, 22 Rue Rahal Ben Ahmed, Casablanca 20250
+                                        </address>
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+                         <Button asChild size="lg" className="w-full">
+                            <Link href="https://www.google.com/maps?geocode=FYKdAAIdhx6M_w%3D%3D;FbWUAAIdLSuM_ynx9bK1_M2nDTHps7D3Opnfzg%3D%3D&daddr=20,+22+Rue+Rahal+Ben+Ahmed,+Casablanca+20250&saddr=33.5947536,-7.5943625&dirflg=dht&ftid=0xda7cdfcb5b2f5f1:0xcedf993af7b0b3e9&lucs=,94297695,94275415,94284460,94231188,94280568,47071704,94218641,94282134,94286869&g_ep=CAISEjI1LjQ5LjkuODM4ODk5MTgzMBgAILq3CypRLDk0Mjk3Njk1LDk0Mjc1NDE1LDk0Mjg0NDYwLDk0MjMxMTg4LDk0MjgwNTY4LDQ3MDcxNzA0LDk0MjE4NjQxLDk0MjgyMTM0LDk0Mjg2ODY5QgJNQQ%3D%3D&skid=5f37960f-5403-45c7-9ee0-8e4a082492c1&g_st=ic" target="_blank" rel="noopener noreferrer">
+                                Voir l'itinéraire
+                            </Link>
+                        </Button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
       </main>
       <footer className="flex flex-col gap-4 sm:flex-row py-6 w-full shrink-0 items-center px-4 md:px-6 border-t">
         <p className="text-xs text-muted-foreground">
@@ -170,9 +205,6 @@ export default function Home() {
         <div className="sm:ml-auto flex items-center gap-4 sm:gap-6">
             <Link href="https://www.instagram.com/warriorsgaming.ma?igsh=MTZ0bmE2b3JuN25wbQ==" target="_blank" rel="noopener noreferrer" className="text-xs hover:underline underline-offset-4">
                 <Instagram className="h-5 w-5" />
-            </Link>
-             <Link href="https://www.google.com/maps?geocode=FYKdAAIdhx6M_w%3D%3D;FbWUAAIdLSuM_ynx9bK1_M2nDTHps7D3Opnfzg%3D%3D&daddr=20,+22+Rue+Rahal+Ben+Ahmed,+Casablanca+20250&saddr=33.5947536,-7.5943625&dirflg=dht&ftid=0xda7cdfcb5b2f5f1:0xcedf993af7b0b3e9&lucs=,94297695,94275415,94284460,94231188,94280568,47071704,94218641,94282134,94286869&g_ep=CAISEjI1LjQ5LjkuODM4ODk5MTgzMBgAILq3CypRLDk0Mjk3Njk1LDk0Mjc1NDE1LDk0Mjg0NDYwLDk0MjMxMTg4LDk0MjgwNTY4LDQ3MDcxNzA0LDk0MjE4NjQxLDk0MjgyMTM0LDk0Mjg2ODY5QgJNQQ%3D%3D&skid=5f37960f-5403-45c7-9ee0-8e4a082492c1&g_st=ic" target="_blank" rel="noopener noreferrer" className="text-xs hover:underline underline-offset-4">
-                <MapPin className="h-5 w-5" />
             </Link>
              <Link href="tel:0661962634" className="text-xs hover:underline underline-offset-4 flex items-center gap-1">
                 <Phone className="h-4 w-4" />
