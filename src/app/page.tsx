@@ -24,7 +24,7 @@ export default function Home() {
         return <Monitor className="h-6 w-6" />;
       case 'PS5':
         return <Gamepad2 className="h-6 w-6" />;
-      case 'PS5 VIP':
+      case 'VIP PS5':
         return <Gamepad2 className="h-6 w-6 text-primary" />;
       case 'VR Simulator':
         return <Headset className="h-6 w-6" />;
@@ -95,7 +95,7 @@ export default function Home() {
                 <Card key={station.id} className="flex flex-col">
                   <CardHeader className="flex flex-row items-center justify-between pb-2">
                     <CardTitle className="font-headline text-lg font-medium">
-                      {station.name}
+                      {station.id}
                     </CardTitle>
                     {getIcon(station.type)}
                   </CardHeader>
@@ -106,12 +106,12 @@ export default function Home() {
                       </p>
                       <Badge
                         variant={
-                          station.status === 'Available'
+                          station.status === 'available'
                             ? 'secondary'
                             : 'destructive'
                         }
                         className={`mt-4 ${
-                          station.status === 'Available'
+                          station.status === 'available'
                             ? 'bg-green-500/20 text-green-400 border-green-500/20'
                             : 'bg-red-500/20 text-red-400 border-red-500/20'
                         }`}
@@ -121,7 +121,7 @@ export default function Home() {
                     </div>
                     <Button
                       className="mt-6 w-full bg-primary/90 hover:bg-primary"
-                      disabled={station.status !== 'Available'}
+                      disabled={station.status !== 'available'}
                     >
                       Reserve Now
                     </Button>

@@ -22,7 +22,6 @@ import {
   ResponsiveContainer,
   BarChart as RechartsBarChart,
 } from 'recharts';
-import { usageAnalytics } from '@/app/lib/data';
 import { formatCurrency } from '@/lib/utils';
 import { PageHeader } from '@/components/page-header';
 import { useCollection, useFirestore } from '@/firebase';
@@ -43,6 +42,12 @@ export default function AdminDashboard() {
   );
   const { data: clients, isLoading: isLoadingClients } =
     useCollection(clientsQuery);
+  
+  const usageLogsQuery = useMemoFirebase(
+    () => (firestore ? query(collection(firestore, 'usageLogs')) : null),
+    [firestore]
+  );
+  const { data: usageLogs, isLoading: isLoadingUsageLogs } = useCollection(usageLogsQuery);
 
   const chartConfig = {
     revenue: {
@@ -71,11 +76,27 @@ export default function AdminDashboard() {
     },
   };
 
-  const stationsInUse = stations?.filter((s) => s.status === 'In Use').length || 0;
-  const totalRevenue = usageAnalytics.dailyRevenue.reduce(
-    (acc, day) => acc + day.revenue,
-    0
-  );
+  const stationsInUse = stations?.filter((s) => s.status === 'in use').length || 0;
+  // Note: revenue calculation would require price data, so we'll use a mock value for now.
+  const totalRevenue = 5631.50; 
+
+  const dailyRevenue = [
+    { date: 'Mon', revenue: 650 },
+    { date: 'Tue', revenue: 520 },
+    { date: 'Wed', revenue: 880 },
+    { date: 'Thu', revenue: 730 },
+    { date: 'Fri', revenue: 1100 },
+    { date: 'Sat', revenue: 1540 },
+    { date: 'Sun', revenue: 1210 },
+  ];
+
+  const popularStations = [
+    { station: 'PC', users: 400 },
+    { station: 'PS5', users: 300 },
+    { station: 'PS5 VIP', users: 180 },
+    { station: 'VR', users: 120 },
+  ];
+
 
   return (
     <div className="flex flex-col">
@@ -152,7 +173,7 @@ export default function AdminDashboard() {
             <ChartContainer config={chartConfig} className="h-[300px] w-full">
               <AreaChart
                 accessibilityLayer
-                data={usageAnalytics.dailyRevenue}
+                data={dailyRevenue}
                 margin={{
                   left: 12,
                   right: 12,
@@ -195,7 +216,7 @@ export default function AdminDashboard() {
             <ChartContainer config={chartConfig} className="h-[300px] w-full">
               <RechartsBarChart
                 accessibilityLayer
-                data={usageAnalytics.popularStations}
+                data={popularStations}
                 layout="vertical"
                 margin={{ right: 10, left: 10 }}
               >
