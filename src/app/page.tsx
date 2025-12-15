@@ -10,8 +10,10 @@ import { collection, query } from 'firebase/firestore';
 import { useMemoFirebase } from '@/firebase/provider';
 import type { Station } from '@/app/lib/data';
 import { cn } from '@/lib/utils';
+import { useState } from 'react';
 
 export default function Home() {
+  const [filter, setFilter] = useState('All');
   const firestore = useFirestore();
   const stationsQuery = useMemoFirebase(
     () => (firestore ? query(collection(firestore, 'stations')) : null),
@@ -33,6 +35,19 @@ export default function Home() {
         return null;
     }
   };
+
+  const stationTypes = [
+    'All',
+    'PC',
+    'PS5',
+    'PS5 VIP',
+    'VR Simulator',
+  ];
+
+  const filteredStations =
+    stations?.filter(
+      (station) => filter === 'All' || station.type === filter
+    ) || [];
 
   return (
     <div className="flex min-h-screen w-full flex-col">
@@ -71,6 +86,17 @@ export default function Home() {
                   Find an available station and jump into the action.
                 </p>
               </div>
+              <div className="flex flex-wrap items-center justify-center gap-2 pt-6">
+                {stationTypes.map((type) => (
+                  <Button
+                    key={type}
+                    variant={filter === type ? 'default' : 'outline'}
+                    onClick={() => setFilter(type)}
+                  >
+                    {type}
+                  </Button>
+                ))}
+              </div>
             </div>
             <div className="mx-auto grid max-w-5xl grid-cols-1 gap-6 py-12 sm:grid-cols-2 lg:grid-cols-3">
               {isLoading &&
@@ -81,11 +107,12 @@ export default function Home() {
                     </CardHeader>
                     <CardContent className="flex-1 flex flex-col justify-between">
                       <div className="h-4 w-1/2 animate-pulse rounded-md bg-muted" />
-                      <div className="mt-4 h-6 w-1/3 animate-pulse rounded-full bg-muted" />
+                      <div className="mt-4 h-10 w-full animate-pulse rounded-md bg-muted" />
+                      <div className="mt-4 h-10 w-full animate-pulse rounded-md bg-muted" />
                     </CardContent>
                   </Card>
                 ))}
-              {stations?.map((station) => (
+              {filteredStations.map((station) => (
                 <Card key={station.id} className="flex flex-col">
                   <CardHeader className="flex flex-row items-center justify-between pb-2">
                     <CardTitle className="font-headline text-lg font-medium">
@@ -98,18 +125,25 @@ export default function Home() {
                       <p className="text-sm text-muted-foreground">
                         {station.type}
                       </p>
-                      <div className='mt-2'>
-                        <h4 className='text-xs font-semibold text-muted-foreground'>Jeux disponibles</h4>
-                        <p className='text-sm'>{station.games?.join(', ') || 'N/A'}</p>
+                      <div className="mt-2">
+                        <h4 className="text-xs font-semibold text-muted-foreground">
+                          Jeux disponibles
+                        </h4>
+                        <p className="text-sm">
+                          {station.games?.join(', ') || 'N/A'}
+                        </p>
                       </div>
                       <Badge
-                        className={cn('mt-4 text-white w-full justify-center py-1', {
-                          'bg-green-500 hover:bg-green-500/80':
-                            station.status === 'available',
-                          'bg-red-500 hover:bg-red-500/80':
-                            station.status === 'in use' ||
-                            station.status === 'maintenance',
-                        })}
+                        className={cn(
+                          'mt-4 text-white w-full justify-center py-2 text-sm',
+                          {
+                            'bg-green-500 hover:bg-green-500/80':
+                              station.status === 'available',
+                            'bg-red-500 hover:bg-red-500/80':
+                              station.status === 'in use' ||
+                              station.status === 'maintenance',
+                          }
+                        )}
                       >
                         {station.status}
                       </Badge>
