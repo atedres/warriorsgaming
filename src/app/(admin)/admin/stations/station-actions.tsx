@@ -6,8 +6,8 @@ import { MoreHorizontal, PlusCircle } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { useFirestore } from "@/firebase";
-import { collection, doc } from "firebase/firestore";
+import { useCollection, useFirestore } from "@/firebase";
+import { collection, doc, query } from "firebase/firestore";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -35,17 +35,20 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import type { Station } from "@/app/lib/data";
+import type { Game, Station } from "@/app/lib/data";
 import { useToast } from "@/hooks/use-toast";
 import { deleteDocumentNonBlocking, setDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
+import { useMemoFirebase } from "@/firebase/provider";
+import { ScrollArea } from "@/components/ui/scroll-area";
+
 
 const stationFormSchema = z.object({
   id: z.string().min(1, { message: "Station ID cannot be empty." }),
   type: z.enum(["PC", "PS5", "PS5 VIP", "VR Simulator"]),
   status: z.enum(["available", "in use", "maintenance"]),
-  games: z.string().optional(),
+  games: z.array(z.string()).optional(),
 });
 
 type StationFormValues = z.infer<typeof stationFormSchema>;
@@ -76,14 +79,21 @@ function StationForm({
   const form = useForm<StationFormValues>({
     resolver: zodResolver(stationFormSchema),
     defaultValues: station
-      ? { ...station, games: station.games?.join(", ") || "" }
+      ? { ...station }
       : {
           id: "",
           type: "PC",
           status: "available",
-          games: "",
+          games: [],
         },
   });
+
+  const firestore = useFirestore();
+  const gamesQuery = useMemoFirebase(
+      () => (firestore ? query(collection(firestore, 'games')) : null),
+      [firestore]
+  );
+  const { data: availableGames, isLoading: isLoadingGames } = useCollection<Game>(gamesQuery);
 
   return (
     <Form {...form}>
@@ -149,18 +159,47 @@ function StationForm({
         <FormField
           control={form.control}
           name="games"
-          render={({ field }) => (
+          render={() => (
             <FormItem>
-              <FormLabel>Available Games</FormLabel>
-              <FormControl>
-                <Textarea
-                  placeholder="Fortnite, Valorant, LoL..."
-                  {...field}
-                />
-              </FormControl>
-              <p className="text-sm text-muted-foreground">
-                Enter game titles separated by a comma.
-              </p>
+              <div className="mb-4">
+                <FormLabel className="text-base">Available Games</FormLabel>
+              </div>
+              <ScrollArea className="h-40 rounded-md border p-4">
+                {isLoadingGames && <p>Loading games...</p>}
+                {availableGames?.map((game) => (
+                  <FormField
+                    key={game.id}
+                    control={form.control}
+                    name="games"
+                    render={({ field }) => {
+                      return (
+                        <FormItem
+                          key={game.id}
+                          className="flex flex-row items-start space-x-3 space-y-0"
+                        >
+                          <FormControl>
+                            <Checkbox
+                              checked={field.value?.includes(game.id)}
+                              onCheckedChange={(checked) => {
+                                return checked
+                                  ? field.onChange([...(field.value || []), game.id])
+                                  : field.onChange(
+                                      field.value?.filter(
+                                        (value) => value !== game.id
+                                      )
+                                    )
+                              }}
+                            />
+                          </FormControl>
+                          <FormLabel className="font-normal">
+                            {game.id}
+                          </FormLabel>
+                        </FormItem>
+                      )
+                    }}
+                  />
+                ))}
+              </ScrollArea>
               <FormMessage />
             </FormItem>
           )}
@@ -191,11 +230,8 @@ export function StationActions({ mode, station }: StationActionsProps) {
     try {
       const stationRef = doc(firestore, 'stations', data.id);
       
-      const gamesArray = data.games ? data.games.split(',').map(game => game.trim()).filter(game => game) : [];
-
       const stationData = {
         ...data,
-        games: gamesArray,
       };
 
       if (mode === "add") {

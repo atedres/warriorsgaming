@@ -7,7 +7,7 @@ export type Station = {
 };
 
 export type Client = {
-  id: string;
+  id:string;
   name: string;
   email: string;
   phone: string;
@@ -17,3 +17,8 @@ export type Client = {
   usageData: string;
   currentStationId?: string;
 };
+
+export type Game = {
+    id: string;
+    name: string;
+}

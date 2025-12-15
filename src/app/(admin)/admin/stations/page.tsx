@@ -33,6 +33,7 @@ import { cn } from '@/lib/utils';
 import { updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
+import { GameManagement } from './game-management';
 
 function StationStatusSelector({ station }: { station: Station }) {
   const firestore = useFirestore();
@@ -102,64 +103,72 @@ export default function StationsPage() {
       >
         <StationActions mode="add" />
       </PageHeader>
-      <Card>
-        <CardHeader>
-          <CardTitle className="font-headline">Stations</CardTitle>
-          <CardDescription>
-            A list of all gaming stations in CyberHub.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Station ID</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Games</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>
-                  <span className="sr-only">Actions</span>
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isLoading &&
-                Array.from({ length: 5 }).map((_, i) => (
-                  <TableRow key={i}>
-                    <TableCell colSpan={5}>
-                      <div className="h-8 w-full animate-pulse rounded-md bg-muted" />
-                    </TableCell>
-                  </TableRow>
-                ))}
-              {stations &&
-                stations.map((station) => (
-                  <TableRow key={station.id}>
-                    <TableCell className="font-medium">{station.id}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        {getIcon(station.type)}
-                        {station.type}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-wrap gap-1 max-w-xs">
-                        {station.games?.map(game => (
-                          <Badge key={game} variant="secondary">{game}</Badge>
+      
+      <div className="grid gap-8 lg:grid-cols-3">
+        <div className="lg:col-span-2">
+            <Card>
+                <CardHeader>
+                <CardTitle className="font-headline">Stations</CardTitle>
+                <CardDescription>
+                    A list of all gaming stations in CyberHub.
+                </CardDescription>
+                </CardHeader>
+                <CardContent>
+                <Table>
+                    <TableHeader>
+                    <TableRow>
+                        <TableHead>Station ID</TableHead>
+                        <TableHead>Type</TableHead>
+                        <TableHead>Games</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>
+                        <span className="sr-only">Actions</span>
+                        </TableHead>
+                    </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                    {isLoading &&
+                        Array.from({ length: 5 }).map((_, i) => (
+                        <TableRow key={i}>
+                            <TableCell colSpan={5}>
+                            <div className="h-8 w-full animate-pulse rounded-md bg-muted" />
+                            </TableCell>
+                        </TableRow>
                         ))}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                       <StationStatusSelector station={station} />
-                    </TableCell>
-                    <TableCell>
-                      <StationActions mode="actions" station={station} />
-                    </TableCell>
-                  </TableRow>
-                ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+                    {stations &&
+                        stations.map((station) => (
+                        <TableRow key={station.id}>
+                            <TableCell className="font-medium">{station.id}</TableCell>
+                            <TableCell>
+                            <div className="flex items-center gap-2">
+                                {getIcon(station.type)}
+                                {station.type}
+                            </div>
+                            </TableCell>
+                            <TableCell>
+                            <div className="flex flex-wrap gap-1 max-w-xs">
+                                {station.games?.map(game => (
+                                <Badge key={game} variant="secondary">{game}</Badge>
+                                ))}
+                            </div>
+                            </TableCell>
+                            <TableCell>
+                            <StationStatusSelector station={station} />
+                            </TableCell>
+                            <TableCell>
+                            <StationActions mode="actions" station={station} />
+                            </TableCell>
+                        </TableRow>
+                        ))}
+                    </TableBody>
+                </Table>
+                </CardContent>
+            </Card>
+        </div>
+        <div className="lg:col-span-1">
+            <GameManagement />
+        </div>
+      </div>
     </>
   );
 }
