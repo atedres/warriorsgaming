@@ -106,7 +106,7 @@ export default function Home() {
                         className={`mt-4 ${
                           station.status === 'available'
                             ? 'bg-green-500/20 text-green-400 border-green-500/20'
-                            : station.status === 'in use' ? 'bg-orange-500/20 text-orange-400 border-orange-500/20' : 'bg-red-500/20 text-red-400 border-red-500/20'
+                            : station.status === 'in use' ? 'bg-red-500/20 text-red-400 border-red-500/20' : 'bg-orange-500/20 text-orange-400 border-orange-500/20'
                         }`}
                       >
                         {station.status}
