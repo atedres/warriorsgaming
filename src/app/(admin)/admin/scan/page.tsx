@@ -1,8 +1,8 @@
 
 "use client";
 
-import { useState, useEffect, useRef } from "react";
-import { QrCode, User, CheckCircle, Gift, Clock, LogOut, Gamepad2, VideoOff } from "lucide-react";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { QrCode, User, CheckCircle, Gift, Clock, LogOut, Gamepad2, VideoOff, Camera } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -31,7 +31,10 @@ export default function ScanPage() {
   const [loading, setLoading] = useState(false);
   const [selectedStationId, setSelectedStationId] = useState<string>("");
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
+  const [videoDevices, setVideoDevices] = useState<MediaDeviceInfo[]>([]);
+  const [currentVideoDeviceId, setCurrentVideoDeviceId] = useState<string | undefined>();
   const videoRef = useRef<HTMLVideoElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
   const { toast } = useToast();
 
   const firestore = useFirestore();
@@ -47,37 +50,56 @@ export default function ScanPage() {
     [firestore]
   );
   const { data: stations, isLoading: isLoadingStations } = useCollection<Station>(stationsQuery);
+  
+  const getCameraPermission = useCallback(async (deviceId?: string) => {
+    // Stop any existing stream
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+    }
 
-  useEffect(() => {
-    const getCameraPermission = async () => {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-        setHasCameraPermission(true);
+    try {
+      const constraints: MediaStreamConstraints = {
+        video: deviceId ? { deviceId: { exact: deviceId } } : { facingMode: 'environment' }
+      };
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      streamRef.current = stream;
+      setHasCameraPermission(true);
 
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-        }
-      } catch (error) {
-        console.error('Error accessing camera:', error);
-        setHasCameraPermission(false);
-        toast({
-          variant: 'destructive',
-          title: 'Camera Access Denied',
-          description: 'Please enable camera permissions in your browser settings to use this app.',
-        });
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
       }
-    };
+      
+      // Update device list after getting permission
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const videoInputs = devices.filter(d => d.kind === 'videoinput');
+      setVideoDevices(videoInputs);
+      
+      const currentTrack = stream.getVideoTracks()[0];
+      const currentDevice = videoInputs.find(d => d.label === currentTrack.label || d.deviceId === currentTrack.id);
+      setCurrentVideoDeviceId(currentDevice?.deviceId);
 
-    getCameraPermission();
-    
-    // Cleanup function to stop the video stream when the component unmounts
-    return () => {
-        if (videoRef.current && videoRef.current.srcObject) {
-            const stream = videoRef.current.srcObject as MediaStream;
-            stream.getTracks().forEach(track => track.stop());
-        }
+
+    } catch (error) {
+      console.error('Error accessing camera:', error);
+      setHasCameraPermission(false);
+      toast({
+        variant: 'destructive',
+        title: 'Camera Access Denied',
+        description: 'Please enable camera permissions in your browser settings to use this app.',
+      });
     }
   }, [toast]);
+
+
+  useEffect(() => {
+    getCameraPermission();
+    
+    return () => {
+        if (streamRef.current) {
+            streamRef.current.getTracks().forEach(track => track.stop());
+        }
+    }
+  }, [getCameraPermission]);
 
 
   const availableStations = stations?.filter(s => s.status === 'available') || [];
@@ -135,6 +157,15 @@ export default function ScanPage() {
     setScannedClient(prev => prev ? { ...prev, currentStationId: undefined } : null);
   }
 
+  const handleSwapCamera = () => {
+    if (videoDevices.length > 1 && currentVideoDeviceId) {
+        const currentIndex = videoDevices.findIndex(d => d.deviceId === currentVideoDeviceId);
+        const nextIndex = (currentIndex + 1) % videoDevices.length;
+        const nextDeviceId = videoDevices[nextIndex].deviceId;
+        getCameraPermission(nextDeviceId);
+    }
+  }
+
   const clientCurrentStation = stations?.find(s => s.id === scannedClient?.currentStationId);
 
 
@@ -151,7 +182,7 @@ export default function ScanPage() {
             <CardTitle className="font-headline">Scanner</CardTitle>
           </CardHeader>
           <CardContent className="flex flex-col items-center justify-center gap-6 text-center h-full min-h-[300px]">
-            <div className="w-full max-w-sm h-auto aspect-video bg-muted rounded-lg flex items-center justify-center overflow-hidden">
+            <div className="w-full max-w-sm h-auto aspect-square bg-muted rounded-lg flex items-center justify-center overflow-hidden">
               <video ref={videoRef} className="w-full h-full object-cover" autoPlay muted playsInline />
               {hasCameraPermission === false && (
                   <div className="absolute flex flex-col items-center text-muted-foreground">
@@ -168,9 +199,17 @@ export default function ScanPage() {
                     </AlertDescription>
                 </Alert>
             )}
-            <Button onClick={handleScan} disabled={loading || isLoadingClients || !hasCameraPermission} className="w-full max-w-xs">
-              {loading ? "Scanning..." : "Simulate Scan"}
-            </Button>
+            <div className="flex gap-2 w-full max-w-xs">
+                <Button onClick={handleScan} disabled={loading || isLoadingClients || !hasCameraPermission} className="flex-grow">
+                {loading ? "Scanning..." : "Simulate Scan"}
+                </Button>
+                {videoDevices.length > 1 && (
+                    <Button onClick={handleSwapCamera} variant="outline" size="icon">
+                        <Camera className="h-5 w-5" />
+                        <span className="sr-only">Switch Camera</span>
+                    </Button>
+                )}
+            </div>
           </CardContent>
         </Card>
 
