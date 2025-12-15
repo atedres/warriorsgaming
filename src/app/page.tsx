@@ -110,6 +110,13 @@ export default function Home() {
                         {station.status}
                       </Badge>
                     </div>
+                    <Button
+                      variant="outline"
+                      className="mt-4"
+                      disabled={station.status !== 'available'}
+                    >
+                      Réserver
+                    </Button>
                   </CardContent>
                 </Card>
               ))}
