@@ -9,6 +9,7 @@ import { useCollection, useFirestore } from '@/firebase';
 import { collection, query } from 'firebase/firestore';
 import { useMemoFirebase } from '@/firebase/provider';
 import type { Station } from '@/app/lib/data';
+import { cn } from '@/lib/utils';
 
 export default function Home() {
   const firestore = useFirestore();
@@ -98,16 +99,13 @@ export default function Home() {
                         {station.type}
                       </p>
                       <Badge
-                        variant={
-                          station.status === 'available'
-                            ? 'secondary'
-                            : 'destructive'
-                        }
-                        className={`mt-4 ${
-                          station.status === 'available'
-                            ? 'bg-green-500/20 text-green-400 border-green-500/20'
-                            : station.status === 'in use' ? 'bg-red-500/20 text-red-400 border-red-500/20' : 'bg-orange-500/20 text-orange-400 border-orange-500/20'
-                        }`}
+                        className={cn('mt-4 text-white', {
+                          'bg-green-500 hover:bg-green-500/80':
+                            station.status === 'available',
+                          'bg-red-500 hover:bg-red-500/80':
+                            station.status === 'in use' ||
+                            station.status === 'maintenance',
+                        })}
                       >
                         {station.status}
                       </Badge>
