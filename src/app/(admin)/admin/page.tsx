@@ -25,7 +25,7 @@ import {
   ResponsiveContainer,
   BarChart as RechartsBarChart,
 } from 'recharts';
-import { clients, stations, usageAnalytics } from '@/lib/data';
+import { clients, stations, usageAnalytics } from '@/app/lib/data';
 import { formatCurrency } from '@/lib/utils';
 import { PageHeader } from '@/components/page-header';
 
