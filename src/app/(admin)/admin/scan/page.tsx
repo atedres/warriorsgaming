@@ -10,7 +10,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { clients, type Client } from "@/lib/data";
+import { clients, type Client } from "@/app/lib/data";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
@@ -24,6 +24,8 @@ export default function ScanPage() {
   const handleScan = () => {
     setLoading(true);
     setScannedClient(null);
+    // Simulate scanning a QR code by using a webcam
+    // For now, we'll just simulate a scan with a timeout
     setTimeout(() => {
       // Simulate scanning a random client
       const randomClient = clients[Math.floor(Math.random() * clients.length)];
@@ -48,7 +50,7 @@ export default function ScanPage() {
               <QrCode className="h-24 w-24 text-muted-foreground" />
             </div>
             <Button onClick={handleScan} disabled={loading} className="w-full max-w-xs">
-              {loading ? "Scanning..." : "Scan QR Code"}
+              {loading ? "Scanning..." : "Simulate Scan"}
             </Button>
           </CardContent>
         </Card>
