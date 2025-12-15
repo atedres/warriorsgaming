@@ -100,6 +100,7 @@ export default function StationsPage() {
       <PageHeader
         title="Station Management"
         description="View, create, and manage gaming stations."
+        className="px-0"
       >
         <StationActions mode="add" />
       </PageHeader>

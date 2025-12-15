@@ -103,6 +103,7 @@ export default function AdminDashboard() {
       <PageHeader
         title="Dashboard"
         description="Here's a look at your gaming lounge's performance."
+        className="px-0"
       />
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>

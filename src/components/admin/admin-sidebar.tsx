@@ -4,12 +4,6 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import {
   Home,
   Users2,
   QrCode,
@@ -17,11 +11,14 @@ import {
   Settings,
   LogOut,
   Gamepad2,
+  PanelLeft,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Logo } from "../logo";
 import { useAuth } from "@/firebase";
 import { signOut } from "firebase/auth";
+import { Sheet, SheetContent, SheetTrigger } from "../ui/sheet";
+import { Button } from "../ui/button";
 
 const navItems = [
   { href: "/admin", icon: Home, label: "Dashboard" },
@@ -30,6 +27,56 @@ const navItems = [
   { href: "/admin/scan", icon: QrCode, label: "Scanner" },
   { href: "/admin/loyalty", icon: Sparkles, label: "Loyalty AI" },
 ];
+
+export function AdminHeader() {
+    const auth = useAuth();
+    const handleLogout = () => {
+        if (auth) {
+        signOut(auth);
+        }
+    };
+
+    return (
+        <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button size="icon" variant="outline" className="sm:hidden">
+                <PanelLeft className="h-5 w-5" />
+                <span className="sr-only">Toggle Menu</span>
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="left" className="sm:max-w-xs">
+              <nav className="grid gap-6 text-lg font-medium">
+                <Link
+                  href="/admin"
+                  className="group flex h-10 w-10 shrink-0 items-center justify-center gap-2 rounded-full bg-primary text-lg font-semibold text-primary-foreground md:text-base"
+                >
+                  <Logo className="h-5 w-5 transition-all group-hover:scale-110" />
+                  <span className="sr-only">CyberHub</span>
+                </Link>
+                {navItems.map((item) => (
+                    <Link
+                    key={item.href}
+                    href={item.href}
+                    className="flex items-center gap-4 px-2.5 text-muted-foreground hover:text-foreground"
+                  >
+                    <item.icon className="h-5 w-5" />
+                    {item.label}
+                  </Link>
+                ))}
+                  <button
+                    onClick={handleLogout}
+                    className="flex items-center gap-4 px-2.5 text-muted-foreground hover:text-foreground"
+                    >
+                    <LogOut className="h-5 w-5" />
+                    Log Out
+                </button>
+              </nav>
+            </SheetContent>
+          </Sheet>
+        </header>
+    )
+}
 
 export function AdminSidebar() {
   const pathname = usePathname();
@@ -43,7 +90,6 @@ export function AdminSidebar() {
 
   return (
     <aside className="fixed inset-y-0 left-0 z-10 hidden w-14 flex-col border-r bg-background sm:flex">
-      <TooltipProvider>
         <nav className="flex flex-col items-center gap-4 px-2 sm:py-5">
           <Link
             href="/admin"
@@ -53,9 +99,8 @@ export function AdminSidebar() {
             <span className="sr-only">CyberHub</span>
           </Link>
           {navItems.map((item) => (
-            <Tooltip key={item.href}>
-              <TooltipTrigger asChild>
                 <Link
+                  key={item.href}
                   href={item.href}
                   className={cn(
                     "flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:text-foreground md:h-8 md:w-8",
@@ -65,14 +110,9 @@ export function AdminSidebar() {
                   <item.icon className="h-5 w-5" />
                   <span className="sr-only">{item.label}</span>
                 </Link>
-              </TooltipTrigger>
-              <TooltipContent side="right">{item.label}</TooltipContent>
-            </Tooltip>
           ))}
         </nav>
         <nav className="mt-auto flex flex-col items-center gap-4 px-2 sm:py-5">
-          <Tooltip>
-            <TooltipTrigger asChild>
               <Link
                 href="#"
                 className="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:text-foreground md:h-8 md:w-8"
@@ -80,11 +120,6 @@ export function AdminSidebar() {
                 <Settings className="h-5 w-5" />
                 <span className="sr-only">Settings</span>
               </Link>
-            </TooltipTrigger>
-            <TooltipContent side="right">Settings</TooltipContent>
-          </Tooltip>
-           <Tooltip>
-            <TooltipTrigger asChild>
               <button
                 onClick={handleLogout}
                 className="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:text-foreground md:h-8 md:w-8"
@@ -92,11 +127,7 @@ export function AdminSidebar() {
                 <LogOut className="h-5 w-5" />
                 <span className="sr-only">Log Out</span>
               </button>
-            </TooltipTrigger>
-            <TooltipContent side="right">Log Out</TooltipContent>
-          </Tooltip>
         </nav>
-      </TooltipProvider>
     </aside>
   );
 }

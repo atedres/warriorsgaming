@@ -7,6 +7,7 @@ export default function LoyaltyPage() {
       <PageHeader
         title="Loyalty & Bonus Recommendations"
         description="Use AI to generate personalized bonus recommendations for clients."
+        className="px-0"
       />
       <div className="p-1">
         <LoyaltyForm />

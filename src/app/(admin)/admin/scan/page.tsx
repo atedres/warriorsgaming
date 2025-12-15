@@ -143,6 +143,7 @@ export default function ScanPage() {
       <PageHeader
         title="QR Code Scanner"
         description="Scan a client's QR code to check them in or manage their account."
+        className="px-0"
       />
       <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
         <Card className="lg:col-span-1">

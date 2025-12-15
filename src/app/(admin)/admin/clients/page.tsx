@@ -36,6 +36,7 @@ export default function ClientsPage() {
       <PageHeader
         title="Client Management"
         description="View, create, and manage client profiles and subscriptions."
+        className="px-0"
       >
         <ClientActions mode="add" />
       </PageHeader>
