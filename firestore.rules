@@ -49,8 +49,7 @@ service cloud.firestore {
      * `return request.auth.token.admin == true;`
      */
     function isAdmin() {
-      // return request.auth.token.admin == true;
-      return false; // Secure default: deny all admin actions until configured.
+      return request.auth.token.admin == true;
     }
 
     /**
@@ -62,11 +61,7 @@ service cloud.firestore {
      * @principle Enforces a strict admin-only access model for sensitive data.
      */
     match /clients/{clientId} {
-      allow get: if isAdmin();
-      allow list: if isAdmin();
-      allow create: if isAdmin();
-      allow update: if isAdmin() && resource != null;
-      allow delete: if isAdmin() && resource != null;
+      allow read, write: if isAdmin();
     }
 
     /**
@@ -80,11 +75,8 @@ service cloud.firestore {
      *              of data while protecting its integrity.
      */
     match /stations/{stationId} {
-      allow get: if isSignedIn();
-      allow list: if isSignedIn();
-      allow create: if isAdmin();
-      allow update: if isAdmin() && resource != null;
-      allow delete: if isAdmin() && resource != null;
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
     }
 
     /**
@@ -96,11 +88,7 @@ service cloud.firestore {
      * @principle Restricts access to operational data to trusted admin personnel.
      */
     match /reservations/{reservationId} {
-      allow get: if isAdmin();
-      allow list: if isAdmin();
-      allow create: if isAdmin();
-      allow update: if isAdmin() && resource != null;
-      allow delete: if isAdmin() && resource != null;
+      allow read, write: if isAdmin();
     }
 
     /**
@@ -113,11 +101,7 @@ service cloud.firestore {
      *              to administrators.
      */
     match /usageLogs/{usageLogId} {
-      allow get: if isAdmin();
-      allow list: if isAdmin();
-      allow create: if isAdmin();
-      allow update: if isAdmin() && resource != null;
-      allow delete: if isAdmin() && resource != null;
+      allow read, write: if isAdmin();
     }
   }
 }

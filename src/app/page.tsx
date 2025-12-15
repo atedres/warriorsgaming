@@ -1,13 +1,23 @@
+'use client';
 import Image from 'next/image';
 import { Gamepad2, Headset, Monitor } from 'lucide-react';
-
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { stations } from '@/app/lib/data';
 import ClientHeader from '@/components/client/header';
+import { useCollection, useFirestore } from '@/firebase';
+import { collection, query } from 'firebase/firestore';
+import { useMemoFirebase } from '@/firebase/provider';
+import type { Station } from '@/app/lib/data';
 
 export default function Home() {
+  const firestore = useFirestore();
+  const stationsQuery = useMemoFirebase(
+    () => (firestore ? query(collection(firestore, 'stations')) : null),
+    [firestore]
+  );
+  const { data: stations, isLoading } = useCollection<Station>(stationsQuery);
+
   const getIcon = (type: string) => {
     switch (type) {
       case 'PC':
@@ -45,7 +55,10 @@ export default function Home() {
                 Your ultimate gaming destination. Check station availability and
                 book your spot now.
               </p>
-              <Button size="lg" className="bg-accent text-accent-foreground hover:bg-accent/90">
+              <Button
+                size="lg"
+                className="bg-accent text-accent-foreground hover:bg-accent/90"
+              >
                 Book a Station
               </Button>
             </div>
@@ -65,7 +78,20 @@ export default function Home() {
               </div>
             </div>
             <div className="mx-auto grid max-w-5xl grid-cols-1 gap-6 py-12 sm:grid-cols-2 lg:grid-cols-3">
-              {stations.map((station) => (
+              {isLoading &&
+                Array.from({ length: 6 }).map((_, i) => (
+                  <Card key={i} className="flex flex-col">
+                    <CardHeader className="flex flex-row items-center justify-between pb-2">
+                      <div className="h-6 w-3/4 animate-pulse rounded-md bg-muted" />
+                    </CardHeader>
+                    <CardContent className="flex-1 flex flex-col justify-between">
+                      <div className="h-4 w-1/2 animate-pulse rounded-md bg-muted" />
+                      <div className="mt-4 h-6 w-1/3 animate-pulse rounded-full bg-muted" />
+                      <div className="mt-6 h-10 w-full animate-pulse rounded-md bg-muted" />
+                    </CardContent>
+                  </Card>
+                ))}
+              {stations?.map((station) => (
                 <Card key={station.id} className="flex flex-col">
                   <CardHeader className="flex flex-row items-center justify-between pb-2">
                     <CardTitle className="font-headline text-lg font-medium">
@@ -75,14 +101,20 @@ export default function Home() {
                   </CardHeader>
                   <CardContent className="flex-1 flex flex-col justify-between">
                     <div>
-                      <p className="text-sm text-muted-foreground">{station.type}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {station.type}
+                      </p>
                       <Badge
                         variant={
                           station.status === 'Available'
                             ? 'secondary'
                             : 'destructive'
                         }
-                        className={`mt-4 ${station.status === 'Available' ? 'bg-green-500/20 text-green-400 border-green-500/20' : 'bg-red-500/20 text-red-400 border-red-500/20'}`}
+                        className={`mt-4 ${
+                          station.status === 'Available'
+                            ? 'bg-green-500/20 text-green-400 border-green-500/20'
+                            : 'bg-red-500/20 text-red-400 border-red-500/20'
+                        }`}
                       >
                         {station.status}
                       </Badge>

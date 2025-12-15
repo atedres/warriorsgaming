@@ -4,7 +4,7 @@ import { useEffect, useState, useActionState } from "react";
 import { useFormStatus } from "react-dom";
 import { Wand2, Sparkles, Bot, User } from "lucide-react";
 import { getLoyaltyRecommendation, type State } from "@/app/lib/actions";
-import { clients, type Client } from "@/app/lib/data";
+import type { Client } from "@/app/lib/data";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -24,6 +24,9 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/hooks/use-toast";
+import { useCollection, useFirestore } from "@/firebase";
+import { useMemoFirebase } from "@/firebase/provider";
+import { collection, query } from "firebase/firestore";
 
 function SubmitButton() {
   const { pending } = useFormStatus();
@@ -44,15 +47,18 @@ function SubmitButton() {
 export function LoyaltyForm() {
   const initialState: State = { status: "idle" };
   const [state, formAction] = useActionState(getLoyaltyRecommendation, initialState);
-  const [selectedClientId, setSelectedClientId] = useState<string | undefined>(
-    clients[0]?.id
-  );
-  const [selectedClient, setSelectedClient] = useState<Client | undefined>(
-    clients[0]
-  );
+  const [selectedClientId, setSelectedClientId] = useState<string | undefined>();
+  const [selectedClient, setSelectedClient] = useState<Client | undefined>();
   const [availableBonuses, setAvailableBonuses] = useState(
     "Free 1 hour of gameplay, 20% off next visit, Free drink, VIP lounge upgrade for a day"
   );
+    
+  const firestore = useFirestore();
+  const clientsQuery = useMemoFirebase(
+    () => (firestore ? query(collection(firestore, 'clients')) : null),
+    [firestore]
+  );
+  const { data: clients, isLoading } = useCollection<Client>(clientsQuery);
 
   useEffect(() => {
     if (state.status === "error") {
@@ -63,10 +69,17 @@ export function LoyaltyForm() {
       });
     }
   }, [state]);
+  
+  useEffect(() => {
+    if(clients && clients.length > 0 && !selectedClientId) {
+        setSelectedClientId(clients[0].id);
+        setSelectedClient(clients[0]);
+    }
+  }, [clients, selectedClientId]);
 
   const handleClientChange = (clientId: string) => {
     setSelectedClientId(clientId);
-    const client = clients.find((c) => c.id === clientId);
+    const client = clients?.find((c) => c.id === clientId);
     setSelectedClient(client);
   };
 
@@ -88,12 +101,13 @@ export function LoyaltyForm() {
                   name="customerId"
                   value={selectedClientId}
                   onValueChange={handleClientChange}
+                  disabled={isLoading}
                 >
                   <SelectTrigger id="customer">
                     <SelectValue placeholder="Select a client" />
                   </SelectTrigger>
                   <SelectContent>
-                    {clients.map((client) => (
+                    {clients?.map((client) => (
                       <SelectItem key={client.id} value={client.id}>
                         {client.name}
                       </SelectItem>

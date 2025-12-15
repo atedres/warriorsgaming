@@ -1,11 +1,6 @@
 "use client";
 
-import {
-  BarChart,
-  DollarSign,
-  Gamepad2,
-  Users,
-} from 'lucide-react';
+import { BarChart, DollarSign, Gamepad2, Users } from 'lucide-react';
 import {
   Card,
   CardContent,
@@ -27,11 +22,28 @@ import {
   ResponsiveContainer,
   BarChart as RechartsBarChart,
 } from 'recharts';
-import { clients, stations, usageAnalytics } from '@/app/lib/data';
+import { usageAnalytics } from '@/app/lib/data';
 import { formatCurrency } from '@/lib/utils';
 import { PageHeader } from '@/components/page-header';
+import { useCollection, useFirestore } from '@/firebase';
+import { useMemoFirebase } from '@/firebase/provider';
+import { collection, query } from 'firebase/firestore';
 
 export default function AdminDashboard() {
+  const firestore = useFirestore();
+  const stationsQuery = useMemoFirebase(
+    () => (firestore ? query(collection(firestore, 'stations')) : null),
+    [firestore]
+  );
+  const { data: stations, isLoading: isLoadingStations } =
+    useCollection(stationsQuery);
+  const clientsQuery = useMemoFirebase(
+    () => (firestore ? query(collection(firestore, 'clients')) : null),
+    [firestore]
+  );
+  const { data: clients, isLoading: isLoadingClients } =
+    useCollection(clientsQuery);
+
   const chartConfig = {
     revenue: {
       label: 'Revenue',
@@ -59,7 +71,7 @@ export default function AdminDashboard() {
     },
   };
 
-  const stationsInUse = stations.filter((s) => s.status === 'In Use').length;
+  const stationsInUse = stations?.filter((s) => s.status === 'In Use').length || 0;
   const totalRevenue = usageAnalytics.dailyRevenue.reduce(
     (acc, day) => acc + day.revenue,
     0
@@ -90,7 +102,11 @@ export default function AdminDashboard() {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{clients.length}</div>
+            {isLoadingClients ? (
+              <div className="h-8 w-1/2 animate-pulse rounded-md bg-muted" />
+            ) : (
+              <div className="text-2xl font-bold">{clients?.length || 0}</div>
+            )}
             <p className="text-xs text-muted-foreground">
               All registered clients
             </p>
@@ -98,26 +114,32 @@ export default function AdminDashboard() {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Stations in Use</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Stations in Use
+            </CardTitle>
             <Gamepad2 className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {stationsInUse} / {stations.length}
-            </div>
+            {isLoadingStations ? (
+              <div className="h-8 w-1/2 animate-pulse rounded-md bg-muted" />
+            ) : (
+              <div className="text-2xl font-bold">
+                {stationsInUse} / {stations?.length || 0}
+              </div>
+            )}
             <p className="text-xs text-muted-foreground">Currently active</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Popularity
-            </CardTitle>
+            <CardTitle className="text-sm font-medium">Popularity</CardTitle>
             <BarChart className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">PC Gaming</div>
-            <p className="text-xs text-muted-foreground">Most used station type</p>
+            <p className="text-xs text-muted-foreground">
+              Most used station type
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -144,10 +166,10 @@ export default function AdminDashboard() {
                   tickMargin={8}
                 />
                 <YAxis
-                   tickFormatter={(value) => `$${value}`}
-                   tickLine={false}
-                   axisLine={false}
-                   tickMargin={8}
+                  tickFormatter={(value) => `$${value}`}
+                  tickLine={false}
+                  axisLine={false}
+                  tickMargin={8}
                 />
                 <ChartTooltip
                   cursor={false}
@@ -190,8 +212,7 @@ export default function AdminDashboard() {
                   cursor={false}
                   content={<ChartTooltipContent hideLabel />}
                 />
-                <Bar dataKey="users" layout="vertical" radius={5}>
-                </Bar>
+                <Bar dataKey="users" layout="vertical" radius={5}></Bar>
               </RechartsBarChart>
             </ChartContainer>
           </CardContent>

@@ -10,16 +10,27 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { clients, type Client } from "@/app/lib/data";
+import type { Client } from "@/app/lib/data";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/page-header";
+import { useCollection, useFirestore } from "@/firebase";
+import { useMemoFirebase } from "@/firebase/provider";
+import { collection, query } from "firebase/firestore";
+
 
 export default function ScanPage() {
   const [scannedClient, setScannedClient] = useState<Client | null>(null);
   const [loading, setLoading] = useState(false);
+
+  const firestore = useFirestore();
+  const clientsQuery = useMemoFirebase(
+    () => (firestore ? query(collection(firestore, 'clients')) : null),
+    [firestore]
+  );
+  const { data: clients, isLoading } = useCollection<Client>(clientsQuery);
 
   const handleScan = () => {
     setLoading(true);
@@ -28,8 +39,10 @@ export default function ScanPage() {
     // For now, we'll just simulate a scan with a timeout
     setTimeout(() => {
       // Simulate scanning a random client
-      const randomClient = clients[Math.floor(Math.random() * clients.length)];
-      setScannedClient(randomClient);
+      if(clients && clients.length > 0){
+        const randomClient = clients[Math.floor(Math.random() * clients.length)];
+        setScannedClient(randomClient);
+      }
       setLoading(false);
     }, 1500);
   };
@@ -49,7 +62,7 @@ export default function ScanPage() {
             <div className="w-full max-w-[200px] h-auto aspect-square bg-muted rounded-lg flex items-center justify-center">
               <QrCode className="h-24 w-24 text-muted-foreground" />
             </div>
-            <Button onClick={handleScan} disabled={loading} className="w-full max-w-xs">
+            <Button onClick={handleScan} disabled={loading || isLoading} className="w-full max-w-xs">
               {loading ? "Scanning..." : "Simulate Scan"}
             </Button>
           </CardContent>
