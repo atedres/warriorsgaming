@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useFormState, useFormStatus } from "react-dom";
+import { useEffect, useState, useActionState } from "react";
+import { useFormStatus } from "react-dom";
 import { Wand2, Sparkles, Bot, User } from "lucide-react";
 import { getLoyaltyRecommendation, type State } from "@/app/lib/actions";
 import { clients, type Client } from "@/app/lib/data";
@@ -43,7 +43,7 @@ function SubmitButton() {
 
 export function LoyaltyForm() {
   const initialState: State = { status: "idle" };
-  const [state, formAction] = useFormState(getLoyaltyRecommendation, initialState);
+  const [state, formAction] = useActionState(getLoyaltyRecommendation, initialState);
   const [selectedClientId, setSelectedClientId] = useState<string | undefined>(
     clients[0]?.id
   );
