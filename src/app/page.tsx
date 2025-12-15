@@ -4,7 +4,7 @@ import { Gamepad2, Headset, Monitor } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { stations } from '@/lib/data';
+import { stations } from '@/app/lib/data';
 import ClientHeader from '@/components/client/header';
 
 export default function Home() {
