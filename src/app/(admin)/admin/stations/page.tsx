@@ -15,14 +15,60 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { PageHeader } from '@/components/page-header';
 import { useCollection, useFirestore } from '@/firebase';
 import { useMemoFirebase } from '@/firebase/provider';
-import { collection, query } from 'firebase/firestore';
+import { collection, query, doc } from 'firebase/firestore';
 import type { Station } from '@/app/lib/data';
 import { StationActions } from './station-actions';
 import { Gamepad2, Monitor, Headset } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { useToast } from '@/hooks/use-toast';
+
+function StationStatusSelector({ station }: { station: Station }) {
+  const firestore = useFirestore();
+  const { toast } = useToast();
+
+  const handleStatusChange = (newStatus: Station['status']) => {
+    if (!firestore) return;
+    const stationRef = doc(firestore, 'stations', station.id);
+    updateDocumentNonBlocking(stationRef, { status: newStatus });
+    toast({
+      title: 'Status Updated',
+      description: `Station ${station.id} is now ${newStatus}.`,
+    });
+  };
+  
+  const getStatusColor = (status: Station['status']) => {
+    switch(status) {
+      case 'available': return 'text-green-400 focus:text-green-400';
+      case 'in use': return 'text-orange-400 focus:text-orange-400';
+      case 'maintenance': return 'text-red-400 focus:text-red-400';
+      default: return '';
+    }
+  }
+
+  return (
+    <Select value={station.status} onValueChange={handleStatusChange}>
+      <SelectTrigger className={cn("w-[120px] border-0 focus:ring-0 capitalize", getStatusColor(station.status))}>
+        <SelectValue placeholder="Set Status" />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="available">Available</SelectItem>
+        <SelectItem value="in use">In Use</SelectItem>
+        <SelectItem value="maintenance">Maintenance</SelectItem>
+      </SelectContent>
+    </Select>
+  );
+}
 
 export default function StationsPage() {
   const firestore = useFirestore();
@@ -94,20 +140,7 @@ export default function StationsPage() {
                       </div>
                     </TableCell>
                     <TableCell>
-                       <Badge
-                        variant={
-                          station.status === 'available'
-                            ? 'secondary'
-                            : 'destructive'
-                        }
-                        className={`capitalize ${
-                          station.status === 'available'
-                            ? 'bg-green-500/20 text-green-400 border-green-500/20'
-                            : station.status === 'in use' ? 'bg-orange-500/20 text-orange-400 border-orange-500/20' : 'bg-red-500/20 text-red-400 border-red-500/20'
-                        }`}
-                      >
-                        {station.status}
-                      </Badge>
+                       <StationStatusSelector station={station} />
                     </TableCell>
                     <TableCell>
                       <StationActions mode="actions" station={station} />
