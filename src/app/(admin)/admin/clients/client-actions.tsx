@@ -289,11 +289,11 @@ export function ClientActions({ mode, client }: ClientActionsProps) {
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           <DropdownMenuLabel>Actions</DropdownMenuLabel>
-          <DropdownMenuItem onSelect={() => setQrDialogOpen(true)}>
+          <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setQrDialogOpen(true); }}>
             <QrCode className="mr-2 h-4 w-4" />
             View QR Code
           </DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => setAddEditDialogOpen(true)}>
+          <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setAddEditDialogOpen(true); }}>
             <FilePenLine className="mr-2 h-4 w-4" />
             Edit
           </DropdownMenuItem>
@@ -303,5 +303,3 @@ export function ClientActions({ mode, client }: ClientActionsProps) {
     </>
   );
 }
-
-    
