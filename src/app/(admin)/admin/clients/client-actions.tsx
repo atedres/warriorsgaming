@@ -262,29 +262,6 @@ export function ClientActions({ mode, client }: ClientActionsProps) {
       </Dialog>
 
       <Dialog open={isQrDialogOpen} onOpenChange={setQrDialogOpen}>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button aria-haspopup="true" size="icon" variant="ghost">
-              <MoreHorizontal className="h-4 w-4" />
-              <span className="sr-only">Toggle menu</span>
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-            <DialogTrigger asChild>
-              <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-                <QrCode className="mr-2 h-4 w-4" />
-                View QR Code
-              </DropdownMenuItem>
-            </DialogTrigger>
-            <DropdownMenuItem onSelect={() => setAddEditDialogOpen(true)}>
-              <FilePenLine className="mr-2 h-4 w-4" />
-              Edit
-            </DropdownMenuItem>
-            <DropdownMenuItem className="text-red-500" onSelect={handleDelete}>Delete</DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-        
         <DialogContent>
           <DialogHeader>
               <DialogTitle>QR Code for {client.name}</DialogTitle>
@@ -302,6 +279,29 @@ export function ClientActions({ mode, client }: ClientActionsProps) {
             </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button aria-haspopup="true" size="icon" variant="ghost">
+            <MoreHorizontal className="h-4 w-4" />
+            <span className="sr-only">Toggle menu</span>
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuLabel>Actions</DropdownMenuLabel>
+          <DropdownMenuItem onSelect={() => setQrDialogOpen(true)}>
+            <QrCode className="mr-2 h-4 w-4" />
+            View QR Code
+          </DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => setAddEditDialogOpen(true)}>
+            <FilePenLine className="mr-2 h-4 w-4" />
+            Edit
+          </DropdownMenuItem>
+          <DropdownMenuItem className="text-red-500" onSelect={handleDelete}>Delete</DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
     </>
   );
 }
+
+    
