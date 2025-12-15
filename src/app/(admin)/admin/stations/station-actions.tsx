@@ -37,7 +37,7 @@ import {
 import { Input } from "@/components/ui/input";
 import type { Station } from "@/app/lib/data";
 import { useToast } from "@/hooks/use-toast";
-import { addDocumentNonBlocking, deleteDocumentNonBlocking, updateDocumentNonBlocking } from "@/firebase/non-blocking-updates";
+import { addDocumentNonBlocking, deleteDocumentNonBlocking, setDocumentNonBlocking, updateDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const stationFormSchema = z.object({
@@ -169,10 +169,10 @@ export function StationActions({ mode, station }: StationActionsProps) {
     try {
       const stationRef = doc(firestore, 'stations', data.id);
       if (mode === "add") {
-        updateDocumentNonBlocking(stationRef, data);
+        setDocumentNonBlocking(stationRef, data, { merge: false });
         toast({ title: "Station created", description: `Station ${data.id} has been added.` });
       } else if (mode === "actions" && station) {
-        updateDocumentNonBlocking(stationRef, data);
+        setDocumentNonBlocking(stationRef, data, { merge: true });
         toast({ title: "Station updated", description: `Station ${station.id} has been updated.` });
       }
       setDialogOpen(false);
@@ -251,3 +251,5 @@ export function StationActions({ mode, station }: StationActionsProps) {
     </>
   );
 }
+
+    
