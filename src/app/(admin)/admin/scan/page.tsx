@@ -1,7 +1,8 @@
+
 "use client";
 
-import { useState } from "react";
-import { QrCode, User, CheckCircle, Gift, Clock, LogOut, Gamepad2 } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { QrCode, User, CheckCircle, Gift, Clock, LogOut, Gamepad2, VideoOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -15,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { PageHeader } from "@/components/page-header";
 import { useCollection, useFirestore } from "@/firebase";
 import { useMemoFirebase } from "@/firebase/provider";
@@ -28,6 +30,8 @@ export default function ScanPage() {
   const [scannedClient, setScannedClient] = useState<Client | null>(null);
   const [loading, setLoading] = useState(false);
   const [selectedStationId, setSelectedStationId] = useState<string>("");
+  const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
   const { toast } = useToast();
 
   const firestore = useFirestore();
@@ -43,6 +47,38 @@ export default function ScanPage() {
     [firestore]
   );
   const { data: stations, isLoading: isLoadingStations } = useCollection<Station>(stationsQuery);
+
+  useEffect(() => {
+    const getCameraPermission = async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        setHasCameraPermission(true);
+
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+        }
+      } catch (error) {
+        console.error('Error accessing camera:', error);
+        setHasCameraPermission(false);
+        toast({
+          variant: 'destructive',
+          title: 'Camera Access Denied',
+          description: 'Please enable camera permissions in your browser settings to use this app.',
+        });
+      }
+    };
+
+    getCameraPermission();
+    
+    // Cleanup function to stop the video stream when the component unmounts
+    return () => {
+        if (videoRef.current && videoRef.current.srcObject) {
+            const stream = videoRef.current.srcObject as MediaStream;
+            stream.getTracks().forEach(track => track.stop());
+        }
+    }
+  }, [toast]);
+
 
   const availableStations = stations?.filter(s => s.status === 'available') || [];
 
@@ -114,10 +150,24 @@ export default function ScanPage() {
             <CardTitle className="font-headline">Scanner</CardTitle>
           </CardHeader>
           <CardContent className="flex flex-col items-center justify-center gap-6 text-center h-full min-h-[300px]">
-            <div className="w-full max-w-[200px] h-auto aspect-square bg-muted rounded-lg flex items-center justify-center">
-              <QrCode className="h-24 w-24 text-muted-foreground" />
+            <div className="w-full max-w-sm h-auto aspect-video bg-muted rounded-lg flex items-center justify-center overflow-hidden">
+              <video ref={videoRef} className="w-full h-full object-cover" autoPlay muted playsInline />
+              {hasCameraPermission === false && (
+                  <div className="absolute flex flex-col items-center text-muted-foreground">
+                      <VideoOff className="h-16 w-16 mb-4" />
+                      <p>Camera not available</p>
+                  </div>
+              )}
             </div>
-            <Button onClick={handleScan} disabled={loading || isLoadingClients} className="w-full max-w-xs">
+            {hasCameraPermission === false && (
+                <Alert variant="destructive">
+                    <AlertTitle>Camera Access Required</AlertTitle>
+                    <AlertDescription>
+                        Please allow camera access in your browser settings to use this feature.
+                    </AlertDescription>
+                </Alert>
+            )}
+            <Button onClick={handleScan} disabled={loading || isLoadingClients || !hasCameraPermission} className="w-full max-w-xs">
               {loading ? "Scanning..." : "Simulate Scan"}
             </Button>
           </CardContent>
