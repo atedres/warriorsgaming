@@ -45,7 +45,9 @@ service cloud.firestore {
      * `return request.auth.token.admin == true;`
      */
     function isAdmin() {
-      return request.auth.token.admin == true;
+      // For development, we'll allow any signed-in user to be an admin.
+      // For production, you should implement proper role-based access control.
+      return isSignedIn();
     }
 
     /**
@@ -58,7 +60,7 @@ service cloud.firestore {
      */
     match /clients/{clientId} {
       allow read: if isSignedIn();
-      allow write: if isSignedIn();
+      allow write: if isAdmin();
     }
 
     /**
@@ -73,7 +75,7 @@ service cloud.firestore {
      */
     match /stations/{stationId} {
       allow read: if isSignedIn();
-      allow write: if isSignedIn();
+      allow write: if isAdmin();
     }
 
     /**
@@ -87,7 +89,7 @@ service cloud.firestore {
      */
     match /reservations/{reservationId} {
        allow read: if isSignedIn();
-       allow write: if isSignedIn();
+       allow write: if isAdmin();
     }
 
     /**
@@ -102,7 +104,7 @@ service cloud.firestore {
      */
     match /usageLogs/{usageLogId} {
       allow read: if isSignedIn();
-      allow write: if isSignedIn();
+      allow write: if isAdmin();
     }
   }
 }
