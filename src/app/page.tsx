@@ -164,35 +164,32 @@ export default function Home() {
         </section>
         
         <section id="location" className="w-full py-12 md:py-24 lg:py-32 bg-muted">
-            <div className="container px-4 md:px-6">
-                <div className="flex flex-col items-center justify-center space-y-4 text-center">
-                    <div className="space-y-2">
-                        <div className="inline-block rounded-lg bg-secondary px-3 py-1 text-sm">Notre Emplacement</div>
-                        <h2 className="font-headline text-3xl font-bold tracking-tighter sm:text-5xl">Retrouvez-nous</h2>
-                        <p className="max-w-[900px] text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
-                            Nous sommes situés au cœur de Casablanca, prêts à vous accueillir pour une expérience de jeu inoubliable.
-                        </p>
+            <div className="container grid items-center justify-center gap-4 px-4 text-center md:px-6 lg:gap-10">
+                <div className="space-y-3">
+                    <h2 className="font-headline text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">Retrouvez-nous</h2>
+                    <p className="mx-auto max-w-[700px] text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
+                        Nous sommes situés au cœur de Casablanca, prêts à vous accueillir pour une expérience de jeu inoubliable. 20, 22 Rue Rahal Ben Ahmed, Casablanca 20250.
+                    </p>
+                </div>
+                <div className="w-full max-w-4xl mx-auto">
+                    <div className="rounded-xl overflow-hidden">
+                        <iframe
+                            src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3323.708005397453!2d-7.600600025700212!3d33.58694384196167!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0xda7cdfcb5b2f5f1%3A0xcedf993af7b0b3e9!2sWarriors%20Gaming!5e0!3m2!1sen!2sma!4v1716304899532!5m2!1sen!2sma"
+                            width="100%"
+                            height="450"
+                            style={{ border: 0 }}
+                            allowFullScreen={true}
+                            loading="lazy"
+                            referrerPolicy="no-referrer-when-downgrade"
+                        ></iframe>
                     </div>
-                    <div className="mx-auto w-full max-w-sm space-y-2">
-                        <Card>
-                            <CardContent className="p-6">
-                                <div className="flex items-start gap-4">
-                                    <MapPin className="h-8 w-8 text-primary mt-1"/>
-                                    <div>
-                                        <h3 className="font-semibold">Warriors Gaming</h3>
-                                        <address className="text-sm text-muted-foreground not-italic">
-                                            20, 22 Rue Rahal Ben Ahmed, Casablanca 20250
-                                        </address>
-                                    </div>
-                                </div>
-                            </CardContent>
-                        </Card>
-                         <Button asChild size="lg" className="w-full">
-                            <Link href="https://www.google.com/maps?geocode=FYKdAAIdhx6M_w%3D%3D;FbWUAAIdLSuM_ynx9bK1_M2nDTHps7D3Opnfzg%3D%3D&daddr=20,+22+Rue+Rahal+Ben+Ahmed,+Casablanca+20250&saddr=33.5947536,-7.5943625&dirflg=dht&ftid=0xda7cdfcb5b2f5f1:0xcedf993af7b0b3e9&lucs=,94297695,94275415,94284460,94231188,94280568,47071704,94218641,94282134,94286869&g_ep=CAISEjI1LjQ5LjkuODM4ODk5MTgzMBgAILq3CypRLDk0Mjk3Njk1LDk0Mjc1NDE1LDk0Mjg0NDYwLDk0MjMxMTg4LDk0MjgwNTY4LDQ3MDcxNzA0LDk0MjE4NjQxLDk0MjgyMTM0LDk0Mjg2ODY5QgJNQQ%3D%3D&skid=5f37960f-5403-45c7-9ee0-8e4a082492c1&g_st=ic" target="_blank" rel="noopener noreferrer">
-                                Voir l'itinéraire
-                            </Link>
-                        </Button>
-                    </div>
+                </div>
+                <div className="flex flex-col gap-2 min-[400px]:flex-row justify-center">
+                    <Button asChild size="lg">
+                        <Link href="https://www.google.com/maps?geocode=FYKdAAIdhx6M_w%3D%3D;FbWUAAIdLSuM_ynx9bK1_M2nDTHps7D3Opnfzg%3D%3D&daddr=20,+22+Rue+Rahal+Ben+Ahmed,+Casablanca+20250&saddr=33.5947536,-7.5943625&dirflg=dht&ftid=0xda7cdfcb5b2f5f1:0xcedf993af7b0b3e9&lucs=,94297695,94275415,94284460,94231188,94280568,47071704,94218641,94282134,94286869&g_ep=CAISEjI1LjQ5LjkuODM4ODk5MTgzMBgAILq3CypRLDk0Mjk3Njk1LDk0Mjc1NDE1LDk0Mjg0NDYwLDk0MjMxMTg4LDk0MjgwNTY4LDQ3MDcxNzA0LDk0MjE4NjQxLDk0MjgyMTM0LDk0Mjg2ODY5QgJNQQ%3D%3D&skid=5f37960f-5403-45c7-9ee0-8e4a082492c1&g_st=ic" target="_blank" rel="noopener noreferrer">
+                            Voir l'itinéraire
+                        </Link>
+                    </Button>
                 </div>
             </div>
         </section>
