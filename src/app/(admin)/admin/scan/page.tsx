@@ -2,6 +2,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import jsQR from "jsqr";
 import { QrCode, User, CheckCircle, Gift, Clock, LogOut, Gamepad2, VideoOff, Camera } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -33,8 +34,11 @@ export default function ScanPage() {
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
   const [videoDevices, setVideoDevices] = useState<MediaDeviceInfo[]>([]);
   const [currentVideoDeviceId, setCurrentVideoDeviceId] = useState<string | undefined>();
+  const [isScanning, setIsScanning] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const animationFrameId = useRef<number>();
   const { toast } = useToast();
 
   const firestore = useFirestore();
@@ -51,8 +55,82 @@ export default function ScanPage() {
   );
   const { data: stations, isLoading: isLoadingStations } = useCollection<Station>(stationsQuery);
   
+  const stopScanning = useCallback(() => {
+    if (animationFrameId.current) {
+        cancelAnimationFrame(animationFrameId.current);
+    }
+    setIsScanning(false);
+  }, []);
+
+  const handleQrCodeScanned = useCallback((code: string) => {
+    stopScanning();
+    setLoading(true);
+    try {
+        const parsed = JSON.parse(code);
+        if (parsed.clientId) {
+            const foundClient = clients?.find(c => c.id === parsed.clientId);
+            if (foundClient) {
+                setScannedClient(foundClient);
+                toast({
+                    title: "Client Found",
+                    description: `${foundClient.name} has been scanned.`
+                });
+            } else {
+                 toast({
+                    variant: "destructive",
+                    title: "Scan Error",
+                    description: "Client ID from QR code not found.",
+                });
+            }
+        }
+    } catch (e) {
+        toast({
+            variant: "destructive",
+            title: "Scan Error",
+            description: "Invalid QR code format.",
+        });
+    } finally {
+        setLoading(false);
+    }
+  }, [clients, stopScanning, toast]);
+
+
+  const scanLoop = useCallback(() => {
+    if (videoRef.current && videoRef.current.readyState === videoRef.current.HAVE_ENOUGH_DATA && canvasRef.current) {
+        const canvas = canvasRef.current;
+        const video = videoRef.current;
+        const context = canvas.getContext("2d");
+
+        if (context) {
+            canvas.height = video.videoHeight;
+            canvas.width = video.videoWidth;
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+            const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+            const code = jsQR(imageData.data, imageData.width, imageData.height, {
+                inversionAttempts: "dontInvert",
+            });
+
+            if (code) {
+                handleQrCodeScanned(code.data);
+                return; // Stop the loop
+            }
+        }
+    }
+    animationFrameId.current = requestAnimationFrame(scanLoop);
+  }, [handleQrCodeScanned]);
+
+  
+  const startScanning = useCallback(() => {
+      if (!isScanning) {
+          setScannedClient(null);
+          setIsScanning(true);
+          animationFrameId.current = requestAnimationFrame(scanLoop);
+      }
+  }, [isScanning, scanLoop]);
+
+
   const getCameraPermission = useCallback(async (deviceId?: string) => {
-    // Stop any existing stream
+    stopScanning();
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(track => track.stop());
     }
@@ -67,9 +145,11 @@ export default function ScanPage() {
 
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
+        videoRef.current.onloadedmetadata = () => {
+            startScanning();
+        }
       }
       
-      // Update device list after getting permission
       const devices = await navigator.mediaDevices.enumerateDevices();
       const videoInputs = devices.filter(d => d.kind === 'videoinput');
       setVideoDevices(videoInputs);
@@ -88,33 +168,39 @@ export default function ScanPage() {
         description: 'Please enable camera permissions in your browser settings to use this app.',
       });
     }
-  }, [toast]);
+  }, [toast, startScanning, stopScanning]);
 
 
   useEffect(() => {
     getCameraPermission();
     
     return () => {
+        stopScanning();
         if (streamRef.current) {
             streamRef.current.getTracks().forEach(track => track.stop());
         }
     }
-  }, [getCameraPermission]);
+  }, [getCameraPermission, stopScanning]);
 
 
   const availableStations = stations?.filter(s => s.status === 'available') || [];
 
-  const handleScan = () => {
+  const handleManualScanTrigger = () => {
     setLoading(true);
     setScannedClient(null);
     setSelectedStationId("");
-    // Simulate scanning a QR code by using a webcam
-    // For now, we'll just simulate a scan with a timeout
+    
+    if (isScanning) {
+        stopScanning();
+    } else {
+        startScanning();
+    }
+    
+    // Kept for simulation if needed, but primary is auto-scan
     setTimeout(() => {
-      // Simulate scanning a random client
-      if(clients && clients.length > 0){
+      if(!scannedClient && clients && clients.length > 0) {
         const randomClient = clients[Math.floor(Math.random() * clients.length)];
-        setScannedClient(randomClient);
+        handleQrCodeScanned(JSON.stringify({ clientId: randomClient.id }));
       }
       setLoading(false);
     }, 1500);
@@ -134,7 +220,6 @@ export default function ScanPage() {
         description: `${scannedClient.name} has been assigned to station ${stations?.find(s => s.id === selectedStationId)?.id}.`
     });
 
-    // Refresh local state to reflect the change
     setScannedClient(prev => prev ? { ...prev, currentStationId: selectedStationId } : null);
     setSelectedStationId("");
   }
@@ -153,7 +238,6 @@ export default function ScanPage() {
         description: `Station ${scannedClient.currentStationId} is now available.`
     });
 
-    // Refresh local state to reflect the change
     setScannedClient(prev => prev ? { ...prev, currentStationId: undefined } : null);
   }
 
@@ -182,12 +266,18 @@ export default function ScanPage() {
             <CardTitle className="font-headline">Scanner</CardTitle>
           </CardHeader>
           <CardContent className="flex flex-col items-center justify-center gap-6 text-center h-full min-h-[300px]">
-            <div className="w-full max-w-sm h-auto aspect-square bg-muted rounded-lg flex items-center justify-center overflow-hidden">
+            <div className="w-full max-w-sm h-auto aspect-square bg-muted rounded-lg flex items-center justify-center overflow-hidden relative">
               <video ref={videoRef} className="w-full h-full object-cover" autoPlay muted playsInline />
+               <canvas ref={canvasRef} className="hidden" />
               {hasCameraPermission === false && (
                   <div className="absolute flex flex-col items-center text-muted-foreground">
                       <VideoOff className="h-16 w-16 mb-4" />
                       <p>Camera not available</p>
+                  </div>
+              )}
+               {isScanning && !scannedClient && (
+                  <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="w-2/3 h-2/3 border-4 border-primary/50 rounded-lg animate-pulse" />
                   </div>
               )}
             </div>
@@ -200,8 +290,8 @@ export default function ScanPage() {
                 </Alert>
             )}
             <div className="flex gap-2 w-full max-w-xs">
-                <Button onClick={handleScan} disabled={loading || isLoadingClients || !hasCameraPermission} className="flex-grow">
-                {loading ? "Scanning..." : "Simulate Scan"}
+                <Button onClick={startScanning} disabled={isScanning || isLoadingClients || !hasCameraPermission} className="flex-grow">
+                {isScanning ? "Scanning..." : "Scan"}
                 </Button>
                 {videoDevices.length > 1 && (
                     <Button onClick={handleSwapCamera} variant="outline" size="icon">
