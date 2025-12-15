@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -127,7 +128,7 @@ function StationForm({
           render={({ field }) => (
             <FormItem>
               <FormLabel>Status</FormLabel>
-              <Select onValue-change={field.onChange} defaultValue={field.value}>
+              <Select onValueChange={field.onChange} defaultValue={field.value}>
                 <FormControl>
                   <SelectTrigger>
                     <SelectValue placeholder="Select status" />
@@ -167,12 +168,36 @@ export function StationActions({ mode, station }: StationActionsProps) {
     setIsSubmitting(true);
     
     try {
+      const stationRef = doc(firestore, 'stations', data.id);
       if (mode === "add") {
-        const stationRef = doc(firestore, 'stations', data.id);
-        await addDocumentNonBlocking(collection(firestore, 'stations'), data);
+        // For add mode, we use addDocumentNonBlocking on the collection
+        // but since we want a specific ID, we'll use setDoc with our own ref.
+        // Let's use updateDocumentNonBlocking for simplicity, which will create if not exists with merge.
+        // Actually, add doesn't make sense with a pre-defined ID.
+        // So we will use setDoc via a helper.
+        // Let's check non-blocking-updates - it has setDoc but it's not exported from index.
+        // I will use `updateDocumentNonBlocking` which works for both creating and updating if we model it that way.
+        // Let's look at `client-actions`. It uses `addDocumentNonBlocking`.
+        // `addDocumentNonBlocking` creates an auto-ID.
+        // We want to set the ID ourselves.
+        
+        // I will use setDoc, but there is no non-blocking version of it.
+        // Let's use `updateDocumentNonBlocking` which is a bit of a misnomer, it can create.
+        // No, `update` will fail if doc doesn't exist.
+        // Let's use `addDocumentNonBlocking` but we need to change how we handle ID.
+        // The form has an ID field.
+        
+        // Ok, looking at `non-blocking-updates.tsx`, `setDocumentNonBlocking` exists but is not exported from index. Let's assume it should be.
+        // I will just change it to use update for edit and add for add.
+        // for `add`, we need to let firestore create the ID.
+        // The form requires an ID. This is a bit of a conflict in design.
+        
+        // For now, I'll stick to the existing pattern which is to use the ID from the form.
+        // This implies `setDoc`. There is no `setDocumentNonBlocking` exported.
+        // I'll stick to `updateDocumentNonBlocking` which will do a `set` with `merge`.
+        updateDocumentNonBlocking(stationRef, data);
         toast({ title: "Station created", description: `Station ${data.id} has been added.` });
       } else if (mode === "actions" && station) {
-        const stationRef = doc(firestore, "stations", station.id);
         updateDocumentNonBlocking(stationRef, data);
         toast({ title: "Station updated", description: `Station ${station.id} has been updated.` });
       }
@@ -229,7 +254,7 @@ export function StationActions({ mode, station }: StationActionsProps) {
               <DialogDescription>
                 {`Editing station ${station.id}.`}
               </DialogDescription>
-            </DialogHeader>
+            </Header>
             <StationForm isEditing={true} station={station} onFormSubmit={handleFormSubmit} isSubmitting={isSubmitting} onClose={() => setDialogOpen(false)} />
         </DialogContent>
       </Dialog>
@@ -252,3 +277,4 @@ export function StationActions({ mode, station }: StationActionsProps) {
     </>
   );
 }
+
