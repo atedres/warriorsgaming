@@ -34,6 +34,22 @@ export default function Home() {
     }
   };
 
+  const getGamesForStation = (type: Station['type']) => {
+    switch (type) {
+      case 'PC':
+        return 'Fortnite, Valorant, LoL';
+      case 'PS5':
+        return 'FC24, Spider-Man 2, COD';
+       case 'PS5 VIP':
+        return 'FC24, Spider-Man 2, COD';
+      case 'VR Simulator':
+        return 'Beat Saber, Half-Life: Alyx';
+      default:
+        return 'N/A';
+    }
+  }
+
+
   return (
     <div className="flex min-h-screen w-full flex-col">
       <ClientHeader />
@@ -94,10 +110,14 @@ export default function Home() {
                     {getIcon(station.type)}
                   </CardHeader>
                   <CardContent className="flex-1 flex flex-col justify-between">
-                    <div>
+                    <div className="space-y-2">
                       <p className="text-sm text-muted-foreground">
                         {station.type}
                       </p>
+                      <div className='mt-2'>
+                        <h4 className='text-xs font-semibold text-muted-foreground'>Jeux disponibles</h4>
+                        <p className='text-sm'>{getGamesForStation(station.type)}</p>
+                      </div>
                       <Badge
                         className={cn('mt-4 text-white', {
                           'bg-green-500 hover:bg-green-500/80':
