@@ -55,12 +55,6 @@ export default function Home() {
                 Your ultimate gaming destination. Check station availability and
                 book your spot now.
               </p>
-              <Button
-                size="lg"
-                className="bg-accent text-accent-foreground hover:bg-accent/90"
-              >
-                Book a Station
-              </Button>
             </div>
           </div>
         </section>
@@ -87,7 +81,6 @@ export default function Home() {
                     <CardContent className="flex-1 flex flex-col justify-between">
                       <div className="h-4 w-1/2 animate-pulse rounded-md bg-muted" />
                       <div className="mt-4 h-6 w-1/3 animate-pulse rounded-full bg-muted" />
-                      <div className="mt-6 h-10 w-full animate-pulse rounded-md bg-muted" />
                     </CardContent>
                   </Card>
                 ))}
@@ -113,18 +106,12 @@ export default function Home() {
                         className={`mt-4 ${
                           station.status === 'available'
                             ? 'bg-green-500/20 text-green-400 border-green-500/20'
-                            : 'bg-red-500/20 text-red-400 border-red-500/20'
+                            : station.status === 'in use' ? 'bg-orange-500/20 text-orange-400 border-orange-500/20' : 'bg-red-500/20 text-red-400 border-red-500/20'
                         }`}
                       >
                         {station.status}
                       </Badge>
                     </div>
-                    <Button
-                      className="mt-6 w-full bg-primary/90 hover:bg-primary"
-                      disabled={station.status !== 'available'}
-                    >
-                      Reserve Now
-                    </Button>
                   </CardContent>
                 </Card>
               ))}

@@ -15,6 +15,7 @@ import {
   Sparkles,
   Settings,
   LogOut,
+  Gamepad2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Logo } from "../logo";
@@ -22,6 +23,7 @@ import { Logo } from "../logo";
 const navItems = [
   { href: "/admin", icon: Home, label: "Dashboard" },
   { href: "/admin/clients", icon: Users2, label: "Clients" },
+  { href: "/admin/stations", icon: Gamepad2, label: "Stations" },
   { href: "/admin/scan", icon: QrCode, label: "Scanner" },
   { href: "/admin/loyalty", icon: Sparkles, label: "Loyalty AI" },
 ];
@@ -47,7 +49,7 @@ export function AdminSidebar() {
                   href={item.href}
                   className={cn(
                     "flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:text-foreground md:h-8 md:w-8",
-                    { "bg-accent text-accent-foreground": pathname === item.href }
+                    { "bg-accent text-accent-foreground": pathname === item.href || (item.href.includes('stations') && pathname.includes('stations')) }
                   )}
                 >
                   <item.icon className="h-5 w-5" />
