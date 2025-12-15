@@ -1,6 +1,7 @@
 
 'use client';
 
+import { useState } from 'react';
 import {
   Card,
   CardContent,
@@ -23,14 +24,22 @@ import { useCollection, useFirestore } from '@/firebase';
 import { useMemoFirebase } from '@/firebase/provider';
 import { collection, query } from 'firebase/firestore';
 import type { Client } from '@/app/lib/data';
+import { Input } from '@/components/ui/input';
+import { Search } from 'lucide-react';
 
 export default function ClientsPage() {
+  const [searchTerm, setSearchTerm] = useState('');
   const firestore = useFirestore();
   const clientsQuery = useMemoFirebase(
     () => (firestore ? query(collection(firestore, 'clients')) : null),
     [firestore]
   );
   const { data: clients, isLoading } = useCollection<Client>(clientsQuery);
+
+  const filteredClients =
+    clients?.filter((client) =>
+      client.name.toLowerCase().includes(searchTerm.toLowerCase())
+    ) || [];
 
   return (
     <>
@@ -47,6 +56,15 @@ export default function ClientsPage() {
           <CardDescription>
             A list of all registered clients in Warriors Gaming.
           </CardDescription>
+          <div className="relative pt-4">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search by name..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-8 w-full md:w-1/2 lg:w-1/3"
+            />
+          </div>
         </CardHeader>
         <CardContent>
           <Table>
@@ -71,8 +89,7 @@ export default function ClientsPage() {
                     </TableCell>
                   </TableRow>
                 ))}
-              {clients &&
-                clients.map((client) => (
+              {filteredClients.map((client) => (
                   <TableRow key={client.id}>
                     <TableCell className="font-medium">
                       <div className="flex items-center">
