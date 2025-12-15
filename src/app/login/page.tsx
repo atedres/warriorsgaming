@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/firebase';
+import { useAuth, useUser } from '@/firebase';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { Button } from '@/components/ui/button';
 import {
@@ -23,29 +23,47 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const auth = useAuth();
+  const { user, isUserLoading } = useUser();
   const router = useRouter();
   const { toast } = useToast();
 
+  useEffect(() => {
+    if (!isUserLoading && user) {
+      router.push('/admin');
+    }
+  }, [user, isUserLoading, router]);
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!auth) return;
     setLoading(true);
     try {
       await signInWithEmailAndPassword(auth, email, password);
-      router.push('/admin');
+      // The onAuthStateChanged listener in the provider will handle the redirect.
     } catch (error: any) {
-      console.error(error);
+      let description = 'An unexpected error occurred. Please try again.';
+      if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
+        description = 'Invalid email or password. Please check your credentials and try again.';
+      }
+      
       toast({
         variant: 'destructive',
         title: 'Login Failed',
-        description:
-          error.code === 'auth/invalid-credential'
-            ? 'Invalid email or password.'
-            : 'An unexpected error occurred. Please try again.',
+        description: description,
       });
     } finally {
       setLoading(false);
     }
   };
+  
+  if (isUserLoading || user) {
+    return (
+      <div className="flex h-screen w-full flex-col items-center justify-center bg-muted/40">
+        <Logo className="h-12 w-auto animate-pulse" />
+        <p className="mt-4 text-muted-foreground">Loading...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-muted/40">
@@ -55,7 +73,7 @@ export default function LoginPage() {
       <Card className="w-full max-w-sm">
         <form onSubmit={handleLogin}>
           <CardHeader>
-            <CardTitle className="text-2xl">Admin Login</CardTitle>
+            <CardTitle className="text-2xl font-headline">Admin Login</CardTitle>
             <CardDescription>
               Enter your email below to login to your account.
             </CardDescription>
