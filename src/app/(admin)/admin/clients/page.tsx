@@ -14,7 +14,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { clients } from "@/lib/data";
+import { clients } from "@/app/lib/data";
 import { ClientActions } from "./client-actions";
 import { PageHeader } from "@/components/page-header";
 
