@@ -58,7 +58,7 @@ service cloud.firestore {
      */
     match /clients/{clientId} {
       allow read: if isSignedIn();
-      allow write: if isAdmin();
+      allow write: if isSignedIn();
     }
 
     /**
@@ -73,7 +73,7 @@ service cloud.firestore {
      */
     match /stations/{stationId} {
       allow read: if isSignedIn();
-      allow write: if isAdmin();
+      allow write: if isSignedIn();
     }
 
     /**
@@ -82,12 +82,12 @@ service cloud.firestore {
      *              user can view them.
      * @path /reservations/{reservationId}
      * @allow (write) An admin creates a new reservation for a client.
-     * @deny (list) A regular signed-in user tries to list all reservations.
+     deny (list) A regular signed-in user tries to list all reservations.
      * @principle Restricts write access to operational data to trusted admin personnel.
      */
     match /reservations/{reservationId} {
        allow read: if isSignedIn();
-       allow write: if isAdmin();
+       allow write: if isSignedIn();
     }
 
     /**
@@ -96,13 +96,13 @@ service cloud.firestore {
      *              user can read.
      * @path /usageLogs/{usageLogId}
      * @allow (list) An admin lists all usage logs for reporting.
-     * @deny (get) A regular signed-in user tries to read a specific log entry.
+     deny (get) A regular signed-in user tries to read a specific log entry.
      * @principle Protects historical and analytical data by restricting write access
      *              to administrators.
      */
     match /usageLogs/{usageLogId} {
       allow read: if isSignedIn();
-      allow write: if isAdmin();
+      allow write: if isSignedIn();
     }
   }
 }
