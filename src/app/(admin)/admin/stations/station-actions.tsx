@@ -181,12 +181,6 @@ export function StationActions({ mode, station }: StationActionsProps) {
         // `addDocumentNonBlocking` creates an auto-ID.
         // We want to set the ID ourselves.
         
-        // I will use setDoc, but there is no non-blocking version of it.
-        // Let's use `updateDocumentNonBlocking` which is a bit of a misnomer, it can create.
-        // No, `update` will fail if doc doesn't exist.
-        // Let's use `addDocumentNonBlocking` but we need to change how we handle ID.
-        // The form has an ID field.
-        
         // Ok, looking at `non-blocking-updates.tsx`, `setDocumentNonBlocking` exists but is not exported from index. Let's assume it should be.
         // I will just change it to use update for edit and add for add.
         // for `add`, we need to let firestore create the ID.
@@ -254,7 +248,7 @@ export function StationActions({ mode, station }: StationActionsProps) {
               <DialogDescription>
                 {`Editing station ${station.id}.`}
               </DialogDescription>
-            </Header>
+            </DialogHeader>
             <StationForm isEditing={true} station={station} onFormSubmit={handleFormSubmit} isSubmitting={isSubmitting} onClose={() => setDialogOpen(false)} />
         </DialogContent>
       </Dialog>
@@ -277,4 +271,3 @@ export function StationActions({ mode, station }: StationActionsProps) {
     </>
   );
 }
-
