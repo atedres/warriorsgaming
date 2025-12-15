@@ -264,7 +264,7 @@ export default function ScanPage() {
             <CardTitle className="font-headline">Scanner</CardTitle>
           </CardHeader>
           <CardContent className="flex flex-col items-center justify-center gap-6 text-center h-full min-h-[300px]">
-            <div className="w-full max-w-sm h-auto aspect-square bg-muted rounded-lg flex items-center justify-center overflow-hidden relative">
+            <div className="w-full max-w-[300px] h-auto aspect-square bg-muted rounded-lg flex items-center justify-center overflow-hidden relative">
               <video ref={videoRef} className="w-full h-full object-cover" autoPlay muted playsInline />
                <canvas ref={canvasRef} className="hidden" />
               {hasCameraPermission === false && (
@@ -287,8 +287,8 @@ export default function ScanPage() {
                     </AlertDescription>
                 </Alert>
             )}
-            <div className="flex gap-2 w-full max-w-xs">
-                <Button onClick={startScanning} disabled={isLoadingClients || !hasCameraPermission || isScanning}>
+            <div className="flex gap-2 w-full max-w-[300px]">
+                <Button onClick={startScanning} disabled={isLoadingClients || !hasCameraPermission || isScanning} className="flex-grow">
                     {isScanning ? "Scanning..." : "Scan"}
                 </Button>
                 {videoDevices.length > 1 && (
