@@ -9,6 +9,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  CardFooter,
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -26,32 +27,63 @@ import {
 } from '@/components/ui/dialog';
 import { useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
-import { Globe, Palette, UserPlus, Bell } from 'lucide-react';
+import { Globe, Palette, UserPlus, Bell, Lock } from 'lucide-react';
+import { useAuth, useUser } from '@/firebase';
+import { createUserWithEmailAndPassword, sendPasswordResetEmail, updatePassword, reauthenticateWithCredential, EmailAuthProvider } from 'firebase/auth';
 
 
-function InviteAdminDialog() {
+function AddAdminDialog() {
     const [isOpen, setIsOpen] = useState(false);
     const [email, setEmail] = useState('');
+    const [name, setName] = useState('');
+    const [loading, setLoading] = useState(false);
     const { toast } = useToast();
-    const { t } = useTranslation();
+    const auth = useAuth();
 
-    const handleInvite = () => {
-        // Here you would typically call a server action or API
-        // to send an invitation email to the new administrator.
-        // For this example, we'll just show a success toast.
-        if (email && email.includes('@')) {
+    const handleAddAdmin = async () => {
+        if (!auth) {
+            toast({ variant: 'destructive', title: 'Error', description: 'Authentication service not available.' });
+            return;
+        }
+        if (!email || !name || !email.includes('@')) {
+            toast({ variant: 'destructive', title: 'Invalid Input', description: 'Please enter a valid name and email address.' });
+            return;
+        }
+
+        setLoading(true);
+        try {
+            // 1. Create a random password (it won't be used by the new admin)
+            const randomPassword = Math.random().toString(36).slice(-8);
+
+            // 2. Create the user
+            const userCredential = await createUserWithEmailAndPassword(auth, email, randomPassword);
+            
+            // 3. Send a password reset email immediately
+            await sendPasswordResetEmail(auth, email);
+
             toast({
-                title: "Invitation Sent",
-                description: `An invitation has been sent to ${email}.`,
+                title: "Admin Added Successfully",
+                description: `${name} has been added. A password reset email has been sent to ${email}.`,
             });
+
             setIsOpen(false);
             setEmail('');
-        } else {
+            setName('');
+        } catch (error: any) {
+            console.error("Error adding admin:", error);
+            let description = "An unexpected error occurred.";
+            if (error.code === 'auth/email-already-in-use') {
+                description = "This email address is already in use by another account.";
+            } else if (error.code === 'auth/invalid-email') {
+                description = "The email address is not valid.";
+            }
             toast({
                 variant: 'destructive',
-                title: 'Invalid Email',
-                description: 'Please enter a valid email address.',
+                title: 'Failed to Add Admin',
+                description: description,
             });
+        } finally {
+            setLoading(false);
         }
     }
 
@@ -59,21 +91,29 @@ function InviteAdminDialog() {
          <Dialog open={isOpen} onOpenChange={setIsOpen}>
             <DialogTrigger asChild>
                 <Button>
-                    <UserPlus className="mr-2 h-4 w-4" /> Invite Admin
+                    <UserPlus className="mr-2 h-4 w-4" /> Add Admin
                 </Button>
             </DialogTrigger>
             <DialogContent>
                 <DialogHeader>
-                    <DialogTitle>Invite a new Administrator</DialogTitle>
+                    <DialogTitle>Add a new Administrator</DialogTitle>
                     <DialogDescription>
-                        Enter the email address of the user you want to invite. They will receive an email with instructions to set up their account.
+                        A new admin account will be created and they will receive an email to set their password.
                     </DialogDescription>
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
                     <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="email" className="text-right">
-                            Email
-                        </Label>
+                        <Label htmlFor="name" className="text-right">Name</Label>
+                        <Input
+                            id="name"
+                            value={name}
+                            onChange={(e) => setName(e.target.value)}
+                            placeholder="John Doe"
+                            className="col-span-3"
+                        />
+                    </div>
+                    <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="email" className="text-right">Email</Label>
                         <Input
                             id="email"
                             type="email"
@@ -86,11 +126,88 @@ function InviteAdminDialog() {
                 </div>
                 <DialogFooter>
                     <Button variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
-                    <Button onClick={handleInvite}>Send Invitation</Button>
+                    <Button onClick={handleAddAdmin} disabled={loading}>{loading ? 'Adding...' : 'Add Admin'}</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
     )
+}
+
+function ChangePasswordCard() {
+    const { user } = useUser();
+    const { toast } = useToast();
+    const [currentPassword, setCurrentPassword] = useState('');
+    const [newPassword, setNewPassword] = useState('');
+    const [loading, setLoading] = useState(false);
+
+    const handleChangePassword = async () => {
+        if (!user || !user.email) {
+             toast({ variant: 'destructive', title: 'Error', description: 'You must be logged in to change your password.' });
+             return;
+        }
+        if (!currentPassword || newPassword.length < 6) {
+             toast({ variant: 'destructive', title: 'Invalid Input', description: 'New password must be at least 6 characters long.' });
+             return;
+        }
+
+        setLoading(true);
+        try {
+            const credential = EmailAuthProvider.credential(user.email, currentPassword);
+            // Re-authenticate the user to confirm their identity
+            await reauthenticateWithCredential(user, credential);
+            
+            // If re-authentication is successful, update the password
+            await updatePassword(user, newPassword);
+
+            toast({
+                title: "Password Changed",
+                description: "Your password has been updated successfully.",
+            });
+            setCurrentPassword('');
+            setNewPassword('');
+
+        } catch (error: any) {
+            console.error(error);
+            let description = 'An unexpected error occurred.';
+            if (error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+                description = 'The current password you entered is incorrect.';
+            }
+            toast({
+                variant: 'destructive',
+                title: 'Password Change Failed',
+                description: description,
+            });
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <Card className="lg:col-span-1">
+            <CardHeader>
+                <CardTitle className="font-headline flex items-center gap-2">
+                    <Lock className="h-5 w-5 text-primary" />
+                    Security
+                </CardTitle>
+                <CardDescription>
+                    Change your administrator account password.
+                </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+                <div className="space-y-2">
+                    <Label htmlFor="current-password">Current Password</Label>
+                    <Input id="current-password" type="password" value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} />
+                </div>
+                 <div className="space-y-2">
+                    <Label htmlFor="new-password">New Password</Label>
+                    <Input id="new-password" type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} />
+                </div>
+            </CardContent>
+            <CardFooter>
+                 <Button onClick={handleChangePassword} disabled={loading}>{loading ? 'Changing...' : 'Change Password'}</Button>
+            </CardFooter>
+        </Card>
+    );
 }
 
 
@@ -117,12 +234,15 @@ export default function SettingsPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <InviteAdminDialog />
+            <AddAdminDialog />
           </CardContent>
         </Card>
+        
+        {/* Security Card */}
+        <ChangePasswordCard />
 
         {/* Notification Settings Card */}
-        <Card className="lg:col-span-2">
+        <Card className="lg:col-span-1">
           <CardHeader>
             <CardTitle className="font-headline flex items-center gap-2">
                 <Bell className="h-5 w-5 text-primary" />
@@ -197,3 +317,5 @@ export default function SettingsPage() {
     </>
   );
 }
+
+    
