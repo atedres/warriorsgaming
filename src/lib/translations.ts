@@ -1,3 +1,4 @@
+
 export const translations = {
   en: {
     welcome: "Welcome to Warriors Gaming",
@@ -64,6 +65,18 @@ export const translations = {
     enterGameName: "Enter game name...",
     availableGamesList: "Available Games",
     noGamesAdded: "No games added yet.",
+
+    // Dashboard Page
+    totalRevenue: "Total Revenue",
+    thisWeek: "This week",
+    totalClients: "Total Clients",
+    allRegisteredClients: "All registered clients",
+    stationsInUse: "Stations in Use",
+    currentlyActive: "Currently active",
+    popularity: "Popularity",
+    mostUsedStationType: "Most used station type",
+    weeklyRevenue: "Weekly Revenue",
+    popularStations: "Popular Stations",
   },
   fr: {
     welcome: "Bienvenue chez Warriors Gaming",
@@ -130,6 +143,18 @@ export const translations = {
     enterGameName: "Entrez le nom du jeu...",
     availableGamesList: "Jeux Disponibles",
     noGamesAdded: "Aucun jeu ajouté pour le moment.",
+
+    // Dashboard Page
+    totalRevenue: "Revenu Total",
+    thisWeek: "Cette semaine",
+    totalClients: "Total des Clients",
+    allRegisteredClients: "Tous les clients enregistrés",
+    stationsInUse: "Postes en Utilisation",
+    currentlyActive: "Actuellement actifs",
+    popularity: "Popularité",
+    mostUsedStationType: "Type de poste le plus utilisé",
+    weeklyRevenue: "Revenu Hebdomadaire",
+    popularStations: "Postes Populaires",
   },
   ar: {
     welcome: "مرحباً بكم في ووريورز جيمنج",
@@ -149,7 +174,7 @@ export const translations = {
     scanner: "الماسح الضوئي",
     loyaltyAI: "ذكاء الولاء",
     settings: "الإعدادات",
-logOut: "تسجيل الخروج",
+    logOut: "تسجيل الخروج",
 
     // Admin Pages
     clientManagement: "إدارة العملاء",
@@ -196,6 +221,18 @@ logOut: "تسجيل الخروج",
     enterGameName: "أدخل اسم اللعبة...",
     availableGamesList: "الألعاب المتاحة",
     noGamesAdded: "لم تتم إضافة أي ألعاب بعد.",
+
+    // Dashboard Page
+    totalRevenue: "إجمالي الإيرادات",
+    thisWeek: "هذا الأسبوع",
+    totalClients: "إجمالي العملاء",
+    allRegisteredClients: "جميع العملاء المسجلين",
+    stationsInUse: "المحطات المستخدمة",
+    currentlyActive: "نشط حاليا",
+    popularity: "الشعبية",
+    mostUsedStationType: "نوع المحطة الأكثر استخدامًا",
+    weeklyRevenue: "الإيرادات الأسبوعية",
+    popularStations: "المحطات الشائعة",
   },
 };
 
