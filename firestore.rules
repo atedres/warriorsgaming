@@ -11,11 +11,20 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Manages all collections ('clients', 'stations', 'reservations', 'usageLogs').
-     *              For development purposes, any user (even unauthenticated) can read and write.
+     * @description Allows collection group queries on the 'history' collection.
+     *              This is necessary for the global history page to fetch all client activities.
+     * @path /clients/{clientId}/history/{historyId}
+     * @allow (read) Authenticated users can list and get history documents across all clients.
+     */
+    match /clients/{clientId}/history/{historyId} {
+       allow read, write: if true;
+    }
+
+    /**
+     * @description Manages all top-level collections.
+     *              For development, any user can read/write to any document.
      * @path /{collection}/{docId}
      * @allow (read, write) Anyone can read or write any document.
-     * @principle Prioritizes rapid development by removing all security constraints temporarily.
      */
     match /{document=**} {
       allow read, write: if true;
