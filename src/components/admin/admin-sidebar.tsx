@@ -48,6 +48,7 @@ export function AdminHeader() {
       { href: "/admin/scan", icon: QrCode, label: t('scanner') },
       { href: "/admin/loyalty", icon: Sparkles, label: t('loyaltyAI') },
       { href: "/admin/history", icon: History, label: t('history')},
+      { href: "/admin/settings", icon: Settings, label: t('settings') },
     ];
 
     return (
@@ -152,7 +153,7 @@ export function AdminSidebar() {
                   href={item.href}
                   className={cn(
                     "flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:text-foreground md:h-8 md:w-8",
-                    { "bg-accent text-accent-foreground": pathname === item.href || (item.href.includes(item.label.toLowerCase()) && pathname.includes(item.label.toLowerCase())) }
+                    { "bg-accent text-accent-foreground": pathname.startsWith(item.href) && (item.href !== "/admin" || pathname === "/admin") }
                   )}
                 >
                   <item.icon className="h-5 w-5" />
@@ -162,8 +163,11 @@ export function AdminSidebar() {
         </nav>
         <nav className="mt-auto flex flex-col items-center gap-4 px-2 sm:py-5">
               <Link
-                href="#"
-                className="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:text-foreground md:h-8 md:w-8"
+                href="/admin/settings"
+                className={cn(
+                    "flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:text-foreground md:h-8 md:w-8",
+                    { "bg-accent text-accent-foreground": pathname.startsWith('/admin/settings') }
+                  )}
               >
                 <Settings className="h-5 w-5" />
                 <span className="sr-only">{t('settings')}</span>
