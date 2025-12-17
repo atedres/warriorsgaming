@@ -36,6 +36,7 @@ import {
 import { useTranslation } from "@/hooks/use-translation";
 import { cn, formatCurrency } from "@/lib/utils";
 import { formatDistanceToNowStrict, differenceInMinutes } from 'date-fns';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 function QrScanner({ onScan, onPermissionChange, onDevices, onCameraChange, currentDeviceId }: {
     onScan: (data: string) => void;
@@ -259,10 +260,11 @@ function AssignClientDialog({ station, clients }: { station: Station; clients: C
     )
 }
 
-function BonusPointsDialog({ clients, trigger, initialClient }: { clients: Client[] | null, trigger: React.ReactNode, initialClient?: Client | null }) {
+function BonusPointsDialog({ clients, trigger, initialClient, stationType }: { clients: Client[] | null, trigger: React.ReactNode, initialClient?: Client | null, stationType?: Station['type'] }) {
     const [isOpen, setIsOpen] = useState(false);
     const [selectedClient, setSelectedClient] = useState<Client | null>(null);
-    const [hoursToAdd, setHoursToAdd] = useState<number | string>("");
+    const [bonusValue, setBonusValue] = useState<number | string>("");
+    const [bonusUnit, setBonusUnit] = useState<'hours' | 'minutes'>('minutes');
     const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
     const firestore = useFirestore();
     const { toast } = useToast();
@@ -291,34 +293,38 @@ function BonusPointsDialog({ clients, trigger, initialClient }: { clients: Clien
         }
     }
 
-    const handleUpdateHours = () => {
-        if (!firestore || !selectedClient || !hoursToAdd || +hoursToAdd <= 0) return;
+    const handleUpdateBonus = () => {
+        if (!firestore || !selectedClient || !bonusValue || +bonusValue <= 0) return;
         
-        const newHours = (selectedClient.subscriptionHours || 0) + Number(hoursToAdd);
+        const valueInHours = bonusUnit === 'minutes' ? Number(bonusValue) / 60 : Number(bonusValue);
+        const newBonusHours = (selectedClient.bonusHours || 0) + valueInHours;
+
         const clientRef = doc(firestore, "clients", selectedClient.id);
-        updateDocumentNonBlocking(clientRef, { subscriptionHours: newHours });
+        updateDocumentNonBlocking(clientRef, { bonusHours: newBonusHours });
 
         const historyRef = collection(firestore, 'clients', selectedClient.id, 'history');
+        const bonusDescription = `Added ${bonusValue} bonus ${bonusUnit} for ${stationType || 'general use'}.`;
         addDocumentNonBlocking(historyRef, {
             timestamp: new Date().toISOString(),
-            type: 'recharge',
-            description: `Recharged ${hoursToAdd} subscription hour(s).`,
+            type: 'bonus',
+            description: bonusDescription,
         });
 
         toast({
-            title: "Heures Mises à Jour",
-            description: `${hoursToAdd} heure(s) ont été ajoutées à l'abonnement de ${selectedClient.name}.`
+            title: "Bonus Ajouté",
+            description: `Le bonus a été ajouté pour ${selectedClient.name}.`
         });
 
         setSelectedClient(null);
-        setHoursToAdd("");
+        setBonusValue("");
         setIsOpen(false);
     }
     
     useEffect(() => {
         if(!isOpen) {
             setSelectedClient(null);
-            setHoursToAdd("");
+            setBonusValue("");
+            setBonusUnit("minutes");
         } else {
             if (initialClient) {
                 setSelectedClient(initialClient);
@@ -333,9 +339,9 @@ function BonusPointsDialog({ clients, trigger, initialClient }: { clients: Clien
             </DialogTrigger>
             <DialogContent>
                 <DialogHeader>
-                    <DialogTitle>Attribuer des Heures Bonus</DialogTitle>
+                    <DialogTitle>Attribuer des Points Bonus</DialogTitle>
                     <DialogDescription>
-                        Scannez le QR code du client ou utilisez le client actuel pour recharger son compte en heures.
+                        Scannez le QR code ou utilisez le client actuel pour ajouter un bonus.
                     </DialogDescription>
                 </DialogHeader>
                 {!selectedClient ? (
@@ -359,21 +365,35 @@ function BonusPointsDialog({ clients, trigger, initialClient }: { clients: Clien
                             <User className="h-10 w-10 text-muted-foreground" />
                             <div>
                                 <p className="font-semibold">{selectedClient.name}</p>
-                                <p className="text-sm text-muted-foreground">Heures actuelles : {selectedClient.subscriptionHours || 0}</p>
+                                <p className="text-sm text-muted-foreground">Heures bonus actuelles : {(selectedClient.bonusHours || 0).toFixed(2)}</p>
                             </div>
                         </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="hours">Heures à ajouter</Label>
-                            <Input 
-                                id="hours" 
-                                type="number" 
-                                placeholder="ex: 5" 
-                                value={hoursToAdd}
-                                onChange={(e) => setHoursToAdd(e.target.value)}
-                            />
+                        <div className="grid grid-cols-3 gap-2">
+                             <div className="col-span-2">
+                                <Label htmlFor="bonus-value">Valeur du bonus</Label>
+                                <Input 
+                                    id="bonus-value" 
+                                    type="number" 
+                                    placeholder="ex: 30" 
+                                    value={bonusValue}
+                                    onChange={(e) => setBonusValue(e.target.value)}
+                                />
+                            </div>
+                             <div>
+                                <Label htmlFor="bonus-unit">Unité</Label>
+                                <Select value={bonusUnit} onValueChange={(value: 'hours' | 'minutes') => setBonusUnit(value)}>
+                                    <SelectTrigger id="bonus-unit">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="minutes">Minutes</SelectItem>
+                                        <SelectItem value="hours">Heures</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
                         </div>
-                        <Button onClick={handleUpdateHours} className="w-full">
-                            <CheckCircle className="mr-2 h-4 w-4" /> Confirmer
+                        <Button onClick={handleUpdateBonus} className="w-full">
+                            <CheckCircle className="mr-2 h-4 w-4" /> Confirmer le Bonus
                         </Button>
                     </div>
                 )}
@@ -493,6 +513,7 @@ function ReleaseStationDialog({ station, client, allClients }: { station: Statio
                         <BonusPointsDialog
                             clients={allClients}
                             initialClient={client}
+                            stationType={station.type}
                             trigger={<Button variant="outline" className="w-full"><Gift className="mr-2 h-4 w-4"/> Attribuer un bonus</Button>}
                         />
                          <Button onClick={handleConfirmRelease} className="w-full">
@@ -562,7 +583,7 @@ function StationCard({ station, client, isLoadingClients, allClients }: {
                 {station.status === 'in use' ? (
                     <>
                         <User className="h-8 w-8 mx-auto text-muted-foreground" />
-                        <p className="font-semibold">{clientName}</p>
+                        <p className="font-semibold">{client ? client.name : (isLoadingClients ? "Chargement..." : "Client inconnu")}</p>
                         <p className="text-2xl font-mono font-bold text-primary">{timer}</p>
                         <ReleaseStationDialog station={station} client={client} allClients={allClients}/>
                     </>
@@ -663,3 +684,5 @@ export default function ScanPage() {
     </>
   );
 }
+
+    
