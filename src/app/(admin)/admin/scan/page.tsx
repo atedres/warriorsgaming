@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import jsQR from "jsqr";
-import { QrCode, User, CheckCircle, Gift, Clock, LogOut, Gamepad2, VideoOff, Camera, MonitorPlay, Tv, Users, ScanLine, Wallet, Monitor } from "lucide-react";
+import { QrCode, User, CheckCircle, Gift, Clock, LogOut, Gamepad2, VideoOff, Camera, MonitorPlay, Tv, Users, ScanLine, Wallet, Monitor, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -37,6 +37,7 @@ import { useTranslation } from "@/hooks/use-translation";
 import { cn, formatCurrency } from "@/lib/utils";
 import { formatDistanceToNowStrict, differenceInMinutes } from 'date-fns';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 
 function QrScanner({ onScan, onPermissionChange, onDevices, onCameraChange, currentDeviceId }: {
     onScan: (data: string) => void;
@@ -415,30 +416,29 @@ function calculatePrice(stationType: Station['type'], durationInMinutes: number,
             break;
         case 'PS5':
             if (isEvening) {
-                // 30 DH/h or 50 DH/2h (i.e. 25 DH/h)
                 if (durationInMinutes <= 30) price = 20;
                 else if (durationInMinutes <= 60) price = 30;
                 else if (durationInMinutes <= 120) price = 50;
-                else price = Math.ceil(hours) * 25; // Pro-rata on the 2h price
+                else price = Math.ceil(hours / 2) * 50; 
             } else {
                 price = hours * 20;
             }
             break;
         case 'PS5 VIP':
         case 'VR Simulator':
-             // 45 DH/h or 75 DH/2h (i.e. 37.5 DH/h)
             if (durationInMinutes <= 60) price = 45;
             else if (durationInMinutes <= 120) price = 75;
-            else price = Math.ceil(hours) * 37.5;
+            else price = Math.ceil(hours / 2) * 75;
             break;
     }
 
-    return Math.ceil(price); // Round up to nearest Dirham
+    return Math.ceil(price);
 }
 
 
 function ReleaseStationDialog({ station, client, allClients }: { station: Station, client?: Client, allClients: Client[] | null }) {
     const [isOpen, setIsOpen] = useState(false);
+    const [useBonus, setUseBonus] = useState(false);
     const firestore = useFirestore();
     const { toast } = useToast();
     const { t } = useTranslation();
@@ -453,10 +453,24 @@ function ReleaseStationDialog({ station, client, allClients }: { station: Statio
 
     const startTime = new Date(station.sessionStartTime);
     const durationInMinutes = differenceInMinutes(new Date(), startTime);
+    const durationInHours = durationInMinutes / 60;
     const hours = Math.floor(durationInMinutes / 60);
     const minutes = durationInMinutes % 60;
     const durationString = `${hours}h ${minutes}m`;
-    const cost = calculatePrice(station.type, durationInMinutes, startTime);
+    const totalCost = calculatePrice(station.type, durationInMinutes, startTime);
+
+    const clientBonusHours = client.bonusHours || 0;
+    
+    let bonusHoursToUse = 0;
+    let remainingCost = totalCost;
+    let remainingBonusHours = clientBonusHours;
+
+    if (useBonus) {
+        bonusHoursToUse = Math.min(clientBonusHours, durationInHours);
+        const costCoveredByBonus = calculatePrice(station.type, bonusHoursToUse * 60, startTime);
+        remainingCost = Math.max(0, totalCost - costCoveredByBonus);
+        remainingBonusHours = clientBonusHours - bonusHoursToUse;
+    }
 
     const handleConfirmRelease = () => {
         if(!firestore) return;
@@ -466,13 +480,17 @@ function ReleaseStationDialog({ station, client, allClients }: { station: Statio
 
         if(station.currentClientId) {
             const clientRef = doc(firestore, "clients", station.currentClientId);
-            updateDocumentNonBlocking(clientRef, { currentStationId: null });
+            updateDocumentNonBlocking(clientRef, { 
+                currentStationId: null,
+                bonusHours: useBonus ? remainingBonusHours : clientBonusHours,
+             });
 
             const historyRef = collection(firestore, 'clients', station.currentClientId, 'history');
+            const historyDescription = `Checked out from ${station.id}. Session: ${durationString}. Cost: ${formatCurrency(totalCost, 'MAD')}. ${useBonus ? `Used ${bonusHoursToUse.toFixed(2)} bonus hours.` : ''}`;
             addDocumentNonBlocking(historyRef, {
                 timestamp: new Date().toISOString(),
                 type: 'check-out',
-                description: `Checked out from station ${station.id} (${station.type}). Session: ${durationString}, Cost: ${formatCurrency(cost, 'MAD')}`,
+                description: historyDescription,
             });
         }
 
@@ -494,22 +512,58 @@ function ReleaseStationDialog({ station, client, allClients }: { station: Statio
                 <DialogHeader>
                     <DialogTitle>Finaliser la session de {client.name}</DialogTitle>
                     <DialogDescription>
-                        Poste: {station.id} ({station.type})
+                        Vérifiez les détails de la session et confirmez le paiement.
                     </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4 py-4">
-                    <div className="flex justify-around text-center">
+                     <div className="flex items-center gap-4 p-3 rounded-lg bg-muted/50 border">
+                        <User className="h-10 w-10 text-muted-foreground" />
                         <div>
-                            <p className="text-sm text-muted-foreground">Durée de la session</p>
-                            <p className="text-2xl font-bold">{durationString}</p>
-                        </div>
-                        <div>
-                            <p className="text-sm text-muted-foreground">Montant à payer</p>
-                            <p className="text-2xl font-bold text-primary">{formatCurrency(cost, 'MAD')}</p>
+                            <p className="font-semibold">{client.name}</p>
+                            <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                                <span>{client.subscriptionTier}</span>
+                                <div className="flex items-center gap-1">
+                                    <Star className="h-4 w-4 text-yellow-400" />
+                                    <span>{(client.bonusHours || 0).toFixed(2)}h bonus</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
+                    <div className="flex justify-around text-center p-4 bg-muted rounded-lg">
+                        <div>
+                            <p className="text-sm text-muted-foreground">Durée</p>
+                            <p className="text-xl font-bold">{durationString}</p>
+                        </div>
+                        <div>
+                            <p className="text-sm text-muted-foreground">Coût Total</p>
+                            <p className="text-xl font-bold">{formatCurrency(totalCost, 'MAD')}</p>
+                        </div>
+                    </div>
+                    
                     <Separator />
-                     <div className="flex flex-col gap-2">
+
+                    <div className="space-y-4">
+                        <div className="flex items-center justify-between p-3 rounded-lg border">
+                           <div>
+                             <Label htmlFor="use-bonus" className="font-medium">Utiliser le solde bonus</Label>
+                             <p className="text-xs text-muted-foreground">Appliquer les heures bonus pour réduire le coût.</p>
+                           </div>
+                           <Switch id="use-bonus" checked={useBonus} onCheckedChange={setUseBonus} disabled={clientBonusHours <= 0} />
+                        </div>
+
+                         {useBonus && (
+                            <div className="text-sm text-center text-muted-foreground">
+                                <p>{bonusHoursToUse.toFixed(2)}h de bonus seront utilisées.</p>
+                                <p>Nouveau solde bonus : {remainingBonusHours.toFixed(2)}h</p>
+                            </div>
+                        )}
+
+                        <div className="p-4 bg-primary/10 rounded-lg text-center">
+                            <p className="text-sm text-primary">Montant final à payer</p>
+                            <p className="text-3xl font-bold text-primary">{formatCurrency(remainingCost, 'MAD')}</p>
+                        </div>
+                    </div>
+                     <div className="flex flex-col gap-2 pt-4">
                         <BonusPointsDialog
                             clients={allClients}
                             initialClient={client}
@@ -684,5 +738,7 @@ export default function ScanPage() {
     </>
   );
 }
+
+    
 
     
