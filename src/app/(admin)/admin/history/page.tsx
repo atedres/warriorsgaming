@@ -1,8 +1,8 @@
 
 'use client';
 
-import { useState, useMemo } from 'react';
-import { collection, collectionGroup, query, orderBy, where } from 'firebase/firestore';
+import { useState, useMemo, useEffect } from 'react';
+import { collection, query, orderBy, getDocs, QuerySnapshot, DocumentData } from 'firebase/firestore';
 import { useCollection, useFirestore } from '@/firebase';
 import { useMemoFirebase } from '@/firebase/provider';
 import type { Client, ClientHistoryLog } from '@/app/lib/data';
@@ -20,65 +20,73 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 
-// We need to fetch the client's name for each log.
-// A Map is an efficient way to look up client names by their ID.
-function createClientMap(clients: Client[] | null): Map<string, string> {
-  const map = new Map<string, string>();
-  if (clients) {
-    for (const client of clients) {
-      map.set(client.id, client.name);
-    }
-  }
-  return map;
-}
+type CombinedHistoryLog = ClientHistoryLog & { clientName: string };
 
 export default function HistoryPage() {
   const { t } = useTranslation();
   const firestore = useFirestore();
   const [selectedClientId, setSelectedClientId] = useState<string>('all');
+  const [allHistory, setAllHistory] = useState<CombinedHistoryLog[]>([]);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(true);
 
-  // Fetch all clients to map IDs to names
+  // Fetch all clients to map IDs to names and to iterate over for history fetching
   const clientsQuery = useMemoFirebase(
     () => (firestore ? query(collection(firestore, 'clients')) : null),
     [firestore]
   );
   const { data: clients, isLoading: isLoadingClients } = useCollection<Client>(clientsQuery);
-  const clientMap = useMemo(() => createClientMap(clients), [clients]);
 
-  // Base query for the 'history' collection group
-  const historyQuery = useMemoFirebase(() => {
-    if (!firestore) return null;
-    const historyCollectionGroup = collectionGroup(firestore, 'history');
-    
-    // The query is the same for all clients or a specific one at the Firestore level
-    return query(historyCollectionGroup, orderBy('timestamp', 'desc'));
-    
-  }, [firestore]);
+  useEffect(() => {
+    const fetchAllHistory = async () => {
+      if (!firestore || !clients) {
+        setIsLoadingHistory(clients === null); // Only keep loading if clients are not yet loaded
+        return;
+      }
 
-  const { data: history, isLoading: isLoadingHistory } = useCollection<ClientHistoryLog & { path?: string }>(historyQuery);
+      setIsLoadingHistory(true);
+      const historyPromises: Promise<CombinedHistoryLog[]>[] = [];
+      const clientMap = new Map<string, string>();
+      for (const client of clients) {
+        clientMap.set(client.id, client.name);
+        const historyRef = collection(firestore, 'clients', client.id, 'history');
+        const historyQuery = query(historyRef, orderBy('timestamp', 'desc'));
+        
+        historyPromises.push(
+          getDocs(historyQuery).then(snapshot => 
+            snapshot.docs.map(doc => ({
+              ...(doc.data() as ClientHistoryLog),
+              id: doc.id,
+              clientName: client.name
+            }))
+          )
+        );
+      }
 
-  const getClientIdFromPath = (path: string): string | undefined => {
-    const segments = path.split('/');
-    const clientsIndex = segments.indexOf('clients');
-    if (clientsIndex !== -1 && clientsIndex + 1 < segments.length) {
-      return segments[clientsIndex + 1];
-    }
-    return undefined;
-  };
-  
+      try {
+        const results = await Promise.all(historyPromises);
+        const combinedHistory = results.flat().sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+        setAllHistory(combinedHistory);
+      } catch (error) {
+        console.error("Error fetching history:", error);
+      } finally {
+        setIsLoadingHistory(false);
+      }
+    };
+
+    fetchAllHistory();
+  }, [firestore, clients]);
+
   const filteredHistory = useMemo(() => {
-    if (!history) return [];
-    if (selectedClientId === 'all') return history;
-
-    return history.filter(log => {
-        // useCollection does not provide document path, so this is a workaround.
-        // In a real application, you should store clientId inside the history document.
-        // For now, this is a placeholder. Without the path, we can't filter.
-        // We will show a message to the user.
-        return true; 
+    if (selectedClientId === 'all') {
+      return allHistory;
+    }
+    return allHistory.filter(log => {
+      // We need to find the client id from the log. Since it is not in the log data,
+      // we match by clientName. This is not ideal but works with current data structure.
+      const client = clients?.find(c => c.name === log.clientName);
+      return client?.id === selectedClientId;
     });
-  }, [history, selectedClientId]);
-
+  }, [allHistory, selectedClientId, clients]);
 
   return (
     <>
@@ -108,29 +116,26 @@ export default function HistoryPage() {
           <ScrollArea className="h-[60vh]">
             <div className="p-4 space-y-4">
               {(isLoadingHistory || isLoadingClients) && <p>{t('loading')}...</p>}
-              {!isLoadingHistory && history?.length === 0 && (
+              {!isLoadingHistory && allHistory.length === 0 && (
                 <p className="text-muted-foreground text-center">{t('noHistoryFound')}</p>
               )}
-              {filteredHistory?.map((log: any) => {
-                 // HACK: This is a workaround because collection group queries do not return the document path in the snapshot data easily.
-                 // In a real app, you would either store the clientId in the history document itself,
-                 // or you'd need a more complex query setup.
-                 const clientName = "Client Inconnu"; // Placeholder
-                return (
-                  <div key={log.id} className="flex items-start gap-4">
-                    <div className="bg-muted p-2 rounded-full">
-                      <Clock className="h-5 w-5 text-muted-foreground" />
-                    </div>
-                    <div className="flex-1">
-                      <p className="font-medium">{log.description}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {format(new Date(log.timestamp), "d MMM yyyy 'at' HH:mm")}
-                      </p>
+              {filteredHistory?.map((log) => (
+                <div key={log.id + log.timestamp} className="flex items-start gap-4">
+                  <div className="bg-muted p-2 rounded-full">
+                    <Clock className="h-5 w-5 text-muted-foreground" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-medium">{log.description}</p>
+                    <div className="text-sm text-muted-foreground flex items-center gap-2">
+                        <span>{log.clientName}</span>
+                        <span>&bull;</span>
+                        <span>
+                            {format(new Date(log.timestamp), "d MMM yyyy 'at' HH:mm")}
+                        </span>
                     </div>
                   </div>
-                )
-              })}
-                {!isLoadingHistory && selectedClientId !== 'all' && <p className="text-center text-xs text-muted-foreground pt-4">Le filtrage côté client pour les groupes de collections est limité. Pour une fonctionnalité complète, envisagez de stocker le `clientId` directement dans les documents d'historique.</p>}
+                </div>
+              ))}
             </div>
           </ScrollArea>
         </CardContent>
