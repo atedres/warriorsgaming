@@ -29,7 +29,7 @@ import { useTranslation } from "@/hooks/use-translation";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNowStrict } from 'date-fns';
 
-function StationCard({ station, client, onRelease }: { station: Station, client?: Client, onRelease: (station: Station) => void }) {
+function StationCard({ station, client, onRelease, isLoadingClients }: { station: Station, client?: Client, onRelease: (station: Station) => void, isLoadingClients: boolean }) {
     const [timer, setTimer] = useState("0m");
     const { t } = useTranslation();
 
@@ -61,6 +61,8 @@ function StationCard({ station, client, onRelease }: { station: Station, client?
         }
       };
 
+    const clientName = isLoadingClients ? t('loading') : (client?.name || "Client inconnu");
+    const canRelease = station.status === 'in use';
 
     return (
         <Card className="flex flex-col transition-all duration-300">
@@ -80,9 +82,9 @@ function StationCard({ station, client, onRelease }: { station: Station, client?
                 {station.status === 'in use' ? (
                     <div className="space-y-2">
                         <User className="h-8 w-8 mx-auto text-muted-foreground" />
-                        <p className="font-semibold">{client?.name || t('loading')}</p>
+                        <p className="font-semibold">{clientName}</p>
                         <p className="text-2xl font-mono font-bold text-primary">{timer}</p>
-                        <Button variant="destructive" size="sm" onClick={() => onRelease(station)} className="mt-2 w-full">
+                        <Button variant="destructive" size="sm" onClick={() => onRelease(station)} className="mt-2 w-full" disabled={!canRelease}>
                             <LogOut className="mr-2 h-4 w-4"/> {t('releaseStation')}
                         </Button>
                     </div>
@@ -327,20 +329,23 @@ export default function ScanPage() {
   }
   
   const handleReleaseStation = (stationToRelease: Station) => {
-    if(!firestore || !stationToRelease.currentClientId) return;
+    if(!firestore) return;
 
     const stationRef = doc(firestore, "stations", stationToRelease.id);
     updateDocumentNonBlocking(stationRef, { status: 'available', currentClientId: null, sessionStartTime: null });
 
-    const clientRef = doc(firestore, "clients", stationToRelease.currentClientId);
-    updateDocumentNonBlocking(clientRef, { currentStationId: null });
+    if(stationToRelease.currentClientId) {
+        const clientRef = doc(firestore, "clients", stationToRelease.currentClientId);
+        updateDocumentNonBlocking(clientRef, { currentStationId: null });
 
-    const historyRef = collection(firestore, 'clients', stationToRelease.currentClientId, 'history');
-    addDocumentNonBlocking(historyRef, {
-        timestamp: new Date().toISOString(),
-        type: 'check-out',
-        description: `Checked out from station ${stationToRelease.id} (${stationToRelease.type})`,
-    });
+        const historyRef = collection(firestore, 'clients', stationToRelease.currentClientId, 'history');
+        addDocumentNonBlocking(historyRef, {
+            timestamp: new Date().toISOString(),
+            type: 'check-out',
+            description: `Checked out from station ${stationToRelease.id} (${stationToRelease.type})`,
+        });
+    }
+
 
     toast({
         title: "Poste Libéré",
@@ -549,7 +554,7 @@ export default function ScanPage() {
                         </Card>
                     ))}
                     {stationsWithClients?.map(({station, client}) => (
-                        <StationCard key={station.id} station={station} client={client} onRelease={handleReleaseStation} />
+                        <StationCard key={station.id} station={station} client={client} onRelease={handleReleaseStation} isLoadingClients={isLoadingClients} />
                     ))}
                 </CardContent>
             </Card>
@@ -559,7 +564,3 @@ export default function ScanPage() {
   );
 }
 
-
-
-
-    
