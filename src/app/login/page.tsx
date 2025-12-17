@@ -3,8 +3,9 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useAuth, useUser } from '@/firebase';
-import { signInWithEmailAndPassword } from 'firebase/auth';
+import { useAuth, useUser, useFirestore } from '@/firebase';
+import { signInWithEmailAndPassword, signOut } from 'firebase/auth';
+import { doc, getDoc } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -24,32 +25,61 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const auth = useAuth();
+  const firestore = useFirestore();
   const { user, isUserLoading } = useUser();
   const router = useRouter();
   const { toast } = useToast();
 
   useEffect(() => {
     if (!isUserLoading && user) {
-      router.push('/admin');
+      // If a user is already logged in, check if they are an admin
+      const checkAdminStatus = async () => {
+        if (!firestore) return;
+        const adminRef = doc(firestore, 'admins', user.uid);
+        const adminDoc = await getDoc(adminRef);
+        if (adminDoc.exists()) {
+          router.push('/admin'); // Already logged in as admin, go to dashboard
+        }
+        // If not admin, they shouldn't be here, but we don't log them out
+        // as they might be a client who strayed. Let them navigate away.
+      };
+      checkAdminStatus();
     }
-  }, [user, isUserLoading, router]);
+  }, [user, isUserLoading, router, firestore]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!auth) return;
+    if (!auth || !firestore) return;
     setLoading(true);
     try {
-      await signInWithEmailAndPassword(auth, email, password);
-      // The onAuthStateChanged listener in the provider will handle the redirect.
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const loggedInUser = userCredential.user;
+
+      // Check if user is an admin
+      const adminRef = doc(firestore, 'admins', loggedInUser.uid);
+      const adminDoc = await getDoc(adminRef);
+
+      if (adminDoc.exists()) {
+        // It's an admin, redirect to dashboard. useEffect will handle it.
+        router.push('/admin');
+      } else {
+        // Not an admin. Show error and sign out.
+        await signOut(auth);
+        toast({
+          variant: 'destructive',
+          title: 'Accès non autorisé',
+          description: "Ce compte n'a pas les permissions d'administrateur.",
+        });
+      }
     } catch (error: any) {
-      let description = 'An unexpected error occurred. Please try again.';
+      let description = 'Une erreur inattendue est survenue. Veuillez réessayer.';
       if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
-        description = 'Invalid email or password. Please check your credentials and try again.';
+        description = 'Email ou mot de passe incorrect. Veuillez vérifier vos informations et réessayer.';
       }
       
       toast({
         variant: 'destructive',
-        title: 'Login Failed',
+        title: 'Échec de la connexion',
         description: description,
       });
     } finally {
@@ -57,7 +87,7 @@ export default function LoginPage() {
     }
   };
   
-  if (isUserLoading || user) {
+  if (isUserLoading) {
     return (
       <div className="flex h-screen w-full flex-col items-center justify-center bg-muted/40">
         <Logo className="h-12 w-auto animate-pulse" />
@@ -66,6 +96,8 @@ export default function LoginPage() {
     );
   }
 
+  // If user is already logged in and is not loading, the useEffect will handle redirection.
+  // We render the form to prevent layout shifts.
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-muted/40">
       <div className="mb-8">
