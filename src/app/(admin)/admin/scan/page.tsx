@@ -763,7 +763,3 @@ export default function ScanPage() {
     </>
   );
 }
-
-    
-
-    

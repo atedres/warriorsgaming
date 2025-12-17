@@ -26,8 +26,6 @@ import { collection, query } from 'firebase/firestore';
 import type { Client } from '@/app/lib/data';
 import { Input } from '@/components/ui/input';
 import { Search } from 'lucide-react';
-import { QrCode } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { useTranslation } from '@/hooks/use-translation';
 
 export default function ClientsPage() {

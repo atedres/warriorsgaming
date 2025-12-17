@@ -20,7 +20,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 
-type CombinedHistoryLog = ClientHistoryLog & { clientName: string };
+type CombinedHistoryLog = ClientHistoryLog & { clientName: string, clientId: string };
 
 export default function HistoryPage() {
   const { t } = useTranslation();
@@ -29,7 +29,6 @@ export default function HistoryPage() {
   const [allHistory, setAllHistory] = useState<CombinedHistoryLog[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(true);
 
-  // Fetch all clients to map IDs to names and to iterate over for history fetching
   const clientsQuery = useMemoFirebase(
     () => (firestore ? query(collection(firestore, 'clients')) : null),
     [firestore]
@@ -38,16 +37,18 @@ export default function HistoryPage() {
 
   useEffect(() => {
     const fetchAllHistory = async () => {
-      if (!firestore || !clients) {
-        setIsLoadingHistory(clients === null); // Only keep loading if clients are not yet loaded
+      if (!firestore || isLoadingClients) {
         return;
+      }
+      if (!clients) {
+          setIsLoadingHistory(false);
+          return;
       }
 
       setIsLoadingHistory(true);
       const historyPromises: Promise<CombinedHistoryLog[]>[] = [];
-      const clientMap = new Map<string, string>();
+      
       for (const client of clients) {
-        clientMap.set(client.id, client.name);
         const historyRef = collection(firestore, 'clients', client.id, 'history');
         const historyQuery = query(historyRef, orderBy('timestamp', 'desc'));
         
@@ -56,7 +57,8 @@ export default function HistoryPage() {
             snapshot.docs.map(doc => ({
               ...(doc.data() as ClientHistoryLog),
               id: doc.id,
-              clientName: client.name
+              clientName: client.name,
+              clientId: client.id
             }))
           )
         );
@@ -74,19 +76,14 @@ export default function HistoryPage() {
     };
 
     fetchAllHistory();
-  }, [firestore, clients]);
+  }, [firestore, clients, isLoadingClients]);
 
   const filteredHistory = useMemo(() => {
     if (selectedClientId === 'all') {
       return allHistory;
     }
-    return allHistory.filter(log => {
-      // We need to find the client id from the log. Since it is not in the log data,
-      // we match by clientName. This is not ideal but works with current data structure.
-      const client = clients?.find(c => c.name === log.clientName);
-      return client?.id === selectedClientId;
-    });
-  }, [allHistory, selectedClientId, clients]);
+    return allHistory.filter(log => log.clientId === selectedClientId);
+  }, [allHistory, selectedClientId]);
 
   return (
     <>

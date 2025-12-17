@@ -8,7 +8,7 @@ export type Station = {
 };
 
 export type Client = {
-  id:string;
+  id:string; // This is the Firebase Auth UID
   name: string;
   email: string;
   phone: string;

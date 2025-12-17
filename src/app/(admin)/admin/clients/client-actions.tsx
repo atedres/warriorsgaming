@@ -40,10 +40,11 @@ import {
 import { Input } from "@/components/ui/input";
 import type { Client, ClientHistoryLog } from "@/app/lib/data";
 import { useToast } from "@/hooks/use-toast";
-import { addDocumentNonBlocking, deleteDocumentNonBlocking, updateDocumentNonBlocking } from "@/firebase/non-blocking-updates";
+import { addDocumentNonBlocking, deleteDocumentNonBlocking, setDocumentNonBlocking, updateDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useMemoFirebase } from "@/firebase/provider";
+
 
 const clientFormSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
@@ -69,7 +70,6 @@ type ClientActionsProps =
     };
 
 
-// Separate component for the form to manage its own state
 function ClientForm({ client, onFormSubmit, isSubmitting }: { client?: Client, onFormSubmit: (data: ClientFormValues) => void, isSubmitting: boolean }) {
   const form = useForm<ClientFormValues>({
     resolver: zodResolver(clientFormSchema),
@@ -111,9 +111,9 @@ function ClientForm({ client, onFormSubmit, isSubmitting }: { client?: Client, o
             <FormItem>
               <FormLabel>Email</FormLabel>
               <FormControl>
-                <Input placeholder="john@example.com" {...field} />
+                <Input placeholder="john@example.com" {...field} disabled={!!client} />
               </FormControl>
-              <FormMessage />
+               <FormMessage />
             </FormItem>
           )}
         />
@@ -178,14 +178,21 @@ export function ClientActions({ mode, client }: ClientActionsProps) {
     
     try {
       if (mode === "add") {
+        // NOTE: In a real app, you would create a Firebase Auth user first,
+        // then use that user's UID as the document ID here.
+        // For this prototyping environment, we'll use email as a stand-in ID,
+        // but this is NOT secure and not for production.
+        const newClientId = data.email;
+        const clientRef = doc(firestore, "clients", newClientId);
         const clientData = {
           ...data,
+          id: newClientId,
           memberSince: new Date().toISOString().split("T")[0],
           subscriptionHours: 0,
           bonusHours: 0,
           usageData: "New client.",
         };
-        await addDocumentNonBlocking(collection(firestore, 'clients'), clientData);
+        await setDocumentNonBlocking(clientRef, clientData, {});
         toast({ title: "Client created", description: `${data.name} has been added.` });
       } else if (mode === "edit" && client) {
         const clientRef = doc(firestore, "clients", client.id);
@@ -227,7 +234,7 @@ export function ClientActions({ mode, client }: ClientActionsProps) {
             <DialogHeader>
               <DialogTitle>Add New Client</DialogTitle>
               <DialogDescription>
-                Enter the client's details to create their profile.
+                Enter the client's details to create their profile. The email will be their unique ID.
               </DialogDescription>
             </DialogHeader>
             <ClientForm onFormSubmit={handleFormSubmit} isSubmitting={isSubmitting} />
@@ -282,6 +289,7 @@ export function ClientActions({ mode, client }: ClientActionsProps) {
 export function QrCodeDialog({ client }: { client: Client }) {
   const [isQrDialogOpen, setQrDialogOpen] = useState(false);
 
+  // The client ID is now the Firebase UID
   const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(
     JSON.stringify({ clientId: client.id, name: client.name })
   )}`;
@@ -335,6 +343,7 @@ export function ClientHistoryDialog({ client }: { client: Client }) {
 
     const historyQuery = useMemoFirebase(() => {
         if (!firestore) return null;
+        // Client ID is now the UID, which is the document ID
         const historyRef = collection(firestore, 'clients', client.id, 'history');
         return query(historyRef, orderBy('timestamp', 'desc'));
     }, [firestore, client.id]);
@@ -381,6 +390,3 @@ export function ClientHistoryDialog({ client }: { client: Client }) {
         </Dialog>
     )
 }
-    
-
-    

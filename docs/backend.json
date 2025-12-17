@@ -5,51 +5,54 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Client",
       "type": "object",
-      "description": "Represents a client of the Warriors Gaming center.",
+      "description": "Represents a client of the Warriors Gaming center. The document ID is the Firebase Auth UID.",
       "properties": {
-        "id": {
+        "name": {
           "type": "string",
-          "description": "Unique identifier for the client.",
-          "format": "uuid"
+          "description": "Full name of the client."
         },
-        "firstName": {
-          "type": "string",
-          "description": "First name of the client."
-        },
-        "lastName": {
-          "type": "string",
-          "description": "Last name of the client."
-        },
-        "phoneNumber": {
+        "phone": {
           "type": "string",
           "description": "Phone number of the client."
         },
         "email": {
           "type": "string",
-          "description": "Email address of the client.",
+          "description": "Email address of the client, used for authentication.",
           "format": "email"
         },
-        "qrCode": {
+        "memberSince": {
+            "type": "string",
+            "format": "date",
+            "description": "The date the client first registered."
+        },
+        "subscriptionTier": {
           "type": "string",
-          "description": "The QR code associated with the client, used for check-in and bonus redemption."
+          "description": "Subscription level of the client.",
+          "enum": ["Basic", "Premium", "VIP"]
         },
         "subscriptionHours": {
           "type": "number",
-          "description": "Number of subscription hours remaining for the client.",
-          "format": "number"
+          "description": "Number of subscription hours remaining for the client."
         },
-        "bonusPoints": {
+        "bonusHours": {
           "type": "number",
-          "description": "Number of bonus points accumulated by the client.",
-          "format": "number"
+          "description": "Number of bonus hours accumulated by the client."
+        },
+        "usageData": {
+            "type": "string",
+            "description": "Notes on client's usage patterns and preferences."
+        },
+        "currentStationId": {
+            "type": ["string", "null"],
+            "description": "The ID of the station the client is currently using, or null."
         }
       },
       "required": [
-        "id",
-        "firstName",
-        "lastName",
-        "phoneNumber",
-        "qrCode"
+        "name",
+        "email",
+        "phone",
+        "memberSince",
+        "subscriptionTier"
       ]
     },
     "Station": {
@@ -60,8 +63,7 @@
       "properties": {
         "id": {
           "type": "string",
-          "description": "Unique identifier for the station.",
-          "format": "uuid"
+          "description": "Unique identifier for the station."
         },
         "type": {
           "type": "string",
@@ -77,6 +79,13 @@
           "items": {
             "type": "string"
           }
+        },
+        "currentClientId": {
+            "type": ["string", "null"]
+        },
+        "sessionStartTime": {
+            "type": ["string", "null"],
+            "format": "date-time"
         }
       },
       "required": [
@@ -98,7 +107,7 @@
         },
         "clientId": {
           "type": "string",
-          "description": "Reference to Client. (Relationship: Client 1:N Reservation)"
+          "description": "Reference to Client UID. (Relationship: Client 1:N Reservation)"
         },
         "stationId": {
           "type": "string",
@@ -136,7 +145,7 @@
         },
         "clientId": {
           "type": "string",
-          "description": "Reference to Client. (Relationship: Client 1:N UsageLog)"
+          "description": "Reference to Client UID. (Relationship: Client 1:N UsageLog)"
         },
         "stationId": {
           "type": "string",
@@ -157,8 +166,7 @@
         "id",
         "clientId",
         "stationId",
-        "startTime",
-        "endTime"
+        "startTime"
       ]
     },
     "ClientHistoryLog": {
@@ -202,13 +210,13 @@
         "definition": {
           "entityName": "Client",
           "schema": {
-            "$ref": "#/backend/entities/Client"
+            "$ref": "#/entities/Client"
           },
-          "description": "Stores client profiles. Accessible to admins and potentially to the client themselves. Includes denormalized fields if needed for specific query requirements.",
+          "description": "Stores client profiles. The document ID {clientId} is the user's Firebase Authentication UID. This allows for rules where users can only access their own document.",
           "params": [
             {
               "name": "clientId",
-              "description": "The unique identifier of the client."
+              "description": "The unique Firebase Authentication UID of the client."
             }
           ]
         }
@@ -218,13 +226,13 @@
         "definition": {
           "entityName": "ClientHistoryLog",
           "schema": {
-            "$ref": "#/backend/entities/ClientHistoryLog"
+            "$ref": "#/entities/ClientHistoryLog"
           },
           "description": "Stores the activity history for a specific client.",
           "params": [
             {
               "name": "clientId",
-              "description": "The unique identifier of the client."
+              "description": "The unique Firebase Authentication UID of the client."
             },
             {
               "name": "historyId",
@@ -238,7 +246,7 @@
         "definition": {
           "entityName": "Station",
           "schema": {
-            "$ref": "#/backend/entities/Station"
+            "$ref": "#/entities/Station"
           },
           "description": "Stores station information. Read-only for clients, writable by admins.",
           "params": [
@@ -254,7 +262,7 @@
         "definition": {
           "entityName": "Reservation",
           "schema": {
-            "$ref": "#/backend/entities/Reservation"
+            "$ref": "#/entities/Reservation"
           },
           "description": "Stores reservation data. Contains references to Client and Station.",
           "params": [
@@ -270,7 +278,7 @@
         "definition": {
           "entityName": "UsageLog",
           "schema": {
-            "$ref": "#/backend/entities/UsageLog"
+            "$ref": "#/entities/UsageLog"
           },
           "description": "Stores usage log data. Contains references to Client and Station.",
           "params": [
@@ -285,5 +293,3 @@
     "reasoning": "The Firestore structure is designed to manage data for the Warriors Gaming center application, focusing on clients, stations, reservations, and usage logs. The structure emphasizes authorization independence and supports the application's core features, including real-time station monitoring, online reservations, QR code management, and usage analytics.\n\n**Authorization Independence:**\nAuthorization Independence is achieved by leveraging path-based ownership for private user data (e.g., client profiles) and avoiding hierarchical authorization dependencies (`get()` calls in security rules). There is no explicit collaborative data, so membership maps are not currently required.\n\n**Structural Segregation:**\nData with different access needs is segregated into separate collections. This simplifies security rules by ensuring that all documents within a collection share the same security posture. For instance, client profiles are stored in a dedicated collection (`clients`), separate from station data or reservation information. A subcollection `history` is added under each client to store their activity log, ensuring data is co-located with the client but can be queried independently.\n\n**Access Modeling:**\n- **Client Data:** Each client has their own document in the `clients` collection, accessible to admins for management and potentially to the client themselves (if self-service features are implemented). However, the user request does not indicate the need for user-owned client data.\n- **Station Data:** Station data is stored in the `stations` collection, and is generally read-only by clients but writable by admins.\n- **Reservations and Usage Logs:** Reservations and usage logs are stored in separate collections (`reservations` and `usageLogs`, respectively). Each document contains references to the relevant client and station, facilitating efficient querying and reporting.\n\n**QAPs (Rules are not Filters):**\nThe structure supports secure `list` operations by ensuring that clients cannot list reservations or usage logs for other clients. Admin can list all clients, stations, reservations, and usage logs.\n\nThe structure also supports the integrity of ownership, timestamps, and denormalized data by using atomic operations (transactions/batches) when updating related documents.\n"
   }
 }
-
-    
