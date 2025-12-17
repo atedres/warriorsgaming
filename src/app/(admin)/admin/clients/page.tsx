@@ -28,9 +28,11 @@ import { Input } from '@/components/ui/input';
 import { Search } from 'lucide-react';
 import { QrCode } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useTranslation } from '@/hooks/use-translation';
 
 export default function ClientsPage() {
   const [searchTerm, setSearchTerm] = useState('');
+  const { t } = useTranslation();
   const firestore = useFirestore();
   const clientsQuery = useMemoFirebase(
     () => (firestore ? query(collection(firestore, 'clients')) : null),
@@ -46,15 +48,15 @@ export default function ClientsPage() {
   return (
     <>
       <PageHeader
-        title="Client Management"
-        description="View, create, and manage client profiles and subscriptions."
+        title={t('clientManagement')}
+        description={t('clientManagementDescription')}
         className="px-0"
       >
         <ClientActions mode="add" />
       </PageHeader>
       <Card>
         <CardHeader>
-          <CardTitle className="font-headline">Clients</CardTitle>
+          <CardTitle className="font-headline">{t('clients')}</CardTitle>
           <CardDescription>
             A list of all registered clients in Warriors Gaming.
           </CardDescription>
@@ -62,7 +64,7 @@ export default function ClientsPage() {
             <div className="relative flex items-center">
               <Search className="absolute left-2.5 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search by name..."
+                placeholder={t('searchByName')}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-8 w-full md:w-1/2 lg:w-1/3"
@@ -74,15 +76,15 @@ export default function ClientsPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Subscription</TableHead>
-                <TableHead>Heures d'abo.</TableHead>
-                <TableHead>Heures bonus</TableHead>
+                <TableHead>{t('clientName')}</TableHead>
+                <TableHead>{t('subscription')}</TableHead>
+                <TableHead>{t('subscriptionHours')}</TableHead>
+                <TableHead>{t('bonusHours')}</TableHead>
                 <TableHead className="hidden md:table-cell">
-                  Member Since
+                  {t('memberSince')}
                 </TableHead>
                 <TableHead>
-                  <span className="sr-only">Actions</span>
+                  <span className="sr-only">{t('actions')}</span>
                 </TableHead>
               </TableRow>
             </TableHeader>
@@ -95,7 +97,13 @@ export default function ClientsPage() {
                     </TableCell>
                   </TableRow>
                 ))}
-              {filteredClients.map((client) => (
+              {filteredClients.length === 0 && !isLoading ? (
+                <TableRow>
+                    <TableCell colSpan={6} className="text-center">
+                        {t('noClientsFound')}
+                    </TableCell>
+                </TableRow>
+              ) : filteredClients.map((client) => (
                   <TableRow key={client.id}>
                     <TableCell className="font-medium">
                       <div className="flex items-center gap-2">
@@ -143,5 +151,3 @@ export default function ClientsPage() {
     </>
   );
 }
-
-    

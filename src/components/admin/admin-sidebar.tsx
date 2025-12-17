@@ -26,18 +26,27 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useLanguage } from "@/hooks/use-translation";
+import { useLanguage, useTranslation } from "@/hooks/use-translation";
 import { ThemeToggle } from "../theme-toggle";
 
 
 export function AdminHeader() {
     const auth = useAuth();
     const { setLanguage } = useLanguage();
+    const { t } = useTranslation();
     const handleLogout = () => {
         if (auth) {
         signOut(auth);
         }
     };
+    
+    const navItems = [
+      { href: "/admin", icon: Home, label: t('dashboard') },
+      { href: "/admin/clients", icon: Users2, label: t('clients') },
+      { href: "/admin/stations", icon: Gamepad2, label: t('stations') },
+      { href: "/admin/scan", icon: QrCode, label: t('scanner') },
+      { href: "/admin/loyalty", icon: Sparkles, label: t('loyaltyAI') },
+    ];
 
     return (
         <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
@@ -72,7 +81,7 @@ export function AdminHeader() {
                     className="flex items-center gap-4 px-2.5 text-muted-foreground hover:text-foreground"
                     >
                     <LogOut className="h-5 w-5" />
-                    Log Out
+                    {t('logOut')}
                 </button>
               </nav>
             </SheetContent>
@@ -104,23 +113,25 @@ export function AdminHeader() {
     )
 }
 
-const navItems = [
-  { href: "/admin", icon: Home, label: "Dashboard" },
-  { href: "/admin/clients", icon: Users2, label: "Clients" },
-  { href: "/admin/stations", icon: Gamepad2, label: "Stations" },
-  { href: "/admin/scan", icon: QrCode, label: "Scanner" },
-  { href: "/admin/loyalty", icon: Sparkles, label: "Loyalty AI" },
-];
 
 export function AdminSidebar() {
   const pathname = usePathname();
   const auth = useAuth();
+  const { t } = useTranslation();
 
   const handleLogout = () => {
     if (auth) {
       signOut(auth);
     }
   };
+  
+  const navItems = [
+    { href: "/admin", icon: Home, label: t('dashboard') },
+    { href: "/admin/clients", icon: Users2, label: t('clients') },
+    { href: "/admin/stations", icon: Gamepad2, label: t('stations') },
+    { href: "/admin/scan", icon: QrCode, label: t('scanner') },
+    { href: "/admin/loyalty", icon: Sparkles, label: t('loyaltyAI') },
+  ];
 
   return (
     <aside className="fixed inset-y-0 left-0 z-10 hidden w-14 flex-col border-r bg-background sm:flex">
@@ -152,14 +163,14 @@ export function AdminSidebar() {
                 className="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:text-foreground md:h-8 md:w-8"
               >
                 <Settings className="h-5 w-5" />
-                <span className="sr-only">Settings</span>
+                <span className="sr-only">{t('settings')}</span>
               </Link>
               <button
                 onClick={handleLogout}
                 className="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:text-foreground md:h-8 md:w-8"
               >
                 <LogOut className="h-5 w-5" />
-                <span className="sr-only">Log Out</span>
+                <span className="sr-only">{t('logOut')}</span>
               </button>
         </nav>
     </aside>

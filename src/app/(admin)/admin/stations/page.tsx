@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -34,6 +35,7 @@ import { updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { GameManagement } from './game-management';
+import { useTranslation } from '@/hooks/use-translation';
 
 function StationStatusSelector({ station }: { station: Station }) {
   const firestore = useFirestore();
@@ -74,6 +76,7 @@ function StationStatusSelector({ station }: { station: Station }) {
 
 export default function StationsPage() {
   const firestore = useFirestore();
+  const { t } = useTranslation();
   const stationsQuery = useMemoFirebase(
     () => (firestore ? query(collection(firestore, 'stations')) : null),
     [firestore]
@@ -98,8 +101,8 @@ export default function StationsPage() {
   return (
     <>
       <PageHeader
-        title="Station Management"
-        description="View, create, and manage gaming stations."
+        title={t('stationManagement')}
+        description={t('stationManagementDescription')}
         className="px-0"
       >
         <StationActions mode="add" />
@@ -109,7 +112,7 @@ export default function StationsPage() {
         <div className="lg:col-span-2">
             <Card>
                 <CardHeader>
-                <CardTitle className="font-headline">Stations</CardTitle>
+                <CardTitle className="font-headline">{t('stations')}</CardTitle>
                 <CardDescription>
                     A list of all gaming stations in Warriors Gaming.
                 </CardDescription>
@@ -118,12 +121,12 @@ export default function StationsPage() {
                 <Table>
                     <TableHeader>
                     <TableRow>
-                        <TableHead>Station ID</TableHead>
-                        <TableHead>Type</TableHead>
-                        <TableHead>Games</TableHead>
-                        <TableHead>Status</TableHead>
+                        <TableHead>{t('stationId')}</TableHead>
+                        <TableHead>{t('type')}</TableHead>
+                        <TableHead>{t('games')}</TableHead>
+                        <TableHead>{t('status')}</TableHead>
                         <TableHead>
-                        <span className="sr-only">Actions</span>
+                        <span className="sr-only">{t('actions')}</span>
                         </TableHead>
                     </TableRow>
                     </TableHeader>
@@ -136,7 +139,7 @@ export default function StationsPage() {
                             </TableCell>
                         </TableRow>
                         ))}
-                    {stations &&
+                    {stations && stations.length > 0 ?
                         stations.map((station) => (
                         <TableRow key={station.id}>
                             <TableCell className="font-medium">{station.id}</TableCell>
@@ -160,7 +163,13 @@ export default function StationsPage() {
                             <StationActions mode="actions" station={station} />
                             </TableCell>
                         </TableRow>
-                        ))}
+                        )) : (
+                           <TableRow>
+                                <TableCell colSpan={5} className="text-center">
+                                    {t('noStationsFound')}
+                                </TableCell>
+                           </TableRow>
+                        )}
                     </TableBody>
                 </Table>
                 </CardContent>

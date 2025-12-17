@@ -25,9 +25,11 @@ import { collection, query, doc, where } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { addDocumentNonBlocking, updateDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useTranslation } from "@/hooks/use-translation";
 
 
 export default function ScanPage() {
+  const { t } = useTranslation();
   const [scannedClient, setScannedClient] = useState<Client | null>(null);
   const [loading, setLoading] = useState(false);
   const [selectedStationId, setSelectedStationId] = useState<string>("");
@@ -297,14 +299,14 @@ export default function ScanPage() {
   return (
     <>
       <PageHeader
-        title="Scanneur de Code QR"
-        description="Scannez le code QR d'un client pour l'enregistrer ou gérer son compte."
+        title={t('qrCodeScanner')}
+        description={t('qrCodeScannerDescription')}
         className="px-0"
       />
       <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
         <Card className="lg:col-span-1">
           <CardHeader>
-            <CardTitle className="font-headline">Scanner</CardTitle>
+            <CardTitle className="font-headline">{t('scanner')}</CardTitle>
           </CardHeader>
           <CardContent className="flex flex-col items-center justify-center gap-4 text-center">
              <div className="w-full max-w-[400px] aspect-square bg-muted rounded-lg flex items-center justify-center overflow-hidden relative group">
@@ -465,5 +467,3 @@ export default function ScanPage() {
     </>
   );
 }
-
-    

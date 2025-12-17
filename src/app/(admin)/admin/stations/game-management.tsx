@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -31,6 +32,7 @@ import {
 } from '@/firebase/non-blocking-updates';
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { useTranslation } from '@/hooks/use-translation';
 
 const addGameSchema = z.object({
   name: z.string().min(1, 'Game name cannot be empty.'),
@@ -42,6 +44,7 @@ export function GameManagement() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const firestore = useFirestore();
   const { toast } = useToast();
+  const { t } = useTranslation();
 
   const gamesQuery = useMemoFirebase(
     () => (firestore ? query(collection(firestore, 'games')) : null),
@@ -78,8 +81,8 @@ export function GameManagement() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="font-headline">Game Management</CardTitle>
-        <CardDescription>Add or remove games from the global list.</CardDescription>
+        <CardTitle className="font-headline">{t('gameManagement')}</CardTitle>
+        <CardDescription>{t('gameManagementDescription')}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <Form {...form}>
@@ -93,7 +96,7 @@ export function GameManagement() {
               render={({ field }) => (
                 <FormItem className="flex-grow">
                   <FormControl>
-                    <Input placeholder="Enter game name..." {...field} />
+                    <Input placeholder={t('enterGameName')} {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -104,10 +107,10 @@ export function GameManagement() {
             </Button>
           </form>
         </Form>
-        <h4 className="font-medium text-sm text-muted-foreground pt-4">Available Games</h4>
+        <h4 className="font-medium text-sm text-muted-foreground pt-4">{t('availableGamesList')}</h4>
         <ScrollArea className="h-72 rounded-md border">
           <div className="p-4">
-            {isLoading && <p>Loading games...</p>}
+            {isLoading && <p>{t('loading')}...</p>}
             {games && games.length > 0 ? (
               <ul className="space-y-2">
                 {games.map((game) => (
@@ -128,7 +131,7 @@ export function GameManagement() {
                 ))}
               </ul>
             ) : (
-                <p className="text-sm text-muted-foreground text-center py-4">No games added yet.</p>
+                <p className="text-sm text-muted-foreground text-center py-4">{t('noGamesAdded')}</p>
             )}
           </div>
         </ScrollArea>

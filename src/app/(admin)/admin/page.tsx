@@ -1,3 +1,4 @@
+
 "use client";
 
 import { BarChart, DollarSign, Gamepad2, Users } from 'lucide-react';
@@ -27,8 +28,10 @@ import { PageHeader } from '@/components/page-header';
 import { useCollection, useFirestore } from '@/firebase';
 import { useMemoFirebase } from '@/firebase/provider';
 import { collection, query } from 'firebase/firestore';
+import { useTranslation } from '@/hooks/use-translation';
 
 export default function AdminDashboard() {
+  const { t } = useTranslation();
   const firestore = useFirestore();
   const stationsQuery = useMemoFirebase(
     () => (firestore ? query(collection(firestore, 'stations')) : null),
@@ -101,8 +104,8 @@ export default function AdminDashboard() {
   return (
     <div className="flex flex-col">
       <PageHeader
-        title="Dashboard"
-        description="Here's a look at your gaming lounge's performance."
+        title={t('dashboard')}
+        description={t('dashboardDescription')}
         className="px-0"
       />
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
