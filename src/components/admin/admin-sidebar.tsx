@@ -13,6 +13,7 @@ import {
   Gamepad2,
   PanelLeft,
   Globe,
+  History,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Logo } from "../logo";
@@ -46,6 +47,7 @@ export function AdminHeader() {
       { href: "/admin/stations", icon: Gamepad2, label: t('stations') },
       { href: "/admin/scan", icon: QrCode, label: t('scanner') },
       { href: "/admin/loyalty", icon: Sparkles, label: t('loyaltyAI') },
+      { href: "/admin/history", icon: History, label: t('history')},
     ];
 
     return (
@@ -131,6 +133,7 @@ export function AdminSidebar() {
     { href: "/admin/stations", icon: Gamepad2, label: t('stations') },
     { href: "/admin/scan", icon: QrCode, label: t('scanner') },
     { href: "/admin/loyalty", icon: Sparkles, label: t('loyaltyAI') },
+    { href: "/admin/history", icon: History, label: t('history')},
   ];
 
   return (
@@ -149,7 +152,7 @@ export function AdminSidebar() {
                   href={item.href}
                   className={cn(
                     "flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:text-foreground md:h-8 md:w-8",
-                    { "bg-accent text-accent-foreground": pathname === item.href || (item.href.includes('stations') && pathname.includes('stations')) }
+                    { "bg-accent text-accent-foreground": pathname === item.href || (item.href.includes(item.label.toLowerCase()) && pathname.includes(item.label.toLowerCase())) }
                   )}
                 >
                   <item.icon className="h-5 w-5" />

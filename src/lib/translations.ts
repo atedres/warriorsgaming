@@ -19,6 +19,7 @@ export const translations = {
     loyaltyAI: "Loyalty AI",
     settings: "Settings",
     logOut: "Log Out",
+    history: "History",
 
     // Admin Pages
     clientManagement: "Client Management",
@@ -30,6 +31,7 @@ export const translations = {
     loyaltyBonusRecs: "Loyalty & Bonus Recommendations",
     loyaltyBonusRecsDescription: "Use AI to generate personalized bonus recommendations for clients.",
     dashboardDescription: "Here's a look at your gaming lounge's performance.",
+    historyDescription: "A global log of all activities within the gaming center.",
 
     // General Admin
     actions: "Actions",
@@ -78,6 +80,12 @@ export const translations = {
     mostUsedStationType: "Most used station type",
     weeklyRevenue: "Weekly Revenue",
     popularStations: "Popular Stations",
+
+    // History Page
+    activityLog: "Activity Log",
+    activityLogDescription: "Recent events from all clients and stations.",
+    filterByClient: "Filter by client...",
+    noHistoryFound: "No history found.",
   },
   fr: {
     welcome: "Bienvenue chez Warriors Gaming",
@@ -98,6 +106,7 @@ export const translations = {
     loyaltyAI: "IA de Fidélité",
     settings: "Paramètres",
     logOut: "Déconnexion",
+    history: "Historique",
 
     // Admin Pages
     clientManagement: "Gestion des Clients",
@@ -109,6 +118,8 @@ export const translations = {
     loyaltyBonusRecs: "Fidélité & Recommandations",
     loyaltyBonusRecsDescription: "Utilisez l'IA pour générer des recommandations de bonus personnalisées.",
     dashboardDescription: "Voici un aperçu des performances de votre salle de jeu.",
+    historyDescription: "Un journal global de toutes les activités au sein de la salle de jeu.",
+
 
     // General Admin
     actions: "Actions",
@@ -157,6 +168,12 @@ export const translations = {
     mostUsedStationType: "Type de poste le plus utilisé",
     weeklyRevenue: "Revenu Hebdomadaire",
     popularStations: "Postes Populaires",
+
+    // History Page
+    activityLog: "Journal d'activité",
+    activityLogDescription: "Événements récents de tous les clients et postes.",
+    filterByClient: "Filtrer par client...",
+    noHistoryFound: "Aucun historique trouvé.",
   },
   ar: {
     welcome: "مرحباً بكم في ووريورز جيمنج",
@@ -177,6 +194,7 @@ export const translations = {
     loyaltyAI: "ذكاء الولاء",
     settings: "الإعدادات",
     logOut: "تسجيل الخروج",
+    history: "السجل",
 
     // Admin Pages
     clientManagement: "إدارة العملاء",
@@ -188,6 +206,7 @@ export const translations = {
     loyaltyBonusRecs: "الولاء وتوصيات المكافآت",
     loyaltyBonusRecsDescription: "استخدم الذكاء الاصطناعي لإنشاء توصيات مكافآت مخصصة للعملاء.",
     dashboardDescription: "إليك نظرة على أداء صالة الألعاب الخاصة بك.",
+    historyDescription: "سجل عالمي لجميع الأنشطة داخل مركز الألعاب.",
 
     // General Admin
     actions: "الإجراءات",
@@ -236,6 +255,12 @@ export const translations = {
     mostUsedStationType: "نوع المحطة الأكثر استخدامًا",
     weeklyRevenue: "الإيرادات الأسبوعية",
     popularStations: "المحطات الشائعة",
+
+    // History Page
+    activityLog: "سجل النشاط",
+    activityLogDescription: "الأحداث الأخيرة من جميع العملاء والمحطات.",
+    filterByClient: "تصفية حسب العميل...",
+    noHistoryFound: "لم يتم العثور على سجل.",
   },
 };
 
