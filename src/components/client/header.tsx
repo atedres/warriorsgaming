@@ -1,7 +1,7 @@
 'use client';
 
 import Link from "next/link";
-import { Globe } from "lucide-react";
+import { Globe, LogIn } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Logo } from "../logo";
 import { ThemeToggle } from "../theme-toggle";
@@ -22,7 +22,7 @@ export default function ClientHeader() {
         <Logo />
         <span className="sr-only">Warriors Gaming</span>
       </Link>
-      <nav className="ml-auto flex items-center gap-4 sm:gap-6">
+      <nav className="ml-auto flex items-center gap-2 sm:gap-4">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="outline" size="icon">
@@ -43,9 +43,15 @@ export default function ClientHeader() {
           </DropdownMenuContent>
         </DropdownMenu>
         <ThemeToggle />
+        <Button asChild>
+            <Link href="/login-client">
+                <LogIn className="mr-2 h-4 w-4" />
+                Connexion
+            </Link>
+        </Button>
         <Button asChild variant="outline" className="border-accent text-accent hover:bg-accent hover:text-accent-foreground">
           <Link
-            href="/admin"
+            href="/login"
             className="text-sm font-medium"
           >
             Admin Panel
