@@ -10,22 +10,8 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    /**
-     * @description Allows collection group queries on the 'history' collection.
-     *              This is necessary for the global history page to fetch all client activities.
-     * @path /clients/{clientId}/history/{historyId}
-     * @allow (read) Authenticated users can list and get history documents across all clients.
-     */
-    match /clients/{clientId}/history/{historyId} {
-       allow read, write: if true;
-    }
-
-    /**
-     * @description Manages all top-level collections.
-     *              For development, any user can read/write to any document.
-     * @path /{collection}/{docId}
-     * @allow (read, write) Anyone can read or write any document.
-     */
+    // This single rule allows all reads and writes to any document or collection in the database.
+    // This includes collection group queries like the one used for the global history page.
     match /{document=**} {
       allow read, write: if true;
     }
