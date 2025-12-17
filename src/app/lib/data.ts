@@ -32,4 +32,9 @@ export type UsageLog = {
     endTime: string | null;
 }
 
-    
+export type ClientHistoryLog = {
+    id: string;
+    timestamp: string;
+    type: 'bonus' | 'recharge' | 'check-in' | 'check-out' | 'system';
+    description: string;
+}

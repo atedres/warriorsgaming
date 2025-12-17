@@ -204,7 +204,14 @@ export default function ScanPage() {
 
     const stationRef = doc(firestore, "stations", selectedStationId);
     const stationData = stations?.find(s => s.id === selectedStationId);
+    const historyRef = collection(firestore, 'clients', scannedClient.id, 'history');
     
+    addDocumentNonBlocking(historyRef, {
+        timestamp: new Date().toISOString(),
+        type: 'check-in',
+        description: `Checked in at station ${stationData?.id} (${stationData?.type})`,
+    });
+
     addDocumentNonBlocking(collection(firestore, "usageLogs"), {
         clientId: scannedClient.id,
         stationId: selectedStationId,
@@ -230,10 +237,18 @@ export default function ScanPage() {
     if(!firestore || !scannedClient || !scannedClient.currentStationId) return;
 
     const stationRef = doc(firestore, "stations", scannedClient.currentStationId);
+    const stationData = stations?.find(s => s.id === scannedClient.currentStationId);
     updateDocumentNonBlocking(stationRef, { status: 'available', currentClientId: null });
 
     const clientRef = doc(firestore, "clients", scannedClient.id);
     updateDocumentNonBlocking(clientRef, { currentStationId: null });
+
+    const historyRef = collection(firestore, 'clients', scannedClient.id, 'history');
+    addDocumentNonBlocking(historyRef, {
+        timestamp: new Date().toISOString(),
+        type: 'check-out',
+        description: `Checked out from station ${stationData?.id} (${stationData?.type})`,
+    });
 
     toast({
         title: "Poste Libéré",
@@ -249,6 +264,13 @@ export default function ScanPage() {
     const newHours = (scannedClient.subscriptionHours || 0) + Number(hoursToAdd);
     const clientRef = doc(firestore, "clients", scannedClient.id);
     updateDocumentNonBlocking(clientRef, { subscriptionHours: newHours });
+
+    const historyRef = collection(firestore, 'clients', scannedClient.id, 'history');
+    addDocumentNonBlocking(historyRef, {
+        timestamp: new Date().toISOString(),
+        type: 'recharge',
+        description: `Recharged ${hoursToAdd} subscription hour(s).`,
+    });
 
     toast({
         title: "Heures Mises à Jour",
@@ -443,3 +465,5 @@ export default function ScanPage() {
     </>
   );
 }
+
+    

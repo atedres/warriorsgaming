@@ -3,12 +3,13 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { MoreHorizontal, PlusCircle, QrCode, FilePenLine } from "lucide-react";
+import { MoreHorizontal, PlusCircle, QrCode, FilePenLine, History, Clock } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { useFirestore } from "@/firebase";
-import { collection, doc } from "firebase/firestore";
+import { useCollection, useFirestore } from "@/firebase";
+import { collection, doc, orderBy, query } from "firebase/firestore";
+import { format } from 'date-fns';
 
 import { Button } from "@/components/ui/button";
 import {
@@ -37,10 +38,12 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import type { Client } from "@/app/lib/data";
+import type { Client, ClientHistoryLog } from "@/app/lib/data";
 import { useToast } from "@/hooks/use-toast";
 import { addDocumentNonBlocking, deleteDocumentNonBlocking, updateDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { useMemoFirebase } from "@/firebase/provider";
 
 const clientFormSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
@@ -324,5 +327,60 @@ export function QrCodeDialog({ client }: { client: Client }) {
     </Dialog>
   );
 }
+
+
+export function ClientHistoryDialog({ client }: { client: Client }) {
+    const [isOpen, setIsOpen] = useState(false);
+    const firestore = useFirestore();
+
+    const historyQuery = useMemoFirebase(() => {
+        if (!firestore) return null;
+        const historyRef = collection(firestore, 'clients', client.id, 'history');
+        return query(historyRef, orderBy('timestamp', 'desc'));
+    }, [firestore, client.id]);
+
+    const { data: history, isLoading } = useCollection<ClientHistoryLog>(historyQuery);
+    
+    return (
+        <Dialog open={isOpen} onOpenChange={setIsOpen}>
+            <DialogTrigger asChild>
+                <Button variant="outline" size="sm">
+                    <History className="h-4 w-4" />
+                </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl">
+                <DialogHeader>
+                    <DialogTitle>History for {client.name}</DialogTitle>
+                    <DialogDescription>
+                        A log of all activities and changes related to this client.
+                    </DialogDescription>
+                </DialogHeader>
+                <ScrollArea className="h-96">
+                    <div className="p-4 space-y-4">
+                        {isLoading && <p>Loading history...</p>}
+                        {!isLoading && history?.length === 0 && <p className="text-muted-foreground text-center">No history found.</p>}
+                        {history?.map(log => (
+                             <div key={log.id} className="flex items-start gap-4">
+                                <div className="bg-muted p-2 rounded-full">
+                                    <Clock className="h-5 w-5 text-muted-foreground"/>
+                                </div>
+                                <div className="flex-1">
+                                    <p className="font-medium">{log.description}</p>
+                                    <p className="text-sm text-muted-foreground">
+                                        {format(new Date(log.timestamp), "d MMM yyyy 'at' HH:mm")}
+                                    </p>
+                                </div>
+                             </div>
+                        ))}
+                    </div>
+                </ScrollArea>
+                 <DialogFooter>
+                    <Button variant="outline" onClick={() => setIsOpen(false)}>Close</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    )
+}
+    
 
     

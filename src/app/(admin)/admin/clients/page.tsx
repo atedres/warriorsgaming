@@ -18,7 +18,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { ClientActions, QrCodeDialog } from './client-actions';
+import { ClientActions, QrCodeDialog, ClientHistoryDialog } from './client-actions';
 import { PageHeader } from '@/components/page-header';
 import { useCollection, useFirestore } from '@/firebase';
 import { useMemoFirebase } from '@/firebase/provider';
@@ -129,6 +129,7 @@ export default function ClientsPage() {
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <QrCodeDialog client={client} />
+                        <ClientHistoryDialog client={client} />
                         <ClientActions mode="edit" client={client} />
                         <ClientActions mode="delete" client={client} />
                       </div>
@@ -142,3 +143,5 @@ export default function ClientsPage() {
     </>
   );
 }
+
+    

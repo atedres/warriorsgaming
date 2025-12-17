@@ -159,6 +159,34 @@
         "startTime",
         "endTime"
       ]
+    },
+    "ClientHistoryLog": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "ClientHistoryLog",
+      "type": "object",
+      "description": "Represents a single event in a client's history.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the history log entry.",
+          "format": "uuid"
+        },
+        "timestamp": {
+          "type": "string",
+          "description": "The date and time when the event occurred.",
+          "format": "date-time"
+        },
+        "type": {
+          "type": "string",
+          "description": "The type of event.",
+          "enum": ["bonus", "recharge", "check-in", "check-out", "system"]
+        },
+        "description": {
+          "type": "string",
+          "description": "A human-readable description of the event."
+        }
+      },
+      "required": ["id", "timestamp", "type", "description"]
     }
   },
   "auth": {
@@ -181,6 +209,26 @@
             {
               "name": "clientId",
               "description": "The unique identifier of the client."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/clients/{clientId}/history/{historyId}",
+        "definition": {
+          "entityName": "ClientHistoryLog",
+          "schema": {
+            "$ref": "#/backend/entities/ClientHistoryLog"
+          },
+          "description": "Stores the activity history for a specific client.",
+          "params": [
+            {
+              "name": "clientId",
+              "description": "The unique identifier of the client."
+            },
+            {
+              "name": "historyId",
+              "description": "The unique identifier for the history log entry."
             }
           ]
         }
@@ -234,6 +282,8 @@
         }
       }
     ],
-    "reasoning": "The Firestore structure is designed to manage data for the Warriors Gaming center application, focusing on clients, stations, reservations, and usage logs. The structure emphasizes authorization independence and supports the application's core features, including real-time station monitoring, online reservations, QR code management, and usage analytics.\n\n**Authorization Independence:**\nAuthorization Independence is achieved by leveraging path-based ownership for private user data (e.g., client profiles) and avoiding hierarchical authorization dependencies (`get()` calls in security rules). There is no explicit collaborative data, so membership maps are not currently required.\n\n**Structural Segregation:**\nData with different access needs is segregated into separate collections. This simplifies security rules by ensuring that all documents within a collection share the same security posture. For instance, client profiles are stored in a dedicated collection (`clients`), separate from station data or reservation information.\n\n**Access Modeling:**\n- **Client Data:** Each client has their own document in the `clients` collection, accessible to admins for management and potentially to the client themselves (if self-service features are implemented). However, the user request does not indicate the need for user-owned client data.\n- **Station Data:** Station data is stored in the `stations` collection, and is generally read-only by clients but writable by admins.\n- **Reservations and Usage Logs:** Reservations and usage logs are stored in separate collections (`reservations` and `usageLogs`, respectively). Each document contains references to the relevant client and station, facilitating efficient querying and reporting.\n\n**QAPs (Rules are not Filters):**\nThe structure supports secure `list` operations by ensuring that clients cannot list reservations or usage logs for other clients. Admin can list all clients, stations, reservations, and usage logs.\n\nThe structure also supports the integrity of ownership, timestamps, and denormalized data by using atomic operations (transactions/batches) when updating related documents.\n"
+    "reasoning": "The Firestore structure is designed to manage data for the Warriors Gaming center application, focusing on clients, stations, reservations, and usage logs. The structure emphasizes authorization independence and supports the application's core features, including real-time station monitoring, online reservations, QR code management, and usage analytics.\n\n**Authorization Independence:**\nAuthorization Independence is achieved by leveraging path-based ownership for private user data (e.g., client profiles) and avoiding hierarchical authorization dependencies (`get()` calls in security rules). There is no explicit collaborative data, so membership maps are not currently required.\n\n**Structural Segregation:**\nData with different access needs is segregated into separate collections. This simplifies security rules by ensuring that all documents within a collection share the same security posture. For instance, client profiles are stored in a dedicated collection (`clients`), separate from station data or reservation information. A subcollection `history` is added under each client to store their activity log, ensuring data is co-located with the client but can be queried independently.\n\n**Access Modeling:**\n- **Client Data:** Each client has their own document in the `clients` collection, accessible to admins for management and potentially to the client themselves (if self-service features are implemented). However, the user request does not indicate the need for user-owned client data.\n- **Station Data:** Station data is stored in the `stations` collection, and is generally read-only by clients but writable by admins.\n- **Reservations and Usage Logs:** Reservations and usage logs are stored in separate collections (`reservations` and `usageLogs`, respectively). Each document contains references to the relevant client and station, facilitating efficient querying and reporting.\n\n**QAPs (Rules are not Filters):**\nThe structure supports secure `list` operations by ensuring that clients cannot list reservations or usage logs for other clients. Admin can list all clients, stations, reservations, and usage logs.\n\nThe structure also supports the integrity of ownership, timestamps, and denormalized data by using atomic operations (transactions/batches) when updating related documents.\n"
   }
 }
+
+    
