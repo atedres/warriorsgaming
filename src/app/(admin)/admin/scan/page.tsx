@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import jsQR from "jsqr";
-import { QrCode, User, CheckCircle, Gift, Clock, LogOut, Gamepad2, VideoOff, Camera, MonitorPlay, Tv, Users, ScanLine, Wallet } from "lucide-react";
+import { QrCode, User, CheckCircle, Gift, Clock, LogOut, Gamepad2, VideoOff, Camera, MonitorPlay, Tv, Users, ScanLine, Wallet, Monitor } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -417,11 +417,12 @@ function ReleaseStationDialog({ station, client, allClients }: { station: Statio
     const [isOpen, setIsOpen] = useState(false);
     const firestore = useFirestore();
     const { toast } = useToast();
+    const { t } = useTranslation();
 
     if (!station.sessionStartTime || !client) {
         return (
              <Button variant="destructive" size="sm" className="mt-2 w-full" disabled>
-                <LogOut className="mr-2 h-4 w-4"/> Libérer
+                <LogOut className="mr-2 h-4 w-4"/> {t('releaseStation')}
             </Button>
         )
     }
@@ -462,7 +463,7 @@ function ReleaseStationDialog({ station, client, allClients }: { station: Statio
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
             <DialogTrigger asChild>
                  <Button variant="destructive" size="sm" className="mt-2 w-full">
-                    <LogOut className="mr-2 h-4 w-4"/> Libérer
+                    <LogOut className="mr-2 h-4 w-4"/> {t('releaseStation')}
                 </Button>
             </DialogTrigger>
             <DialogContent>
@@ -657,3 +658,5 @@ export default function ScanPage() {
     </>
   );
 }
+
+    
