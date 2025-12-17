@@ -12,6 +12,7 @@ import {
   LogOut,
   Gamepad2,
   PanelLeft,
+  Globe,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Logo } from "../logo";
@@ -19,17 +20,19 @@ import { useAuth } from "@/firebase";
 import { signOut } from "firebase/auth";
 import { Sheet, SheetContent, SheetTrigger } from "../ui/sheet";
 import { Button } from "../ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { useLanguage } from "@/hooks/use-translation";
+import { ThemeToggle } from "../theme-toggle";
 
-const navItems = [
-  { href: "/admin", icon: Home, label: "Dashboard" },
-  { href: "/admin/clients", icon: Users2, label: "Clients" },
-  { href: "/admin/stations", icon: Gamepad2, label: "Stations" },
-  { href: "/admin/scan", icon: QrCode, label: "Scanner" },
-  { href: "/admin/loyalty", icon: Sparkles, label: "Loyalty AI" },
-];
 
 export function AdminHeader() {
     const auth = useAuth();
+    const { setLanguage } = useLanguage();
     const handleLogout = () => {
         if (auth) {
         signOut(auth);
@@ -74,9 +77,40 @@ export function AdminHeader() {
               </nav>
             </SheetContent>
           </Sheet>
+
+          <div className="ml-auto flex items-center gap-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="icon">
+                  <Globe className="h-[1.2rem] w-[1.2rem]" />
+                  <span className="sr-only">Toggle language</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onSelect={() => setLanguage('fr')}>
+                  Français
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => setLanguage('en')}>
+                  English
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => setLanguage('ar')}>
+                  العربية
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <ThemeToggle />
+          </div>
         </header>
     )
 }
+
+const navItems = [
+  { href: "/admin", icon: Home, label: "Dashboard" },
+  { href: "/admin/clients", icon: Users2, label: "Clients" },
+  { href: "/admin/stations", icon: Gamepad2, label: "Stations" },
+  { href: "/admin/scan", icon: QrCode, label: "Scanner" },
+  { href: "/admin/loyalty", icon: Sparkles, label: "Loyalty AI" },
+];
 
 export function AdminSidebar() {
   const pathname = usePathname();
