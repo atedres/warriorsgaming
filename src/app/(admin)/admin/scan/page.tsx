@@ -63,21 +63,17 @@ function StationCard({ station, client, onRelease }: { station: Station, client?
 
 
     return (
-        <Card className={cn(
-            "flex flex-col transition-all duration-300",
-            station.status === 'in use' && "bg-orange-400/10 border-orange-400/50",
-            station.status === 'maintenance' && "bg-red-400/10 border-red-400/50 opacity-60",
-        )}>
+        <Card className="flex flex-col transition-all duration-300">
              <CardHeader className="flex flex-row items-start justify-between pb-2">
                 <CardTitle className="font-headline text-lg font-medium flex items-center gap-2">
                     {getIcon(station.type)}
                     <span className="break-all">{station.id}</span>
                 </CardTitle>
-                <Badge variant={station.status === 'available' ? 'secondary' : 'default'} className={cn(
-                    "flex-shrink-0",
-                    station.status === 'available' && "bg-green-500/20 text-green-700 border-green-500/50",
-                    station.status === 'in use' && "bg-orange-500/20 text-orange-700 border-orange-500/50",
-                    station.status === 'maintenance' && "bg-red-500/20 text-red-700 border-red-500/50",
+                <Badge variant='outline' className={cn(
+                    "flex-shrink-0 capitalize border-none text-white",
+                    station.status === 'available' && "bg-green-500",
+                    station.status === 'in use' && "bg-orange-500",
+                    station.status === 'maintenance' && "bg-red-500",
                 )}>{station.status}</Badge>
             </CardHeader>
             <CardContent className="flex-1 flex flex-col justify-center items-center text-center p-4">
@@ -564,3 +560,6 @@ export default function ScanPage() {
 }
 
 
+
+
+    
