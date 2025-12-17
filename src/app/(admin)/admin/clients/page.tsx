@@ -59,13 +59,15 @@ export default function ClientsPage() {
             A list of all registered clients in Warriors Gaming.
           </CardDescription>
           <div className="relative pt-4">
-            <Search className="absolute left-2.5 top-6 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search by name..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-8 w-full md:w-1/2 lg:w-1/3"
-            />
+            <div className="relative flex items-center">
+              <Search className="absolute left-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search by name..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-8 w-full md:w-1/2 lg:w-1/3"
+              />
+            </div>
           </div>
         </CardHeader>
         <CardContent>
@@ -133,4 +135,3 @@ export default function ClientsPage() {
     </>
   );
 }
-
