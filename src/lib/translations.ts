@@ -86,6 +86,7 @@ export const translations = {
     activityLogDescription: "Recent events from all clients and stations.",
     filterByClient: "Filter by client...",
     noHistoryFound: "No history found.",
+    allClients: "All Clients",
   },
   fr: {
     welcome: "Bienvenue chez Warriors Gaming",
@@ -174,6 +175,7 @@ export const translations = {
     activityLogDescription: "Événements récents de tous les clients et postes.",
     filterByClient: "Filtrer par client...",
     noHistoryFound: "Aucun historique trouvé.",
+    allClients: "Tous les clients",
   },
   ar: {
     welcome: "مرحباً بكم في ووريورز جيمنج",
@@ -261,6 +263,7 @@ export const translations = {
     activityLogDescription: "الأحداث الأخيرة من جميع العملاء والمحطات.",
     filterByClient: "تصفية حسب العميل...",
     noHistoryFound: "لم يتم العثور على سجل.",
+    allClients: "جميع العملاء",
   },
 };
 

@@ -1,7 +1,8 @@
+
 'use client';
 
 import { useState } from 'react';
-import { collectionGroup, query, orderBy, where } from 'firebase/firestore';
+import { collection, collectionGroup, query, orderBy, where } from 'firebase/firestore';
 import { useCollection, useFirestore } from '@/firebase';
 import { useMemoFirebase } from '@/firebase/provider';
 import type { Client, ClientHistoryLog } from '@/app/lib/data';
@@ -84,8 +85,6 @@ export default function HistoryPage() {
       // As a workaround, we will manually parse from a hypothetical path property on the log.
       // This part is tricky as `useCollection` would need to be modified to return more metadata.
       // Let's assume we can get the path from the document reference's path property if it were available.
-      // This is a common pattern that requires modifying the hook or fetching differently.
-      // For now, let's just display what we have.
       return {
         ...log,
         // This is a placeholder for where we'd get the client ID.
