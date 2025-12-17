@@ -26,6 +26,8 @@ import { collection, query } from 'firebase/firestore';
 import type { Client } from '@/app/lib/data';
 import { Input } from '@/components/ui/input';
 import { Search } from 'lucide-react';
+import { QrCode } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 export default function ClientsPage() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -57,7 +59,7 @@ export default function ClientsPage() {
             A list of all registered clients in Warriors Gaming.
           </CardDescription>
           <div className="relative pt-4">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Search className="absolute left-2.5 top-6 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Search by name..."
               value={searchTerm}
@@ -131,3 +133,4 @@ export default function ClientsPage() {
     </>
   );
 }
+
