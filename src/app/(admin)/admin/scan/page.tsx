@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import jsQR from "jsqr";
-import { QrCode, User, CheckCircle, Gift, Clock, LogOut, Gamepad2, VideoOff, Camera, MonitorPlay, Tv, Users, ScanLine } from "lucide-react";
+import { QrCode, User, CheckCircle, Gift, Clock, LogOut, Gamepad2, VideoOff, Camera, MonitorPlay, Tv, Users, ScanLine, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -31,10 +31,11 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import { useTranslation } from "@/hooks/use-translation";
-import { cn } from "@/lib/utils";
-import { formatDistanceToNowStrict } from 'date-fns';
+import { cn, formatCurrency } from "@/lib/utils";
+import { formatDistanceToNowStrict, differenceInMinutes } from 'date-fns';
 
 function QrScanner({ onScan, onPermissionChange, onDevices, onCameraChange, currentDeviceId }: {
     onScan: (data: string) => void;
@@ -258,7 +259,7 @@ function AssignClientDialog({ station, clients }: { station: Station; clients: C
     )
 }
 
-function BonusPointsDialog({ clients }: { clients: Client[] | null }) {
+function BonusPointsDialog({ clients, trigger }: { clients: Client[] | null, trigger: React.ReactNode }) {
     const [isOpen, setIsOpen] = useState(false);
     const [scannedClient, setScannedClient] = useState<Client | null>(null);
     const [hoursToAdd, setHoursToAdd] = useState<number | string>("");
@@ -324,12 +325,7 @@ function BonusPointsDialog({ clients }: { clients: Client[] | null }) {
     return (
          <Dialog open={isOpen} onOpenChange={setIsOpen}>
             <DialogTrigger asChild>
-                <Button size="sm" className="h-8 gap-1">
-                    <Gift className="h-3.5 w-3.5" />
-                    <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-                        Attribuer un bonus
-                    </span>
-                </Button>
+                {trigger}
             </DialogTrigger>
             <DialogContent>
                 <DialogHeader>
@@ -382,34 +378,153 @@ function BonusPointsDialog({ clients }: { clients: Client[] | null }) {
     )
 }
 
+function calculatePrice(stationType: Station['type'], durationInMinutes: number, startTime: Date): number {
+    const startHour = startTime.getHours();
+    const isEvening = startHour >= 20;
 
-function StationCard({ station, client, onRelease, isLoadingClients, allClients }: { 
+    let price = 0;
+    const hours = durationInMinutes / 60;
+
+    switch(stationType) {
+        case 'PC':
+            price = hours * 20;
+            break;
+        case 'PS5':
+            if (isEvening) {
+                // 30 DH/h or 50 DH/2h (i.e. 25 DH/h)
+                if (durationInMinutes <= 30) price = 20;
+                else if (durationInMinutes <= 60) price = 30;
+                else if (durationInMinutes <= 120) price = 50;
+                else price = Math.ceil(hours) * 25; // Pro-rata on the 2h price
+            } else {
+                price = hours * 20;
+            }
+            break;
+        case 'PS5 VIP':
+        case 'VR Simulator':
+             // 45 DH/h or 75 DH/2h (i.e. 37.5 DH/h)
+            if (durationInMinutes <= 60) price = 45;
+            else if (durationInMinutes <= 120) price = 75;
+            else price = Math.ceil(hours) * 37.5;
+            break;
+    }
+
+    return Math.ceil(price); // Round up to nearest Dirham
+}
+
+
+function ReleaseStationDialog({ station, client, allClients }: { station: Station, client?: Client, allClients: Client[] | null }) {
+    const [isOpen, setIsOpen] = useState(false);
+    const firestore = useFirestore();
+    const { toast } = useToast();
+
+    if (!station.sessionStartTime || !client) {
+        return (
+             <Button variant="destructive" size="sm" className="mt-2 w-full" disabled>
+                <LogOut className="mr-2 h-4 w-4"/> Libérer
+            </Button>
+        )
+    }
+
+    const startTime = new Date(station.sessionStartTime);
+    const durationInMinutes = differenceInMinutes(new Date(), startTime);
+    const hours = Math.floor(durationInMinutes / 60);
+    const minutes = durationInMinutes % 60;
+    const durationString = `${hours}h ${minutes}m`;
+    const cost = calculatePrice(station.type, durationInMinutes, startTime);
+
+    const handleConfirmRelease = () => {
+        if(!firestore) return;
+
+        const stationRef = doc(firestore, "stations", station.id);
+        updateDocumentNonBlocking(stationRef, { status: 'available', currentClientId: null, sessionStartTime: null });
+
+        if(station.currentClientId) {
+            const clientRef = doc(firestore, "clients", station.currentClientId);
+            updateDocumentNonBlocking(clientRef, { currentStationId: null });
+
+            const historyRef = collection(firestore, 'clients', station.currentClientId, 'history');
+            addDocumentNonBlocking(historyRef, {
+                timestamp: new Date().toISOString(),
+                type: 'check-out',
+                description: `Checked out from station ${station.id} (${station.type}). Session: ${durationString}, Cost: ${formatCurrency(cost, 'MAD')}`,
+            });
+        }
+
+        toast({
+            title: "Poste Libéré",
+            description: `Le poste ${station.id} est maintenant disponible.`
+        });
+        setIsOpen(false);
+    }
+    
+    return (
+        <Dialog open={isOpen} onOpenChange={setIsOpen}>
+            <DialogTrigger asChild>
+                 <Button variant="destructive" size="sm" className="mt-2 w-full">
+                    <LogOut className="mr-2 h-4 w-4"/> Libérer
+                </Button>
+            </DialogTrigger>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Finaliser la session de {client.name}</DialogTitle>
+                    <DialogDescription>
+                        Poste: {station.id} ({station.type})
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                    <div className="flex justify-around text-center">
+                        <div>
+                            <p className="text-sm text-muted-foreground">Durée de la session</p>
+                            <p className="text-2xl font-bold">{durationString}</p>
+                        </div>
+                        <div>
+                            <p className="text-sm text-muted-foreground">Montant à payer</p>
+                            <p className="text-2xl font-bold text-primary">{formatCurrency(cost, 'MAD')}</p>
+                        </div>
+                    </div>
+                    <Separator />
+                     <div className="flex flex-col gap-2">
+                        <BonusPointsDialog
+                            clients={allClients}
+                            trigger={<Button variant="outline" className="w-full"><Gift className="mr-2 h-4 w-4"/> Attribuer un bonus</Button>}
+                        />
+                         <Button onClick={handleConfirmRelease} className="w-full">
+                            <CheckCircle className="mr-2 h-4 w-4"/> Confirmer et Libérer
+                        </Button>
+                    </div>
+                </div>
+            </DialogContent>
+        </Dialog>
+    )
+}
+
+
+function StationCard({ station, client, isLoadingClients, allClients }: { 
     station: Station, 
     client?: Client, 
-    onRelease: (station: Station) => void, 
     isLoadingClients: boolean,
     allClients: Client[] | null
 }) {
     const [timer, setTimer] = useState("0m");
-    const { t } = useTranslation();
 
     useEffect(() => {
         if (station.status === 'in use' && station.sessionStartTime) {
             const updateTimer = () => {
                 const startTime = new Date(station.sessionStartTime!);
-                setTimer(formatDistanceToNowStrict(startTime));
+                setTimer(formatDistanceToNowStrict(startTime, { roundingMethod: 'floor' }));
             };
             updateTimer();
-            const intervalId = setInterval(updateTimer, 1000);
+            const intervalId = setInterval(updateTimer, 10000); // update every 10s is enough
             return () => clearInterval(intervalId);
         }
     }, [station.status, station.sessionStartTime]);
 
 
-    const getIcon = (type: string) => {
+    const getIcon = (type: Station['type']) => {
         switch (type) {
           case 'PC':
-            return <Gamepad2 className="h-5 w-5" />;
+            return <Monitor className="h-5 w-5" />;
           case 'PS5':
             return <Gamepad2 className="h-5 w-5" />;
           case 'PS5 VIP':
@@ -417,13 +532,12 @@ function StationCard({ station, client, onRelease, isLoadingClients, allClients 
           case 'VR Simulator':
             return <Tv className="h-5 w-5" />;
           default:
-            return null;
+            return <Gamepad2 className="h-5 w-5" />;
         }
       };
 
-    const clientName = isLoadingClients ? t('loading') : (client?.name || "Client inconnu");
-    const canRelease = station.status === 'in use';
-
+    const clientName = isLoadingClients ? "Chargement..." : (client?.name || "Client inconnu");
+    
     return (
         <Card className="flex flex-col transition-all duration-300">
              <CardHeader className="flex flex-row items-start justify-between pb-2">
@@ -444,9 +558,7 @@ function StationCard({ station, client, onRelease, isLoadingClients, allClients 
                         <User className="h-8 w-8 mx-auto text-muted-foreground" />
                         <p className="font-semibold">{clientName}</p>
                         <p className="text-2xl font-mono font-bold text-primary">{timer}</p>
-                        <Button variant="destructive" size="sm" onClick={() => onRelease(station)} className="mt-2 w-full" disabled={!canRelease}>
-                            <LogOut className="mr-2 h-4 w-4"/> {t('releaseStation')}
-                        </Button>
+                        <ReleaseStationDialog station={station} client={client} allClients={allClients}/>
                     </>
                 ) : station.status === 'available' ? (
                     <>
@@ -468,8 +580,7 @@ function StationCard({ station, client, onRelease, isLoadingClients, allClients 
 
 export default function ScanPage() {
   const { t } = useTranslation();
-  const { toast } = useToast();
-
+  
   const firestore = useFirestore();
 
   const clientsQuery = useMemoFirebase(
@@ -479,36 +590,19 @@ export default function ScanPage() {
   const { data: clients, isLoading: isLoadingClients } = useCollection<Client>(clientsQuery);
   
   const stationsQuery = useMemoFirebase(
-    () => (firestore ? query(collection(firestore, 'stations')) : null),
+    () => (firestore ? query(collection(firestore, 'stations').withConverter({
+        fromFirestore: (snapshot) => {
+            const data = snapshot.data();
+            return { id: snapshot.id, ...data } as Station;
+        },
+        toFirestore: (model) => model,
+    }
+    )) : null),
     [firestore]
   );
   const { data: stations, isLoading: isLoadingStations } = useCollection<Station>(stationsQuery);
 
   
-  const handleReleaseStation = (stationToRelease: Station) => {
-    if(!firestore) return;
-
-    const stationRef = doc(firestore, "stations", stationToRelease.id);
-    updateDocumentNonBlocking(stationRef, { status: 'available', currentClientId: null, sessionStartTime: null });
-
-    if(stationToRelease.currentClientId) {
-        const clientRef = doc(firestore, "clients", stationToRelease.currentClientId);
-        updateDocumentNonBlocking(clientRef, { currentStationId: null });
-
-        const historyRef = collection(firestore, 'clients', stationToRelease.currentClientId, 'history');
-        addDocumentNonBlocking(historyRef, {
-            timestamp: new Date().toISOString(),
-            type: 'check-out',
-            description: `Checked out from station ${stationToRelease.id} (${stationToRelease.type})`,
-        });
-    }
-
-    toast({
-        title: "Poste Libéré",
-        description: `Le poste ${stationToRelease.id} est maintenant disponible.`
-    });
-  }
-
   const stationsWithClients = stations?.map(station => {
       const client = clients?.find(c => c.id === station.currentClientId);
       return { station, client };
@@ -522,7 +616,17 @@ export default function ScanPage() {
         description={t('qrCodeScannerDescription')}
         className="px-0"
       >
-        <BonusPointsDialog clients={clients} />
+        <BonusPointsDialog
+            clients={clients}
+            trigger={
+                <Button size="sm" className="h-8 gap-1">
+                    <Gift className="h-3.5 w-3.5" />
+                    <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
+                        Attribuer un bonus
+                    </span>
+                </Button>
+            }
+        />
       </PageHeader>
       
       <Card>
@@ -544,7 +648,6 @@ export default function ScanPage() {
                     key={station.id} 
                     station={station} 
                     client={client} 
-                    onRelease={handleReleaseStation} 
                     isLoadingClients={isLoadingClients}
                     allClients={clients}
                   />
@@ -554,4 +657,3 @@ export default function ScanPage() {
     </>
   );
 }
-
