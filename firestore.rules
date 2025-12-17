@@ -1,19 +1,10 @@
-/**
- * Core Philosophy: This ruleset enforces a lenient security model for development.
- * All read and write operations are permitted for any authenticated user.
- * This is NOT suitable for production but is useful for unblocking development.
- *
- * For production, you should re-introduce role-based access control,
- * for example, by checking for an admin custom claim on the user's token.
- */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // This single rule allows all reads and writes to any document or collection in the database.
-    // This includes collection group queries like the one used for the global history page.
+    // Permet un accès en lecture et écriture à tous les documents pour tout utilisateur authentifié.
+    // Cette règle est conçue pour le développement et devra être restreinte pour la production.
     match /{document=**} {
-      allow read, write: if true;
+      allow read, write: if request.auth != null;
     }
   }
 }
