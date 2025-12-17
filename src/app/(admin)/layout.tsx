@@ -5,11 +5,6 @@ import { useUser } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { Logo } from '@/components/logo';
-import {
-  SidebarProvider,
-  Sidebar,
-  SidebarInset,
-} from '@/components/ui/sidebar';
 
 export default function AdminLayout({
   children,
@@ -35,14 +30,14 @@ export default function AdminLayout({
   }
 
   return (
-    <SidebarProvider>
+    <div className="flex min-h-screen w-full">
       <AdminSidebar />
-      <div className="sm:ml-14">
+      <div className="flex flex-col flex-1 sm:ml-14">
         <AdminHeader />
         <main className="flex-1 p-4 sm:px-6 sm:py-0 md:gap-8">
           {children}
         </main>
       </div>
-    </SidebarProvider>
+    </div>
   );
 }

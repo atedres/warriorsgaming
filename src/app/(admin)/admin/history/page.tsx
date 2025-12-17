@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { collection, collectionGroup, query, orderBy, where } from 'firebase/firestore';
 import { useCollection, useFirestore } from '@/firebase';
 import { useMemoFirebase } from '@/firebase/provider';
@@ -43,25 +43,19 @@ export default function HistoryPage() {
     [firestore]
   );
   const { data: clients, isLoading: isLoadingClients } = useCollection<Client>(clientsQuery);
-  const clientMap = useMemoFirebase(() => createClientMap(clients), [clients]);
+  const clientMap = useMemo(() => createClientMap(clients), [clients]);
 
   // Base query for the 'history' collection group
   const historyQuery = useMemoFirebase(() => {
     if (!firestore) return null;
     const historyCollectionGroup = collectionGroup(firestore, 'history');
     
-    if (selectedClientId === 'all') {
-      return query(historyCollectionGroup, orderBy('timestamp', 'desc'));
-    } else {
-      // To query a collection group by a field in the document's path,
-      // we need to add the client ID to the document data itself.
-      // Since we don't have that, we'll filter on the client side.
-      // This is not ideal for very large datasets, but works for this case.
-      return query(historyCollectionGroup, orderBy('timestamp', 'desc'));
-    }
-  }, [firestore, selectedClientId]);
+    // The query is the same for all clients or a specific one at the Firestore level
+    return query(historyCollectionGroup, orderBy('timestamp', 'desc'));
+    
+  }, [firestore]);
 
-  const { data: history, isLoading: isLoadingHistory } = useCollection<ClientHistoryLog & { clientId: string }>(historyQuery);
+  const { data: history, isLoading: isLoadingHistory } = useCollection<ClientHistoryLog & { path?: string }>(historyQuery);
 
   const getClientIdFromPath = (path: string): string | undefined => {
     const segments = path.split('/');
@@ -72,36 +66,18 @@ export default function HistoryPage() {
     return undefined;
   };
   
-  // Attach client ID to each log from its path
-  const historyWithClientInfo = useMemoFirebase(() => {
+  const filteredHistory = useMemo(() => {
     if (!history) return [];
-    
-    return history.map(log => {
-      // The path to the document is not directly available in the snapshot data,
-      // so we will make an assumption that we can get it from the document reference if available.
-      // The current implementation of useCollection doesn't expose the doc ref.
-      // For now, let's assume we can't get the client name if it's not in the data.
-      // We will adjust if we can get the path.
-      // As a workaround, we will manually parse from a hypothetical path property on the log.
-      // This part is tricky as `useCollection` would need to be modified to return more metadata.
-      // Let's assume we can get the path from the document reference's path property if it were available.
-      return {
-        ...log,
-        // This is a placeholder for where we'd get the client ID.
-        // We'll rely on client-side filtering for now.
-      };
+    if (selectedClientId === 'all') return history;
+
+    return history.filter(log => {
+        // useCollection does not provide document path, so this is a workaround.
+        // In a real application, you should store clientId inside the history document.
+        // For now, this is a placeholder. Without the path, we can't filter.
+        // We will show a message to the user.
+        return true; 
     });
-  }, [history]);
-  
-  const filteredHistory = history?.filter(log => {
-      if (selectedClientId === 'all') return true;
-       // Firestore collection group queries don't give us the full path easily
-       // in the data snapshot. This is a known limitation.
-       // We cannot reliably filter by parent document ID without modifying data structure
-       // or performing many individual queries.
-       // For this demo, we'll show all and note this limitation.
-      return true;
-  });
+  }, [history, selectedClientId]);
 
 
   return (
@@ -135,11 +111,11 @@ export default function HistoryPage() {
               {!isLoadingHistory && history?.length === 0 && (
                 <p className="text-muted-foreground text-center">{t('noHistoryFound')}</p>
               )}
-              {history?.map((log: any) => {
+              {filteredHistory?.map((log: any) => {
                  // HACK: This is a workaround because collection group queries do not return the document path in the snapshot data easily.
                  // In a real app, you would either store the clientId in the history document itself,
                  // or you'd need a more complex query setup.
-                 const clientName = "Unknown Client"; // Placeholder
+                 const clientName = "Client Inconnu"; // Placeholder
                 return (
                   <div key={log.id} className="flex items-start gap-4">
                     <div className="bg-muted p-2 rounded-full">
@@ -154,7 +130,7 @@ export default function HistoryPage() {
                   </div>
                 )
               })}
-                {!isLoadingHistory && selectedClientId !== 'all' && <p className="text-center text-xs text-muted-foreground pt-4">Client-side filtering for collection groups is limited. For full functionality, consider storing the client ID directly in history documents.</p>}
+                {!isLoadingHistory && selectedClientId !== 'all' && <p className="text-center text-xs text-muted-foreground pt-4">Le filtrage côté client pour les groupes de collections est limité. Pour une fonctionnalité complète, envisagez de stocker le `clientId` directement dans les documents d'historique.</p>}
             </div>
           </ScrollArea>
         </CardContent>
