@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import jsQR from "jsqr";
 import { QrCode, User, CheckCircle, Gift, Clock, LogOut, Gamepad2, VideoOff, Camera, MonitorPlay, Tv, Users, ScanLine, Wallet, Monitor, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -661,6 +661,7 @@ function StationCard({ station, client, isLoadingClients, allClients }: {
 
 export default function ScanPage() {
   const { t } = useTranslation();
+  const [filter, setFilter] = useState('All');
   
   const firestore = useFirestore();
 
@@ -684,10 +685,22 @@ export default function ScanPage() {
   const { data: stations, isLoading: isLoadingStations } = useCollection<Station>(stationsQuery);
 
   
-  const stationsWithClients = stations?.map(station => {
+  const stationsWithClients = useMemo(() => stations?.map(station => {
       const client = clients?.find(c => c.id === station.currentClientId);
       return { station, client };
-  })
+  }), [stations, clients]);
+
+  const stationTypes = [
+    'All',
+    'PC',
+    'PS5',
+    'PS5 VIP',
+    'VR Simulator',
+  ];
+
+  const filteredStations = useMemo(() => stationsWithClients?.filter(
+      ({ station }) => filter === 'All' || station.type === filter
+    ), [stationsWithClients, filter]);
 
 
   return (
@@ -714,6 +727,18 @@ export default function ScanPage() {
           <CardHeader>
               <CardTitle className="font-headline">Vue d'ensemble des Postes</CardTitle>
               <CardDescription>Suivi en temps réel de l'état de toutes les stations.</CardDescription>
+              <div className="flex flex-wrap items-center justify-start gap-2 pt-4">
+                {stationTypes.map((type) => (
+                  <Button
+                    key={type}
+                    variant={filter === type ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setFilter(type)}
+                  >
+                    {type}
+                  </Button>
+                ))}
+              </div>
           </CardHeader>
           <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               {isLoadingStations && Array.from({length: 8}).map((_, i) => (
@@ -724,7 +749,7 @@ export default function ScanPage() {
                       </CardContent>
                   </Card>
               ))}
-              {stationsWithClients?.map(({station, client}) => (
+              {filteredStations?.map(({station, client}) => (
                   <StationCard 
                     key={station.id} 
                     station={station} 
