@@ -1,8 +1,14 @@
 import Link from "next/link";
-import { Gamepad2 } from "lucide-react";
+import { Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Logo } from "../logo";
 import { ThemeToggle } from "../theme-toggle";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 export default function ClientHeader() {
   return (
@@ -12,6 +18,25 @@ export default function ClientHeader() {
         <span className="sr-only">Warriors Gaming</span>
       </Link>
       <nav className="ml-auto flex items-center gap-4 sm:gap-6">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="icon">
+              <Globe className="h-[1.2rem] w-[1.2rem]" />
+              <span className="sr-only">Toggle language</span>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem>
+              Français
+            </DropdownMenuItem>
+            <DropdownMenuItem>
+              English
+            </DropdownMenuItem>
+            <DropdownMenuItem>
+              العربية
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
         <ThemeToggle />
         <Button asChild variant="outline" className="border-accent text-accent hover:bg-accent hover:text-accent-foreground">
           <Link
