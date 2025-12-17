@@ -174,6 +174,7 @@ export function ClientActions({ mode, client }: ClientActionsProps) {
           ...data,
           memberSince: new Date().toISOString().split("T")[0],
           subscriptionHours: 0,
+          bonusHours: 0,
           usageData: "New client.",
         };
         await addDocumentNonBlocking(collection(firestore, 'clients'), clientData);
@@ -310,3 +311,5 @@ export function QrCodeDialog({ client }: { client: Client }) {
     </Dialog>
   );
 }
+
+    
