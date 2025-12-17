@@ -41,6 +41,7 @@ export const translations = {
     close: "Close",
     loading: "Loading...",
     error: "Error",
+    releaseStation: "Release",
 
     // Client Page
     addClient: "Add Client",
@@ -119,6 +120,7 @@ export const translations = {
     close: "Fermer",
     loading: "Chargement...",
     error: "Erreur",
+    releaseStation: "Libérer",
 
     // Client Page
     addClient: "Ajouter un client",
@@ -197,6 +199,7 @@ export const translations = {
     close: "إغلاق",
     loading: "جار التحميل...",
     error: "خطأ",
+    releaseStation: "تحرير",
     
     // Client Page
     addClient: "إضافة عميل",

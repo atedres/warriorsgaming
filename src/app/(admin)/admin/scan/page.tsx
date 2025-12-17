@@ -31,6 +31,7 @@ import { formatDistanceToNowStrict } from 'date-fns';
 
 function StationCard({ station, client, onRelease }: { station: Station, client?: Client, onRelease: (station: Station) => void }) {
     const [timer, setTimer] = useState("0m");
+    const { t } = useTranslation();
 
     useEffect(() => {
         if (station.status === 'in use' && station.sessionStartTime) {
@@ -82,10 +83,10 @@ function StationCard({ station, client, onRelease }: { station: Station, client?
                 {station.status === 'in use' ? (
                     <div className="space-y-2">
                         <User className="h-8 w-8 mx-auto text-muted-foreground" />
-                        <p className="font-semibold">{client?.name || 'Chargement...'}</p>
+                        <p className="font-semibold">{client?.name || t('loading')}</p>
                         <p className="text-2xl font-mono font-bold text-primary">{timer}</p>
                         <Button variant="destructive" size="sm" onClick={() => onRelease(station)} className="mt-2 w-full">
-                            <LogOut className="mr-2 h-4 w-4"/> Libérer
+                            <LogOut className="mr-2 h-4 w-4"/> {t('releaseStation')}
                         </Button>
                     </div>
                 ) : station.status === 'available' ? (
