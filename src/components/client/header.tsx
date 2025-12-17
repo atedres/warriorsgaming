@@ -1,3 +1,5 @@
+'use client';
+
 import Link from "next/link";
 import { Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -9,8 +11,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useLanguage } from "@/hooks/use-translation";
 
 export default function ClientHeader() {
+  const { setLanguage } = useLanguage();
+
   return (
     <header className="px-4 lg:px-6 h-14 flex items-center bg-background/80 backdrop-blur-sm sticky top-0 z-50 border-b">
       <Link href="/" className="flex items-center justify-center">
@@ -26,13 +31,13 @@ export default function ClientHeader() {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => setLanguage('fr')}>
               Français
             </DropdownMenuItem>
-            <DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => setLanguage('en')}>
               English
             </DropdownMenuItem>
-            <DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => setLanguage('ar')}>
               العربية
             </DropdownMenuItem>
           </DropdownMenuContent>

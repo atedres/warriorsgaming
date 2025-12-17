@@ -12,8 +12,10 @@ import type { Station } from '@/app/lib/data';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
 import Link from 'next/link';
+import { useTranslation } from '@/hooks/use-translation';
 
 export default function Home() {
+  const { t } = useTranslation();
   const [filter, setFilter] = useState('All');
   const firestore = useFirestore();
   const stationsQuery = useMemoFirebase(
@@ -66,11 +68,10 @@ export default function Home() {
           <div className="container px-4 md:px-6">
             <div className="flex flex-col items-center space-y-4 text-center">
               <h1 className="font-headline text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl lg:text-6xl/none text-shadow-lg">
-                Welcome to Warriors Gaming
+                {t('welcome')}
               </h1>
               <p className="mx-auto max-w-[700px] text-foreground/80 md:text-xl">
-                Your ultimate gaming destination. Check station availability and
-                book your spot now.
+                {t('subtitle')}
               </p>
             </div>
           </div>
@@ -81,10 +82,10 @@ export default function Home() {
             <div className="flex flex-col items-center justify-center space-y-4 text-center">
               <div className="space-y-2">
                 <h2 className="font-headline text-3xl font-bold tracking-tighter sm:text-5xl">
-                  Station Status
+                  {t('stationStatus')}
                 </h2>
                 <p className="max-w-[900px] text-foreground/80 md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
-                  Find an available station and jump into the action.
+                  {t('stationStatusDescription')}
                 </p>
               </div>
               <div className="flex flex-wrap items-center justify-center gap-2 pt-6">
@@ -128,7 +129,7 @@ export default function Home() {
                       </p>
                       <div className="mt-2">
                         <h4 className="text-xs font-semibold text-muted-foreground">
-                          Jeux disponibles
+                          {t('availableGames')}
                         </h4>
                         <p className="text-sm">
                           {station.games?.join(', ') || 'N/A'}
@@ -154,7 +155,7 @@ export default function Home() {
                       className="mt-4"
                       disabled={station.status !== 'available'}
                     >
-                      Réserver
+                      {t('bookNow')}
                     </Button>
                   </CardContent>
                 </Card>
@@ -175,13 +176,13 @@ export default function Home() {
             ></iframe>
             <div className="relative z-10 flex flex-col items-center justify-center h-full text-center text-white bg-black/50 p-4">
                 <div className="space-y-4">
-                    <h2 className="font-headline text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl text-shadow-lg">Retrouvez-nous</h2>
+                    <h2 className="font-headline text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl text-shadow-lg">{t('findUs')}</h2>
                     <p className="mx-auto max-w-[700px] text-lg md:text-xl">
                         20, 22 Rue Rahal Ben Ahmed, Casablanca 20250
                     </p>
                     <Button asChild size="lg">
                         <Link href="https://www.google.com/maps?geocode=FYKdAAIdhx6M_w%3D%3D;FbWUAAIdLSuM_ynx9bK1_M2nDTHps7D3Opnfzg%3D%3D&daddr=20,+22+Rue+Rahal+Ben+Ahmed,+Casablanca+20250&saddr=33.5947536,-7.5943625&dirflg=dht&ftid=0xda7cdfcb5b2f5f1:0xcedf993af7b0b3e9&lucs=,94297695,94275415,94284460,94231188,94280568,47071704,94218641,94282134,94286869&g_ep=CAISEjI1LjQ5LjkuODM4ODk5MTgzMBgAILq3CypRLDk0Mjk3Njk1LDk0Mjc1NDE1LDk0Mjg0NDYwLDk0MjMxMTg4LDk0MjgwNTY4LDQ3MDcxNzA0LDk0MjE4NjQxLDk0MjgyMTM0LDk0Mjg2ODY5QgJNQQ%3D%3D&skid=5f37960f-5403-45c7-9ee0-8e4a082492c1&g_st=ic" target="_blank" rel="noopener noreferrer">
-                            Voir l'itinéraire
+                            {t('getDirections')}
                         </Link>
                     </Button>
                 </div>
@@ -191,7 +192,7 @@ export default function Home() {
       </main>
       <footer className="flex flex-col gap-4 sm:flex-row py-6 w-full shrink-0 items-center px-4 md:px-6 border-t">
         <p className="text-xs text-muted-foreground">
-          &copy; 2024 Warriors Gaming. All rights reserved.
+          &copy; 2024 Warriors Gaming. {t('allRightsReserved')}.
         </p>
         <div className="sm:ml-auto flex items-center gap-4 sm:gap-6">
             <Link href="https://www.instagram.com/warriorsgaming.ma?igsh=MTZ0bmE2b3JuN25wbQ==" target="_blank" rel="noopener noreferrer" className="text-xs hover:underline underline-offset-4">
