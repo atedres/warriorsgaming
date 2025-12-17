@@ -98,9 +98,8 @@ export default function ClientsPage() {
               {filteredClients.map((client) => (
                   <TableRow key={client.id}>
                     <TableCell className="font-medium">
-                      <div className="flex items-center">
+                      <div className="flex items-center gap-2">
                         <div className="font-medium">{client.name}</div>
-                        <QrCodeDialog client={client} />
                       </div>
                       <div className="hidden text-sm text-muted-foreground md:inline">
                         {client.email}
@@ -128,7 +127,11 @@ export default function ClientsPage() {
                       {client.memberSince}
                     </TableCell>
                     <TableCell>
-                      <ClientActions mode="actions" client={client} />
+                      <div className="flex items-center gap-2">
+                        <QrCodeDialog client={client} />
+                        <ClientActions mode="edit" client={client} />
+                        <ClientActions mode="delete" client={client} />
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}

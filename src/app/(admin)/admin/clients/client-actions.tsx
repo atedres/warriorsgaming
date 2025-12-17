@@ -57,9 +57,14 @@ type ClientActionsProps =
       client?: never;
     }
   | {
-      mode: "actions";
+      mode: "edit";
+      client: Client;
+    }
+  | {
+      mode: "delete";
       client: Client;
     };
+
 
 // Separate component for the form to manage its own state
 function ClientForm({ client, onFormSubmit, isSubmitting }: { client?: Client, onFormSubmit: (data: ClientFormValues) => void, isSubmitting: boolean }) {
@@ -179,7 +184,7 @@ export function ClientActions({ mode, client }: ClientActionsProps) {
         };
         await addDocumentNonBlocking(collection(firestore, 'clients'), clientData);
         toast({ title: "Client created", description: `${data.name} has been added.` });
-      } else if (mode === "actions" && client) {
+      } else if (mode === "edit" && client) {
         const clientRef = doc(firestore, "clients", client.id);
         updateDocumentNonBlocking(clientRef, data);
         toast({ title: "Client updated", description: `${data.name}'s profile has been updated.` });
@@ -228,9 +233,15 @@ export function ClientActions({ mode, client }: ClientActionsProps) {
     );
   }
 
-  return (
-    <>
-      <Dialog open={isEditDialogOpen} onOpenChange={setEditDialogOpen}>
+  if (mode === "edit") {
+     return (
+       <Dialog open={isEditDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogTrigger asChild>
+          <Button aria-haspopup="true" size="icon" variant="ghost">
+            <FilePenLine className="h-4 w-4" />
+            <span className="sr-only">Edit client</span>
+          </Button>
+        </DialogTrigger>
         <DialogContent>
             <DialogHeader>
               <DialogTitle>Edit Client</DialogTitle>
@@ -241,7 +252,11 @@ export function ClientActions({ mode, client }: ClientActionsProps) {
             <ClientForm client={client} onFormSubmit={handleFormSubmit} isSubmitting={isSubmitting} />
         </DialogContent>
       </Dialog>
-
+     )
+  }
+  
+  if (mode === "delete") {
+    return (
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button aria-haspopup="true" size="icon" variant="ghost">
@@ -251,15 +266,13 @@ export function ClientActions({ mode, client }: ClientActionsProps) {
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           <DropdownMenuLabel>Actions</DropdownMenuLabel>
-          <DropdownMenuItem onSelect={() => setEditDialogOpen(true)}>
-            <FilePenLine className="mr-2 h-4 w-4" />
-            Edit
-          </DropdownMenuItem>
           <DropdownMenuItem className="text-red-500" onSelect={handleDelete}>Delete</DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
-    </>
-  );
+    );
+  }
+
+  return null;
 }
 
 
@@ -288,7 +301,7 @@ export function QrCodeDialog({ client }: { client: Client }) {
   return (
     <Dialog open={isQrDialogOpen} onOpenChange={setQrDialogOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm" className="ml-2">
+        <Button variant="outline" size="sm">
           <QrCode className="h-4 w-4" />
         </Button>
       </DialogTrigger>
