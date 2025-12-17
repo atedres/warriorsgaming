@@ -18,6 +18,7 @@ import {
   DialogTitle,
   DialogTrigger,
   DialogFooter,
+  DialogClose,
 } from "@/components/ui/dialog";
 import {
   DropdownMenu,
@@ -205,16 +206,58 @@ function StationForm({
           )}
         />
         <DialogFooter>
-          <Button type="button" variant="outline" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button type="submit" disabled={isSubmitting}>
-            {isSubmitting ? "Saving..." : isEditing ? "Save Changes" : "Add Station"}
-          </Button>
+            <DialogClose asChild>
+                <Button type="button" variant="outline">
+                    Cancel
+                </Button>
+            </DialogClose>
+            <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? "Saving..." : isEditing ? "Save Changes" : "Add Station"}
+            </Button>
         </DialogFooter>
       </form>
     </Form>
   );
+}
+
+function EditStationDialog({ station }: { station: Station }) {
+    const [isOpen, setIsOpen] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const firestore = useFirestore();
+    const { toast } = useToast();
+
+    const handleFormSubmit = async (data: StationFormValues) => {
+        if (!firestore) return;
+        setIsSubmitting(true);
+        try {
+            const stationRef = doc(firestore, 'stations', data.id);
+            setDocumentNonBlocking(stationRef, data, { merge: true });
+            toast({ title: "Station updated", description: `Station ${station.id} has been updated.` });
+            setIsOpen(false);
+        } catch (error) {
+            console.error("Error submitting form:", error);
+            toast({ variant: "destructive", title: "Error", description: "Something went wrong." });
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+    
+    return (
+        <Dialog open={isOpen} onOpenChange={setIsOpen}>
+            <DialogTrigger asChild>
+                <DropdownMenuItem onSelect={(e) => e.preventDefault()}>Edit</DropdownMenuItem>
+            </DialogTrigger>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Edit Station</DialogTitle>
+                    <DialogDescription>
+                        {`Editing station ${station.id}.`}
+                    </DialogDescription>
+                </DialogHeader>
+                <StationForm isEditing={true} station={station} onFormSubmit={handleFormSubmit} isSubmitting={isSubmitting} onClose={() => setIsOpen(false)} />
+            </DialogContent>
+        </Dialog>
+    )
 }
 
 export function StationActions({ mode, station }: StationActionsProps) {
@@ -234,13 +277,8 @@ export function StationActions({ mode, station }: StationActionsProps) {
         ...data,
       };
 
-      if (mode === "add") {
-        setDocumentNonBlocking(stationRef, stationData, { merge: false });
-        toast({ title: "Station created", description: `Station ${data.id} has been added.` });
-      } else if (mode === "actions" && station) {
-        setDocumentNonBlocking(stationRef, stationData, { merge: true });
-        toast({ title: "Station updated", description: `Station ${station.id} has been updated.` });
-      }
+      setDocumentNonBlocking(stationRef, stationData, { merge: false });
+      toast({ title: "Station created", description: `Station ${data.id} has been added.` });
       setDialogOpen(false);
     } catch (error) {
       console.error("Error submitting form:", error);
@@ -286,36 +324,22 @@ export function StationActions({ mode, station }: StationActionsProps) {
   }
 
   return (
-    <>
-      <Dialog open={isDialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Edit Station</DialogTitle>
-              <DialogDescription>
-                {`Editing station ${station.id}.`}
-              </DialogDescription>
-            </DialogHeader>
-            <StationForm isEditing={true} station={station} onFormSubmit={handleFormSubmit} isSubmitting={isSubmitting} onClose={() => setDialogOpen(false)} />
-        </DialogContent>
-      </Dialog>
-
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button aria-haspopup="true" size="icon" variant="ghost">
-            <MoreHorizontal className="h-4 w-4" />
-            <span className="sr-only">Toggle menu</span>
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuLabel>Actions</DropdownMenuLabel>
-          <DropdownMenuItem onSelect={() => setDialogOpen(true)}>
-            Edit
-          </DropdownMenuItem>
-          <DropdownMenuItem className="text-red-500" onSelect={handleDelete}>Delete</DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    </>
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button aria-haspopup="true" size="icon" variant="ghost">
+          <MoreHorizontal className="h-4 w-4" />
+          <span className="sr-only">Toggle menu</span>
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuLabel>Actions</DropdownMenuLabel>
+        <EditStationDialog station={station!} />
+        <DropdownMenuItem className="text-red-500" onSelect={handleDelete}>Delete</DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
+
+    
 
     
