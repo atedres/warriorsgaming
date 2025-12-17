@@ -259,9 +259,9 @@ function AssignClientDialog({ station, clients }: { station: Station; clients: C
     )
 }
 
-function BonusPointsDialog({ clients, trigger }: { clients: Client[] | null, trigger: React.ReactNode }) {
+function BonusPointsDialog({ clients, trigger, initialClient }: { clients: Client[] | null, trigger: React.ReactNode, initialClient?: Client | null }) {
     const [isOpen, setIsOpen] = useState(false);
-    const [scannedClient, setScannedClient] = useState<Client | null>(null);
+    const [selectedClient, setSelectedClient] = useState<Client | null>(null);
     const [hoursToAdd, setHoursToAdd] = useState<number | string>("");
     const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
     const firestore = useFirestore();
@@ -273,7 +273,7 @@ function BonusPointsDialog({ clients, trigger }: { clients: Client[] | null, tri
             if (parsed.clientId) {
                 const foundClient = clients?.find(c => c.id === parsed.clientId);
                 if (foundClient) {
-                    setScannedClient(foundClient);
+                    setSelectedClient(foundClient);
                 } else {
                      toast({
                         variant: "destructive",
@@ -292,13 +292,13 @@ function BonusPointsDialog({ clients, trigger }: { clients: Client[] | null, tri
     }
 
     const handleUpdateHours = () => {
-        if (!firestore || !scannedClient || !hoursToAdd || +hoursToAdd <= 0) return;
+        if (!firestore || !selectedClient || !hoursToAdd || +hoursToAdd <= 0) return;
         
-        const newHours = (scannedClient.subscriptionHours || 0) + Number(hoursToAdd);
-        const clientRef = doc(firestore, "clients", scannedClient.id);
+        const newHours = (selectedClient.subscriptionHours || 0) + Number(hoursToAdd);
+        const clientRef = doc(firestore, "clients", selectedClient.id);
         updateDocumentNonBlocking(clientRef, { subscriptionHours: newHours });
 
-        const historyRef = collection(firestore, 'clients', scannedClient.id, 'history');
+        const historyRef = collection(firestore, 'clients', selectedClient.id, 'history');
         addDocumentNonBlocking(historyRef, {
             timestamp: new Date().toISOString(),
             type: 'recharge',
@@ -307,20 +307,24 @@ function BonusPointsDialog({ clients, trigger }: { clients: Client[] | null, tri
 
         toast({
             title: "Heures Mises à Jour",
-            description: `${hoursToAdd} heure(s) ont été ajoutées à l'abonnement de ${scannedClient.name}.`
+            description: `${hoursToAdd} heure(s) ont été ajoutées à l'abonnement de ${selectedClient.name}.`
         });
 
-        setScannedClient(null);
+        setSelectedClient(null);
         setHoursToAdd("");
         setIsOpen(false);
     }
     
     useEffect(() => {
         if(!isOpen) {
-            setScannedClient(null);
+            setSelectedClient(null);
             setHoursToAdd("");
+        } else {
+            if (initialClient) {
+                setSelectedClient(initialClient);
+            }
         }
-    }, [isOpen])
+    }, [isOpen, initialClient])
 
     return (
          <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -331,10 +335,10 @@ function BonusPointsDialog({ clients, trigger }: { clients: Client[] | null, tri
                 <DialogHeader>
                     <DialogTitle>Attribuer des Heures Bonus</DialogTitle>
                     <DialogDescription>
-                        Scannez le QR code du client pour recharger son compte en heures.
+                        Scannez le QR code du client ou utilisez le client actuel pour recharger son compte en heures.
                     </DialogDescription>
                 </DialogHeader>
-                {!scannedClient ? (
+                {!selectedClient ? (
                      <>
                         {isOpen && <QrScanner 
                             onScan={onScan} 
@@ -354,8 +358,8 @@ function BonusPointsDialog({ clients, trigger }: { clients: Client[] | null, tri
                         <div className="flex items-center gap-4 p-4 rounded-lg bg-muted">
                             <User className="h-10 w-10 text-muted-foreground" />
                             <div>
-                                <p className="font-semibold">{scannedClient.name}</p>
-                                <p className="text-sm text-muted-foreground">Heures actuelles : {scannedClient.subscriptionHours || 0}</p>
+                                <p className="font-semibold">{selectedClient.name}</p>
+                                <p className="text-sm text-muted-foreground">Heures actuelles : {selectedClient.subscriptionHours || 0}</p>
                             </div>
                         </div>
                         <div className="space-y-2">
@@ -488,6 +492,7 @@ function ReleaseStationDialog({ station, client, allClients }: { station: Statio
                      <div className="flex flex-col gap-2">
                         <BonusPointsDialog
                             clients={allClients}
+                            initialClient={client}
                             trigger={<Button variant="outline" className="w-full"><Gift className="mr-2 h-4 w-4"/> Attribuer un bonus</Button>}
                         />
                          <Button onClick={handleConfirmRelease} className="w-full">
@@ -658,5 +663,3 @@ export default function ScanPage() {
     </>
   );
 }
-
-    
