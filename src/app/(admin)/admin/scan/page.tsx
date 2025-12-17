@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import jsQR from "jsqr";
-import { QrCode, User, CheckCircle, Gift, Clock, LogOut, Gamepad2, VideoOff, Camera } from "lucide-react";
+import { QrCode, User, CheckCircle, Gift, Clock, LogOut, Gamepad2, VideoOff, Camera, MonitorPlay, Tv, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -26,6 +26,83 @@ import { useToast } from "@/hooks/use-toast";
 import { addDocumentNonBlocking, updateDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useTranslation } from "@/hooks/use-translation";
+import { cn } from "@/lib/utils";
+import { formatDistanceToNowStrict } from 'date-fns';
+
+function StationCard({ station, client, onRelease }: { station: Station, client?: Client, onRelease: (station: Station) => void }) {
+    const [timer, setTimer] = useState("0m");
+
+    useEffect(() => {
+        if (station.status === 'in use' && station.sessionStartTime) {
+            const updateTimer = () => {
+                const startTime = new Date(station.sessionStartTime!);
+                setTimer(formatDistanceToNowStrict(startTime));
+            };
+            updateTimer();
+            const intervalId = setInterval(updateTimer, 1000); // Mettre à jour chaque seconde
+            return () => clearInterval(intervalId);
+        }
+    }, [station.status, station.sessionStartTime]);
+
+
+    const getIcon = (type: string) => {
+        switch (type) {
+          case 'PC':
+            return <Gamepad2 className="h-5 w-5" />;
+          case 'PS5':
+            return <Gamepad2 className="h-5 w-5" />;
+          case 'PS5 VIP':
+            return <Gamepad2 className="h-5 w-5 text-primary" />;
+          case 'VR Simulator':
+            return <Tv className="h-5 w-5" />;
+          default:
+            return null;
+        }
+      };
+
+
+    return (
+        <Card className={cn(
+            "flex flex-col transition-all duration-300",
+            station.status === 'in use' && "bg-orange-400/10 border-orange-400/50",
+            station.status === 'maintenance' && "bg-red-400/10 border-red-400/50 opacity-60",
+        )}>
+             <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="font-headline text-lg font-medium flex items-center gap-2">
+                    {getIcon(station.type)}
+                    {station.id}
+                </CardTitle>
+                <Badge variant={station.status === 'available' ? 'secondary' : 'default'} className={cn(
+                    station.status === 'available' && "bg-green-500/20 text-green-700 border-green-500/50",
+                    station.status === 'in use' && "bg-orange-500/20 text-orange-700 border-orange-500/50",
+                    station.status === 'maintenance' && "bg-red-500/20 text-red-700 border-red-500/50",
+                )}>{station.status}</Badge>
+            </CardHeader>
+            <CardContent className="flex-1 flex flex-col justify-center items-center text-center p-4">
+                {station.status === 'in use' ? (
+                    <div className="space-y-2">
+                        <User className="h-8 w-8 mx-auto text-muted-foreground" />
+                        <p className="font-semibold">{client?.name || 'Chargement...'}</p>
+                        <p className="text-2xl font-mono font-bold text-primary">{timer}</p>
+                        <Button variant="destructive" size="sm" onClick={() => onRelease(station)} className="mt-2 w-full">
+                            <LogOut className="mr-2 h-4 w-4"/> Libérer
+                        </Button>
+                    </div>
+                ) : station.status === 'available' ? (
+                    <div className="text-muted-foreground">
+                        <MonitorPlay className="h-10 w-10 mx-auto"/>
+                        <p className="mt-2">Disponible</p>
+                    </div>
+                ) : (
+                     <div className="text-muted-foreground">
+                        <VideoOff className="h-10 w-10 mx-auto"/>
+                        <p className="mt-2">Maintenance</p>
+                    </div>
+                )}
+            </CardContent>
+        </Card>
+    )
+}
 
 
 export default function ScanPage() {
@@ -63,12 +140,11 @@ export default function ScanPage() {
         cancelAnimationFrame(animationFrameId.current);
         animationFrameId.current = undefined;
     }
-    // Ne pas mettre setIsScanning(false) ici pour que la caméra reste active
   }, []);
 
   const handleQrCodeScanned = useCallback((code: string) => {
     stopScanning();
-    setIsScanning(false); // Arrêter l'indicateur de scan
+    setIsScanning(false); 
     setLoading(true);
     try {
         if (navigator.vibrate) {
@@ -120,7 +196,7 @@ export default function ScanPage() {
 
             if (code) {
                 handleQrCodeScanned(code.data);
-                return; // Arrête la boucle
+                return;
             }
         }
     }
@@ -134,6 +210,10 @@ export default function ScanPage() {
       if (!isScanning) {
           setScannedClient(null);
           setIsScanning(true);
+          // ensure the scan loop starts
+          if (animationFrameId.current) {
+            cancelAnimationFrame(animationFrameId.current);
+          }
           animationFrameId.current = requestAnimationFrame(scanLoop);
       }
   }, [isScanning, scanLoop]);
@@ -193,23 +273,42 @@ export default function ScanPage() {
   }, []);
   
   useEffect(() => {
-    if (isScanning) {
-      scanLoop();
+    if (isScanning && hasCameraPermission) {
+      animationFrameId.current = requestAnimationFrame(scanLoop);
+    } else {
+      if (animationFrameId.current) {
+        cancelAnimationFrame(animationFrameId.current);
+      }
     }
-  }, [isScanning, scanLoop])
+    return () => {
+        if(animationFrameId.current) {
+            cancelAnimationFrame(animationFrameId.current)
+        }
+    }
+  }, [isScanning, hasCameraPermission, scanLoop])
 
 
   const availableStations = stations?.filter(s => s.status === 'available') || [];
 
   const handleAssignStation = () => {
     if(!firestore || !scannedClient || !selectedStationId) return;
+    const startTime = new Date().toISOString();
 
     const stationRef = doc(firestore, "stations", selectedStationId);
     const stationData = stations?.find(s => s.id === selectedStationId);
-    const historyRef = collection(firestore, 'clients', scannedClient.id, 'history');
     
+    updateDocumentNonBlocking(stationRef, { 
+        status: 'in use', 
+        currentClientId: scannedClient.id,
+        sessionStartTime: startTime 
+    });
+    
+    const clientRef = doc(firestore, "clients", scannedClient.id);
+    updateDocumentNonBlocking(clientRef, { currentStationId: selectedStationId });
+
+    const historyRef = collection(firestore, 'clients', scannedClient.id, 'history');
     addDocumentNonBlocking(historyRef, {
-        timestamp: new Date().toISOString(),
+        timestamp: startTime,
         type: 'check-in',
         description: `Checked in at station ${stationData?.id} (${stationData?.type})`,
     });
@@ -217,47 +316,38 @@ export default function ScanPage() {
     addDocumentNonBlocking(collection(firestore, "usageLogs"), {
         clientId: scannedClient.id,
         stationId: selectedStationId,
-        startTime: new Date().toISOString(),
+        startTime: startTime,
         endTime: null,
     });
-
-    updateDocumentNonBlocking(stationRef, { status: 'in use', currentClientId: scannedClient.id });
-    
-    const clientRef = doc(firestore, "clients", scannedClient.id);
-    updateDocumentNonBlocking(clientRef, { currentStationId: selectedStationId });
 
     toast({
         title: "Poste Assigné",
         description: `${scannedClient.name} a été assigné au poste ${stationData?.id}.`
     });
-
-    setScannedClient(prev => prev ? { ...prev, currentStationId: selectedStationId } : null);
+    setScannedClient(null);
     setSelectedStationId("");
   }
   
-  const handleReleaseStation = () => {
-    if(!firestore || !scannedClient || !scannedClient.currentStationId) return;
+  const handleReleaseStation = (stationToRelease: Station) => {
+    if(!firestore || !stationToRelease.currentClientId) return;
 
-    const stationRef = doc(firestore, "stations", scannedClient.currentStationId);
-    const stationData = stations?.find(s => s.id === scannedClient.currentStationId);
-    updateDocumentNonBlocking(stationRef, { status: 'available', currentClientId: null });
+    const stationRef = doc(firestore, "stations", stationToRelease.id);
+    updateDocumentNonBlocking(stationRef, { status: 'available', currentClientId: null, sessionStartTime: null });
 
-    const clientRef = doc(firestore, "clients", scannedClient.id);
+    const clientRef = doc(firestore, "clients", stationToRelease.currentClientId);
     updateDocumentNonBlocking(clientRef, { currentStationId: null });
 
-    const historyRef = collection(firestore, 'clients', scannedClient.id, 'history');
+    const historyRef = collection(firestore, 'clients', stationToRelease.currentClientId, 'history');
     addDocumentNonBlocking(historyRef, {
         timestamp: new Date().toISOString(),
         type: 'check-out',
-        description: `Checked out from station ${stationData?.id} (${stationData?.type})`,
+        description: `Checked out from station ${stationToRelease.id} (${stationToRelease.type})`,
     });
 
     toast({
         title: "Poste Libéré",
-        description: `Le poste ${scannedClient.currentStationId} est maintenant disponible.`
+        description: `Le poste ${stationToRelease.id} est maintenant disponible.`
     });
-
-    setScannedClient(prev => prev ? { ...prev, currentStationId: undefined } : null);
   }
 
   const handleUpdateHours = () => {
@@ -293,7 +383,10 @@ export default function ScanPage() {
     }
   }
 
-  const clientCurrentStation = stations?.find(s => s.id === scannedClient?.currentStationId);
+  const stationsWithClients = stations?.map(station => {
+      const client = clients?.find(c => c.id === station.currentClientId);
+      return { station, client };
+  })
 
 
   return (
@@ -303,57 +396,50 @@ export default function ScanPage() {
         description={t('qrCodeScannerDescription')}
         className="px-0"
       />
-      <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
-        <Card className="lg:col-span-1">
-          <CardHeader>
-            <CardTitle className="font-headline">{t('scanner')}</CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-col items-center justify-center gap-4 text-center">
-             <div className="w-full max-w-[400px] aspect-square bg-muted rounded-lg flex items-center justify-center overflow-hidden relative group">
-              <video ref={videoRef} className="w-full h-full object-cover" autoPlay muted playsInline />
-               <canvas ref={canvasRef} className="hidden" />
-              {hasCameraPermission === false && (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground z-10">
-                      <VideoOff className="h-16 w-16 mb-4" />
-                      <p>Caméra non disponible</p>
-                  </div>
-              )}
-               {isScanning && (
-                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                      <div className="w-2/3 h-2/3 border-4 border-primary/50 rounded-lg animate-pulse" />
-                  </div>
-              )}
-              <div className="absolute bottom-4 left-4 right-4 flex justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-20">
-                <Button onClick={startScanning} disabled={isLoadingClients || !hasCameraPermission || isScanning} className="flex-grow">
-                    {isScanning ? "Scanning..." : "Scan"}
-                </Button>
-                {videoDevices.length > 1 && (
-                    <Button onClick={handleSwapCamera} variant="outline" size="icon" disabled={!hasCameraPermission}>
-                        <Camera className="h-5 w-5" />
-                        <span className="sr-only">Changer de Caméra</span>
-                    </Button>
+      <div className="grid gap-8 lg:grid-cols-3">
+        <div className="lg:col-span-1 space-y-8">
+            <Card>
+            <CardHeader>
+                <CardTitle className="font-headline">{t('scanner')}</CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-col items-center justify-center gap-4 text-center">
+                <div className="w-full max-w-[400px] aspect-square bg-muted rounded-lg flex items-center justify-center overflow-hidden relative group">
+                <video ref={videoRef} className="w-full h-full object-cover" autoPlay muted playsInline />
+                <canvas ref={canvasRef} className="hidden" />
+                {hasCameraPermission === false && (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground z-10">
+                        <VideoOff className="h-16 w-16 mb-4" />
+                        <p>Caméra non disponible</p>
+                    </div>
                 )}
-            </div>
-            </div>
-            {hasCameraPermission === false && (
-                <Alert variant="destructive">
-                    <AlertTitle>Accès Caméra Requis</AlertTitle>
-                    <AlertDescription>
-                        Veuillez autoriser l'accès à la caméra dans les paramètres de votre navigateur pour utiliser cette fonctionnalité.
-                    </AlertDescription>
-                </Alert>
-            )}
-          </CardContent>
-        </Card>
+                {isScanning && (
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                        <div className="w-2/3 h-2/3 border-4 border-primary/50 rounded-lg animate-pulse" />
+                    </div>
+                )}
+                <div className="absolute bottom-4 left-4 right-4 flex justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-20">
+                    <Button onClick={startScanning} disabled={isLoadingClients || !hasCameraPermission || isScanning} className="flex-grow">
+                        {isScanning ? "Scanning..." : "Scan"}
+                    </Button>
+                    {videoDevices.length > 1 && (
+                        <Button onClick={handleSwapCamera} variant="outline" size="icon" disabled={!hasCameraPermission}>
+                            <Camera className="h-5 w-5" />
+                            <span className="sr-only">Changer de Caméra</span>
+                        </Button>
+                    )}
+                </div>
+                </div>
+                {hasCameraPermission === false && (
+                    <Alert variant="destructive">
+                        <AlertTitle>Accès Caméra Requis</AlertTitle>
+                        <AlertDescription>
+                            Veuillez autoriser l'accès à la caméra dans les paramètres de votre navigateur pour utiliser cette fonctionnalité.
+                        </AlertDescription>
+                    </Alert>
+                )}
+            </CardContent>
+            </Card>
 
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle className="font-headline">Profil du Client</CardTitle>
-            <CardDescription>
-              Les informations du client apparaîtront ici après un scan réussi.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="min-h-[300px]">
             {loading && (
               <div className="flex items-center justify-center h-full">
                 <div className="flex flex-col items-center gap-2">
@@ -363,107 +449,115 @@ export default function ScanPage() {
               </div>
             )}
             {!loading && scannedClient && (
-              <div className="space-y-6">
-                <div className="flex items-start gap-4">
-                  <div className="flex-shrink-0">
-                    <User className="h-12 w-12 text-primary" />
-                  </div>
-                  <div className="flex-grow">
-                    <h3 className="text-xl font-semibold">{scannedClient.name}</h3>
-                    <p className="text-muted-foreground">{scannedClient.email}</p>
-                    <Badge variant="secondary" className="mt-2">{scannedClient.subscriptionTier}</Badge>
-                  </div>
-                   <div className="text-right">
-                        <p className="text-sm text-muted-foreground">Heures Restantes</p>
-                        <p className="text-2xl font-bold">{scannedClient.subscriptionHours || 0}</p>
+            <Card>
+                <CardHeader>
+                    <CardTitle className="font-headline">Profil du Client</CardTitle>
+                    <CardDescription>
+                    Assigner un poste ou gérer le compte.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                    <div className="flex items-start gap-4">
+                    <div className="flex-shrink-0">
+                        <User className="h-12 w-12 text-primary" />
                     </div>
-                </div>
-                
-                <Separator />
-                
-                <div className="grid gap-4">
-                  <h4 className="font-semibold">Gestion des Postes</h4>
-                  {clientCurrentStation ? (
-                     <div className="flex items-center gap-4 p-4 bg-muted/50 rounded-lg">
-                        <Gamepad2 className="h-8 w-8 text-primary"/>
-                        <div className="flex-grow">
-                            <p className="font-medium">Joue actuellement sur :</p>
-                            <p className="text-lg font-bold">{clientCurrentStation.id} ({clientCurrentStation.type})</p>
+                    <div className="flex-grow">
+                        <h3 className="text-xl font-semibold">{scannedClient.name}</h3>
+                        <p className="text-muted-foreground">{scannedClient.email}</p>
+                        <Badge variant="secondary" className="mt-2">{scannedClient.subscriptionTier}</Badge>
+                    </div>
+                    <div className="text-right">
+                            <p className="text-sm text-muted-foreground">Heures Restantes</p>
+                            <p className="text-2xl font-bold">{scannedClient.subscriptionHours || 0}</p>
                         </div>
-                        <Button variant="destructive" size="sm" onClick={handleReleaseStation}>
-                            <LogOut className="mr-2 h-4 w-4"/> Libérer
+                    </div>
+                    
+                    <Separator />
+                    
+                    <div className="grid gap-4">
+                    <h4 className="font-semibold">Gestion des Postes</h4>
+                     {scannedClient.currentStationId ? (
+                         <Alert>
+                            <Users className="h-4 w-4"/>
+                            <AlertTitle>Client déjà en session</AlertTitle>
+                            <AlertDescription>
+                                {scannedClient.name} joue actuellement sur le poste {scannedClient.currentStationId}.
+                            </AlertDescription>
+                         </Alert>
+                     ): (
+                        <div className="flex flex-col sm:flex-row gap-2 items-end">
+                        <div className="grid gap-1.5 w-full sm:w-auto flex-grow">
+                            <Label htmlFor="station">Assigner un Poste</Label>
+                            <Select value={selectedStationId} onValueChange={setSelectedStationId}>
+                                <SelectTrigger id="station">
+                                    <SelectValue placeholder="Sélectionner un poste" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {isLoadingStations ? <SelectItem value="loading" disabled>Chargement...</SelectItem> : 
+                                    availableStations.length > 0 ? (
+                                        availableStations.map(station => (
+                                            <SelectItem key={station.id} value={station.id}>{station.id} ({station.type})</SelectItem>
+                                        ))
+                                    ) : (
+                                        <SelectItem value="none" disabled>Aucun poste disponible</SelectItem>
+                                    )
+                                    }
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <Button onClick={handleAssignStation} disabled={!selectedStationId}>
+                            <CheckCircle className="mr-2 h-4 w-4" /> Assigner
                         </Button>
-                     </div>
-                  ) : (
-                    <div className="flex flex-col sm:flex-row gap-2 items-end">
-                      <div className="grid gap-1.5 w-full sm:w-auto flex-grow">
-                        <Label htmlFor="station">Assigner un Poste</Label>
-                        <Select value={selectedStationId} onValueChange={setSelectedStationId}>
-                            <SelectTrigger id="station">
-                                <SelectValue placeholder="Sélectionner un poste" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {isLoadingStations ? <SelectItem value="loading" disabled>Chargement...</SelectItem> : 
-                                 availableStations.length > 0 ? (
-                                    availableStations.map(station => (
-                                        <SelectItem key={station.id} value={station.id}>{station.id} ({station.type})</SelectItem>
-                                    ))
-                                 ) : (
-                                    <SelectItem value="none" disabled>Aucun poste disponible</SelectItem>
-                                 )
-                                }
-                            </SelectContent>
-                        </Select>
-                      </div>
-                      <Button onClick={handleAssignStation} disabled={!selectedStationId}>
-                        <CheckCircle className="mr-2 h-4 w-4" /> Assigner
-                      </Button>
+                        </div>
+                     )}
                     </div>
-                  )}
-                </div>
 
-                <Separator />
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="hours" className="flex items-center">
-                        <Clock className="mr-2 h-4 w-4 text-muted-foreground"/>
-                        Gérer les Heures d'Abonnement
-                    </Label>
-                    <div className="flex gap-2">
-                        <Input 
-                            id="hours" 
-                            type="number" 
-                            placeholder="ex: 5" 
-                            value={hoursToAdd}
-                            onChange={(e) => setHoursToAdd(e.target.value)}
-                        />
-                        <Button variant="outline" onClick={handleUpdateHours}>Mettre à jour</Button>
+                    <Separator />
+                    
+                    <div className="space-y-2">
+                        <Label htmlFor="hours" className="flex items-center">
+                            <Clock className="mr-2 h-4 w-4 text-muted-foreground"/>
+                            Gérer les Heures d'Abonnement
+                        </Label>
+                        <div className="flex gap-2">
+                            <Input 
+                                id="hours" 
+                                type="number" 
+                                placeholder="ex: 5" 
+                                value={hoursToAdd}
+                                onChange={(e) => setHoursToAdd(e.target.value)}
+                            />
+                            <Button variant="outline" onClick={handleUpdateHours}>Mettre à jour</Button>
+                        </div>
                     </div>
-                  </div>
-                   <div className="space-y-2">
-                     <Label className="flex items-center">
-                        <Gift className="mr-2 h-4 w-4 text-muted-foreground"/>
-                        Actions Bonus
-                    </Label>
-                    <Button variant="secondary" className="w-full">
-                      Ajouter un Bonus
-                    </Button>
-                  </div>
-                </div>
-              </div>
+                </CardContent>
+            </Card>
             )}
-            {!loading && !scannedClient && (
-              <div className="flex items-center justify-center h-full text-center">
-                <div className="flex flex-col items-center gap-2">
-                    <User className="h-10 w-10 text-muted-foreground"/>
-                    <p className="text-muted-foreground">En attente d'un scan...</p>
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        </div>
+
+        <div className="lg:col-span-2">
+            <Card>
+                <CardHeader>
+                    <CardTitle className="font-headline">Vue d'ensemble des Postes</CardTitle>
+                    <CardDescription>Suivi en temps réel de l'état de toutes les stations.</CardDescription>
+                </CardHeader>
+                <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {isLoadingStations && Array.from({length: 6}).map((_, i) => (
+                        <Card key={i}>
+                            <CardHeader><div className="h-5 w-3/4 bg-muted animate-pulse rounded-md"></div></CardHeader>
+                            <CardContent className="flex items-center justify-center h-24">
+                                <div className="h-8 w-1/2 bg-muted animate-pulse rounded-md"></div>
+                            </CardContent>
+                        </Card>
+                    ))}
+                    {stationsWithClients?.map(({station, client}) => (
+                        <StationCard key={station.id} station={station} client={client} onRelease={handleReleaseStation} />
+                    ))}
+                </CardContent>
+            </Card>
+        </div>
       </div>
     </>
   );
 }
+
