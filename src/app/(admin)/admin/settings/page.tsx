@@ -28,8 +28,9 @@ import {
 import { useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { Globe, Palette, UserPlus, Bell, Lock } from 'lucide-react';
-import { useAuth, useUser } from '@/firebase';
+import { useAuth, useFirestore, useUser } from '@/firebase';
 import { createUserWithEmailAndPassword, sendPasswordResetEmail, updatePassword, reauthenticateWithCredential, EmailAuthProvider } from 'firebase/auth';
+import { doc, setDoc } from 'firebase/firestore';
 
 
 function AddAdminDialog() {
@@ -39,9 +40,10 @@ function AddAdminDialog() {
     const [loading, setLoading] = useState(false);
     const { toast } = useToast();
     const auth = useAuth();
+    const firestore = useFirestore();
 
     const handleAddAdmin = async () => {
-        if (!auth) {
+        if (!auth || !firestore) {
             toast({ variant: 'destructive', title: 'Error', description: 'Authentication service not available.' });
             return;
         }
@@ -57,8 +59,17 @@ function AddAdminDialog() {
 
             // 2. Create the user
             const userCredential = await createUserWithEmailAndPassword(auth, email, randomPassword);
+            const newUser = userCredential.user;
             
-            // 3. Send a password reset email immediately
+            // 3. Add the user to the 'admins' collection
+            const adminRef = doc(firestore, 'admins', newUser.uid);
+            await setDoc(adminRef, {
+                email: newUser.email,
+                role: 'manager', // You can set a default role
+                addedOn: new Date().toISOString()
+            });
+
+            // 4. Send a password reset email immediately
             await sendPasswordResetEmail(auth, email);
 
             toast({
@@ -317,5 +328,7 @@ export default function SettingsPage() {
     </>
   );
 }
+
+    
 
     
