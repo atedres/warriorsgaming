@@ -14,6 +14,7 @@ export type Client = {
   memberSince: string;
   subscriptionTier: 'Basic' | 'Premium' | 'VIP';
   subscriptionHours: number;
+  bonusHours?: number;
   usageData: string;
   currentStationId?: string;
 };

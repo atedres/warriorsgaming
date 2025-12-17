@@ -76,6 +76,8 @@ export default function ClientsPage() {
               <TableRow>
                 <TableHead>Name</TableHead>
                 <TableHead>Subscription</TableHead>
+                <TableHead>Heures d'abo.</TableHead>
+                <TableHead>Heures bonus</TableHead>
                 <TableHead className="hidden md:table-cell">
                   Member Since
                 </TableHead>
@@ -88,7 +90,7 @@ export default function ClientsPage() {
               {isLoading &&
                 Array.from({ length: 4 }).map((_, i) => (
                   <TableRow key={i}>
-                    <TableCell colSpan={4}>
+                    <TableCell colSpan={6}>
                       <div className="h-8 w-full animate-pulse rounded-md bg-muted" />
                     </TableCell>
                   </TableRow>
@@ -120,6 +122,8 @@ export default function ClientsPage() {
                         {client.subscriptionTier}
                       </Badge>
                     </TableCell>
+                    <TableCell>{client.subscriptionHours ?? 0}</TableCell>
+                    <TableCell>{client.bonusHours ?? 0}</TableCell>
                     <TableCell className="hidden md:table-cell">
                       {client.memberSince}
                     </TableCell>
