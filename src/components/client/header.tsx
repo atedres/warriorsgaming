@@ -89,14 +89,6 @@ export default function ClientHeader() {
           </Button>
         )}
 
-        <Button asChild variant="outline" className="border-accent text-accent hover:bg-accent hover:text-accent-foreground">
-          <Link
-            href="/login"
-            className="text-sm font-medium"
-          >
-            Admin Panel
-          </Link>
-        </Button>
       </nav>
     </header>
   );
