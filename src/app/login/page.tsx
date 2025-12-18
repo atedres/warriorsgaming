@@ -4,8 +4,8 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth, useUser, useFirestore } from '@/firebase';
-import { signInWithEmailAndPassword, signOut } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
+import { signInWithEmailAndPassword, signOut, createUserWithEmailAndPassword } from 'firebase/auth';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -19,10 +19,16 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Logo } from '@/components/logo';
 import { useToast } from '@/hooks/use-toast';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+
+// In a real application, this should be a securely stored environment variable.
+const INVITATION_CODE = "SUPERADMIN";
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [name, setName] = useState('');
+  const [inviteCode, setInviteCode] = useState('');
   const [loading, setLoading] = useState(false);
   const auth = useAuth();
   const firestore = useFirestore();
@@ -31,20 +37,19 @@ export default function LoginPage() {
   const { toast } = useToast();
 
   useEffect(() => {
-    // This effect redirects an already logged-in admin to the dashboard.
-    // It should not interfere with the login process itself.
     if (!isUserLoading && user) {
-        const checkAdminAndRedirect = async () => {
-            if (!firestore) return;
-            const adminRef = doc(firestore, 'admins', user.uid);
-            const adminDoc = await getDoc(adminRef);
-            if (adminDoc.exists()) {
-                router.push('/admin');
-            }
-        };
-        checkAdminAndRedirect();
+        checkAdminAndRedirect(user.uid);
     }
   }, [user, isUserLoading, router, firestore]);
+
+  const checkAdminAndRedirect = async (uid: string) => {
+    if (!firestore) return;
+    const adminRef = doc(firestore, 'admins', uid);
+    const adminDoc = await getDoc(adminRef);
+    if (adminDoc.exists()) {
+        router.push('/admin');
+    }
+  }
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -54,16 +59,12 @@ export default function LoginPage() {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const loggedInUser = userCredential.user;
 
-      // Check if user is an admin
       const adminRef = doc(firestore, 'admins', loggedInUser.uid);
       const adminDoc = await getDoc(adminRef);
 
       if (adminDoc.exists()) {
-        // It's an admin, redirect to dashboard.
-        // The useEffect above will also catch this, but a direct push is more immediate.
         router.push('/admin');
       } else {
-        // Not an admin. Show error and sign out.
         await signOut(auth);
         toast({
           variant: 'destructive',
@@ -86,10 +87,47 @@ export default function LoginPage() {
       setLoading(false);
     }
   };
+
+  const handleSignUp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!auth || !firestore) return;
+    if (password.length < 6) {
+        toast({ variant: "destructive", title: "Mot de passe faible", description: "Le mot de passe doit contenir au moins 6 caractères." });
+        return;
+    }
+    if (inviteCode !== INVITATION_CODE) {
+        toast({ variant: "destructive", title: "Code d'invitation invalide", description: "Le code d'invitation fourni est incorrect." });
+        return;
+    }
+
+    setLoading(true);
+    try {
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        const newUser = userCredential.user;
+
+        const adminRef = doc(firestore, "admins", newUser.uid);
+        await setDoc(adminRef, {
+            email: newUser.email,
+            name: name,
+            role: 'manager',
+            addedOn: new Date().toISOString()
+        });
+        
+        toast({ title: "Compte Admin créé", description: `Bienvenue ${name}. Vous pouvez maintenant vous connecter.` });
+        router.push('/admin');
+
+    } catch (error: any) {
+        let description = "Une erreur inattendue est survenue.";
+        if (error.code === 'auth/email-already-in-use') {
+            description = "Cette adresse e-mail est déjà utilisée par un autre compte.";
+        }
+        toast({ variant: "destructive", title: "Échec de l'inscription", description: description });
+    } finally {
+        setLoading(false);
+    }
+  };
   
   if (isUserLoading || user) {
-    // While checking auth or if user is already logged in, show a loading state
-    // to prevent the login form from flashing. The useEffect will handle redirection.
     return (
       <div className="flex h-screen w-full flex-col items-center justify-center bg-muted/40">
         <Logo className="h-12 w-auto animate-pulse" />
@@ -100,51 +138,96 @@ export default function LoginPage() {
 
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-muted/40">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-muted/40 p-4">
       <div className="mb-8">
         <Logo className="h-12 w-auto" />
       </div>
-      <Card className="w-full max-w-sm">
-        <form onSubmit={handleLogin}>
-          <CardHeader>
-            <CardTitle className="text-2xl font-headline">Admin Login</CardTitle>
-            <CardDescription>
-              Enter your email below to login to your account.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="grid gap-4">
-            <div className="grid gap-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="m@example.com"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
-            </div>
-          </CardContent>
-          <CardFooter className="flex flex-col gap-2">
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? 'Signing In...' : 'Sign in'}
-            </Button>
-            <Button variant="outline" className="w-full" asChild>
-              <Link href="/">Go to Home</Link>
-            </Button>
-          </CardFooter>
-        </form>
-      </Card>
+       <Tabs defaultValue="login" className="w-full max-w-sm">
+        <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="login">Se connecter</TabsTrigger>
+            <TabsTrigger value="signup">S'inscrire</TabsTrigger>
+        </TabsList>
+        <TabsContent value="login">
+            <Card>
+                <form onSubmit={handleLogin}>
+                <CardHeader>
+                    <CardTitle className="text-2xl font-headline">Admin Login</CardTitle>
+                    <CardDescription>
+                    Entrez vos identifiants pour accéder au panneau de contrôle.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent className="grid gap-4">
+                    <div className="grid gap-2">
+                    <Label htmlFor="email">Email</Label>
+                    <Input
+                        id="email"
+                        type="email"
+                        placeholder="admin@example.com"
+                        required
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                    />
+                    </div>
+                    <div className="grid gap-2">
+                    <Label htmlFor="password">Password</Label>
+                    <Input
+                        id="password"
+                        type="password"
+                        required
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                    />
+                    </div>
+                </CardContent>
+                <CardFooter className="flex flex-col gap-2">
+                    <Button type="submit" className="w-full" disabled={loading}>
+                    {loading ? 'Connexion...' : 'Se connecter'}
+                    </Button>
+                     <Button variant="outline" className="w-full" asChild>
+                        <Link href="/">Retour à l'accueil</Link>
+                    </Button>
+                </CardFooter>
+                </form>
+            </Card>
+        </TabsContent>
+         <TabsContent value="signup">
+          <Card>
+            <form onSubmit={handleSignUp}>
+              <CardHeader>
+                <CardTitle className="text-2xl font-headline">
+                  Créer un compte Admin
+                </CardTitle>
+                <CardDescription>
+                  Inscrivez-vous en tant que nouvel administrateur.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="name-signup">Nom complet</Label>
+                  <Input id="name-signup" type="text" placeholder="John Doe" required value={name} onChange={(e) => setName(e.target.value)}/>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="email-signup">Email</Label>
+                  <Input id="email-signup" type="email" placeholder="admin@example.com" required value={email} onChange={(e) => setEmail(e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="password-signup">Mot de passe</Label>
+                  <Input id="password-signup" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="6+ caractères" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="invite-code">Code d'invitation</Label>
+                  <Input id="invite-code" type="password" required value={inviteCode} onChange={(e) => setInviteCode(e.target.value)} placeholder="Code secret" />
+                </div>
+              </CardContent>
+              <CardFooter>
+                <Button type="submit" className="w-full" disabled={loading}>
+                  {loading ? "Création du compte..." : "S'inscrire"}
+                </Button>
+              </CardFooter>
+            </form>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
