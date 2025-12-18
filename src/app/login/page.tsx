@@ -31,19 +31,18 @@ export default function LoginPage() {
   const { toast } = useToast();
 
   useEffect(() => {
+    // This effect redirects an already logged-in admin to the dashboard.
+    // It should not interfere with the login process itself.
     if (!isUserLoading && user) {
-      // If a user is already logged in, check if they are an admin
-      const checkAdminStatus = async () => {
-        if (!firestore) return;
-        const adminRef = doc(firestore, 'admins', user.uid);
-        const adminDoc = await getDoc(adminRef);
-        if (adminDoc.exists()) {
-          router.push('/admin'); // Already logged in as admin, go to dashboard
-        }
-        // If not admin, they shouldn't be here, but we don't log them out
-        // as they might be a client who strayed. Let them navigate away.
-      };
-      checkAdminStatus();
+        const checkAdminAndRedirect = async () => {
+            if (!firestore) return;
+            const adminRef = doc(firestore, 'admins', user.uid);
+            const adminDoc = await getDoc(adminRef);
+            if (adminDoc.exists()) {
+                router.push('/admin');
+            }
+        };
+        checkAdminAndRedirect();
     }
   }, [user, isUserLoading, router, firestore]);
 
@@ -60,7 +59,8 @@ export default function LoginPage() {
       const adminDoc = await getDoc(adminRef);
 
       if (adminDoc.exists()) {
-        // It's an admin, redirect to dashboard. useEffect will handle it.
+        // It's an admin, redirect to dashboard.
+        // The useEffect above will also catch this, but a direct push is more immediate.
         router.push('/admin');
       } else {
         // Not an admin. Show error and sign out.
@@ -87,17 +87,18 @@ export default function LoginPage() {
     }
   };
   
-  if (isUserLoading) {
+  if (isUserLoading || user) {
+    // While checking auth or if user is already logged in, show a loading state
+    // to prevent the login form from flashing. The useEffect will handle redirection.
     return (
       <div className="flex h-screen w-full flex-col items-center justify-center bg-muted/40">
         <Logo className="h-12 w-auto animate-pulse" />
-        <p className="mt-4 text-muted-foreground">Loading...</p>
+        <p className="mt-4 text-muted-foreground">Vérification...</p>
       </div>
     );
   }
 
-  // If user is already logged in and is not loading, the useEffect will handle redirection.
-  // We render the form to prevent layout shifts.
+
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-muted/40">
       <div className="mb-8">
