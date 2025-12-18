@@ -1,7 +1,7 @@
 'use client';
 
 import Link from "next/link";
-import { Globe, LogIn } from "lucide-react";
+import { Globe, LogIn, User as UserIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Logo } from "../logo";
 import { ThemeToggle } from "../theme-toggle";
@@ -10,11 +10,23 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { useLanguage } from "@/hooks/use-translation";
+import { useUser, useAuth } from "@/firebase";
+import { signOut } from "firebase/auth";
 
 export default function ClientHeader() {
   const { setLanguage } = useLanguage();
+  const { user } = useUser();
+  const auth = useAuth();
+
+  const handleLogout = () => {
+    if (auth) {
+      signOut(auth);
+    }
+  };
 
   return (
     <header className="px-4 lg:px-6 h-14 flex items-center bg-background/80 backdrop-blur-sm sticky top-0 z-50 border-b">
@@ -43,12 +55,40 @@ export default function ClientHeader() {
           </DropdownMenuContent>
         </DropdownMenu>
         <ThemeToggle />
-        <Button asChild>
-            <Link href="/login-client">
-                <LogIn className="mr-2 h-4 w-4" />
-                Connexion
-            </Link>
-        </Button>
+        
+        {user ? (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="secondary" size="icon" className="rounded-full">
+                <UserIcon className="h-5 w-5" />
+                <span className="sr-only">Open user menu</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuLabel>
+                <div className="flex flex-col space-y-1">
+                  <p className="text-sm font-medium leading-none">{user.displayName || user.email}</p>
+                </div>
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem asChild>
+                <Link href="/profile">Profil</Link>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={handleLogout}>
+                Déconnexion
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : (
+          <Button asChild>
+              <Link href="/login-client">
+                  <LogIn className="mr-2 h-4 w-4" />
+                  Connexion
+              </Link>
+          </Button>
+        )}
+
         <Button asChild variant="outline" className="border-accent text-accent hover:bg-accent hover:text-accent-foreground">
           <Link
             href="/login"
