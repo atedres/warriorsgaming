@@ -1,8 +1,7 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import { collectionGroup, getDocs, query, orderBy, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { collectionGroup, getDocs, query, orderBy, doc, updateDoc, deleteDoc, collection } from 'firebase/firestore';
 import { useCollection, useFirestore } from '@/firebase';
 import { useMemoFirebase } from '@/firebase/provider';
 import type { Client } from '@/app/lib/data';
