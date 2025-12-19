@@ -11,40 +11,39 @@ import { collection, query, doc, addDoc } from 'firebase/firestore';
 import { useMemoFirebase } from '@/firebase/provider';
 import type { Station } from '@/app/lib/data';
 import { cn } from '@/lib/utils';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { useTranslation } from '@/hooks/use-translation';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { addHours, format, setHours, setMinutes, startOfToday, endOfToday, max, isBefore, startOfHour } from 'date-fns';
+import { addHours, format, setHours, setMinutes, startOfToday, isBefore, startOfHour, getHours } from 'date-fns';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 function ReservationDialog({ station, user }: { station: Station, user: any }) {
     const { t } = useTranslation();
     const [isOpen, setIsOpen] = useState(false);
-    
-    // Set booking window
-    const today = new Date();
-    const openingTime = setMinutes(setHours(startOfToday(), 11), 0); // Today at 11:00
-    const closingTime = endOfToday(); // Today at 23:59:59
-
-    // Determine the earliest possible start time
-    const now = new Date();
-    const nextHour = startOfHour(addHours(now, 1));
-    const earliestStartTime = max([openingTime, isBefore(now, openingTime) ? openingTime : nextHour]);
-    
-    const [startTime, setStartTime] = useState(format(earliestStartTime, "yyyy-MM-dd'T'HH:mm"));
-    const [endTime, setEndTime] = useState(format(addHours(earliestStartTime, 1), "yyyy-MM-dd'T'HH:mm"));
-    
+    const [selectedHour, setSelectedHour] = useState<string>('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const firestore = useFirestore();
     const { toast } = useToast();
 
-    // Format min/max for the input element
-    const minDate = format(openingTime, "yyyy-MM-dd'T'HH:mm");
-    const maxDate = format(closingTime, "yyyy-MM-dd'T'HH:mm");
+    const availableHours = useMemo(() => {
+        const hours = [];
+        const now = new Date();
+        const openingHour = 11;
+        const closingHour = 23; // Last booking can start at 23:00
 
+        let startHour = getHours(now) + 1;
+        if (startHour < openingHour) {
+            startHour = openingHour;
+        }
+
+        for (let i = startHour; i <= closingHour; i++) {
+            hours.push(i);
+        }
+        return hours;
+    }, []);
 
     const handleReservation = async () => {
         if (!firestore || !user || !user.uid) {
@@ -56,26 +55,17 @@ function ReservationDialog({ station, user }: { station: Station, user: any }) {
             return;
         }
 
-        const start = new Date(startTime);
-        const end = new Date(endTime);
-        
-        if (isBefore(start, openingTime) || isBefore(end, openingTime)) {
+        if (!selectedHour) {
             toast({
                 variant: 'destructive',
-                title: 'Heure invalide',
-                description: "Les réservations ne peuvent pas commencer avant 11h00."
+                title: 'Heure non sélectionnée',
+                description: "Veuillez choisir une heure de début."
             });
             return;
         }
-        
-        if (isBefore(end, start)) {
-            toast({
-                variant: 'destructive',
-                title: 'Date invalide',
-                description: "L'heure de fin doit être après l'heure de début."
-            });
-            return;
-        }
+
+        const start = setMinutes(setHours(startOfToday(), parseInt(selectedHour)), 0);
+        const end = addHours(start, 1);
 
         setIsSubmitting(true);
         try {
@@ -90,9 +80,10 @@ function ReservationDialog({ station, user }: { station: Station, user: any }) {
 
             toast({
                 title: "Réservation confirmée !",
-                description: `Votre réservation pour le poste ${station.id} a bien été enregistrée.`,
+                description: `Votre réservation pour ${station.id} de ${format(start, 'HH:mm')} à ${format(end, 'HH:mm')} est enregistrée.`,
             });
             setIsOpen(false);
+            setSelectedHour('');
         } catch (error) {
             console.error("Error creating reservation: ", error);
             toast({ 
@@ -121,31 +112,29 @@ function ReservationDialog({ station, user }: { station: Station, user: any }) {
                 <DialogHeader>
                     <DialogTitle>Réserver le poste {station.id}</DialogTitle>
                     <DialogDescription>
-                        Les réservations sont pour aujourd'hui, entre 11h00 et minuit.
+                        Choisissez une heure de début pour aujourd'hui. La réservation dure 1 heure.
                     </DialogDescription>
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
                     <div className="grid gap-2">
                         <Label htmlFor="start-time">Heure de début</Label>
-                        <Input
-                            id="start-time"
-                            type="datetime-local"
-                            value={startTime}
-                            onChange={(e) => setStartTime(e.target.value)}
-                            min={minDate}
-                            max={maxDate}
-                        />
-                    </div>
-                    <div className="grid gap-2">
-                        <Label htmlFor="end-time">Heure de fin</Label>
-                        <Input
-                            id="end-time"
-                            type="datetime-local"
-                            value={endTime}
-                            onChange={(e) => setEndTime(e.target.value)}
-                            min={minDate}
-                            max={maxDate}
-                        />
+                        <Select value={selectedHour} onValueChange={setSelectedHour}>
+                            <SelectTrigger id="start-time">
+                                <SelectValue placeholder="Choisissez une heure" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {availableHours.map(hour => (
+                                    <SelectItem key={hour} value={String(hour)}>
+                                        {`${hour}:00`}
+                                    </SelectItem>
+                                ))}
+                                {availableHours.length === 0 && (
+                                    <div className="p-4 text-center text-sm text-muted-foreground">
+                                        Aucun créneau disponible pour aujourd'hui.
+                                    </div>
+                                )}
+                            </SelectContent>
+                        </Select>
                     </div>
                 </div>
                 <DialogFooter>
@@ -348,5 +337,3 @@ export default function Home() {
     </div>
   );
 }
-
-    
