@@ -2,7 +2,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   Home,
   Users2,
@@ -14,6 +14,7 @@ import {
   PanelLeft,
   Globe,
   History,
+  Calendar,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Logo } from "../logo";
@@ -33,11 +34,12 @@ import { ThemeToggle } from "../theme-toggle";
 
 export function AdminHeader() {
     const auth = useAuth();
+    const router = useRouter();
     const { setLanguage } = useLanguage();
     const { t } = useTranslation();
-    const handleLogout = () => {
+    const handleLogout = async () => {
         if (auth) {
-        signOut(auth);
+            await signOut(auth);
         }
     };
     
@@ -45,6 +47,7 @@ export function AdminHeader() {
       { href: "/admin", icon: Home, label: t('dashboard') },
       { href: "/admin/clients", icon: Users2, label: t('clients') },
       { href: "/admin/stations", icon: Gamepad2, label: t('stations') },
+      { href: "/admin/reservations", icon: Calendar, label: t('reservations') },
       { href: "/admin/scan", icon: QrCode, label: t('scanner') },
       { href: "/admin/loyalty", icon: Sparkles, label: t('loyaltyAI') },
       { href: "/admin/history", icon: History, label: t('history')},
@@ -120,11 +123,12 @@ export function AdminHeader() {
 export function AdminSidebar() {
   const pathname = usePathname();
   const auth = useAuth();
+  const router = useRouter();
   const { t } = useTranslation();
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     if (auth) {
-      signOut(auth);
+      await signOut(auth);
     }
   };
   
@@ -132,6 +136,7 @@ export function AdminSidebar() {
     { href: "/admin", icon: Home, label: t('dashboard') },
     { href: "/admin/clients", icon: Users2, label: t('clients') },
     { href: "/admin/stations", icon: Gamepad2, label: t('stations') },
+    { href: "/admin/reservations", icon: Calendar, label: t('reservations') },
     { href: "/admin/scan", icon: QrCode, label: t('scanner') },
     { href: "/admin/loyalty", icon: Sparkles, label: t('loyaltyAI') },
     { href: "/admin/history", icon: History, label: t('history')},

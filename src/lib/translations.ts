@@ -15,6 +15,7 @@ export const translations = {
     dashboard: "Dashboard",
     clients: "Clients",
     stations: "Stations",
+    reservations: "Reservations",
     scanner: "Scanner",
     loyaltyAI: "Loyalty AI",
     settings: "Settings",
@@ -26,6 +27,8 @@ export const translations = {
     clientManagementDescription: "View, create, and manage client profiles and subscriptions.",
     stationManagement: "Station Management",
     stationManagementDescription: "View, create, and manage gaming stations.",
+    reservationManagement: "Reservation Management",
+    reservationManagementDescription: "View and manage all client reservations.",
     qrCodeScanner: "QR Code Scanner",
     qrCodeScannerDescription: "Scan a client's QR code to check them in or manage their account.",
     loyaltyBonusRecs: "Loyalty & Bonus Recommendations",
@@ -69,6 +72,14 @@ export const translations = {
     availableGamesList: "Available Games",
     noGamesAdded: "No games added yet.",
 
+    // Reservation Page
+    client: "Client",
+    station: "Station",
+    startTime: "Start Time",
+    endTime: "End Time",
+    noReservationsFound: "No reservations found.",
+
+
     // Dashboard Page
     totalRevenue: "Total Revenue",
     thisWeek: "This week",
@@ -103,6 +114,7 @@ export const translations = {
     dashboard: "Tableau de bord",
     clients: "Clients",
     stations: "Postes",
+    reservations: "Réservations",
     scanner: "Scanner",
     loyaltyAI: "IA de Fidélité",
     settings: "Paramètres",
@@ -114,6 +126,8 @@ export const translations = {
     clientManagementDescription: "Visualisez, créez et gérez les profils et abonnements des clients.",
     stationManagement: "Gestion des Postes",
     stationManagementDescription: "Visualisez, créez et gérez les postes de jeu.",
+    reservationManagement: "Gestion des Réservations",
+    reservationManagementDescription: "Visualisez et gérez toutes les réservations des clients.",
     qrCodeScanner: "Scanneur de Code QR",
     qrCodeScannerDescription: "Scannez le code QR d'un client pour l'enregistrer ou gérer son compte.",
     loyaltyBonusRecs: "Fidélité & Recommandations",
@@ -158,6 +172,13 @@ export const translations = {
     availableGamesList: "Jeux Disponibles",
     noGamesAdded: "Aucun jeu ajouté pour le moment.",
 
+    // Reservation Page
+    client: "Client",
+    station: "Poste",
+    startTime: "Heure de début",
+    endTime: "Heure de fin",
+    noReservationsFound: "Aucune réservation trouvée.",
+
     // Dashboard Page
     totalRevenue: "Revenu Total",
     thisWeek: "Cette semaine",
@@ -192,6 +213,7 @@ export const translations = {
     dashboard: "لوحة التحكم",
     clients: "العملاء",
     stations: "المحطات",
+    reservations: "الحجوزات",
     scanner: "الماسح الضوئي",
     loyaltyAI: "ذكاء الولاء",
     settings: "الإعدادات",
@@ -203,6 +225,8 @@ export const translations = {
     clientManagementDescription: "عرض وإنشاء وإدارة ملفات تعريف العملاء والاشتراكات.",
     stationManagement: "إدارة المحطات",
     stationManagementDescription: "عرض وإنشاء وإدارة محطات الألعاب.",
+    reservationManagement: "إدارة الحجوزات",
+    reservationManagementDescription: "عرض وإدارة جميع حجوزات العملاء.",
     qrCodeScanner: "ماسح رمز الاستجابة السريعة",
     qrCodeScannerDescription: "امسح رمز الاستجابة السريعة للعميل لتسجيل الوصول أو إدارة حسابه.",
     loyaltyBonusRecs: "الولاء وتوصيات المكافآت",
@@ -245,6 +269,13 @@ export const translations = {
     enterGameName: "أدخل اسم اللعبة...",
     availableGamesList: "الألعاب المتاحة",
     noGamesAdded: "لم تتم إضافة أي ألعاب بعد.",
+
+    // Reservation Page
+    client: "العميل",
+    station: "المحطة",
+    startTime: "وقت البدء",
+    endTime: "وقت الانتهاء",
+    noReservationsFound: "لم يتم العثور على حجوزات.",
 
     // Dashboard Page
     totalRevenue: "إجمالي الإيرادات",
