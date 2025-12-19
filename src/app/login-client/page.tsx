@@ -187,6 +187,9 @@ export default function LoginClientPage() {
                  <Button variant="outline" className="w-full" asChild>
                     <Link href="/login">Accès Admin</Link>
                 </Button>
+                <Button variant="outline" className="w-full" asChild>
+                    <Link href="/">Revenir à l'accueil</Link>
+                </Button>
               </CardFooter>
             </form>
           </Card>
@@ -237,9 +240,12 @@ export default function LoginClientPage() {
                   />
                 </div>
               </CardContent>
-              <CardFooter>
+              <CardFooter className="flex flex-col gap-2">
                 <Button type="submit" className="w-full" disabled={loading}>
                   {loading ? "Création du compte..." : "S'inscrire"}
+                </Button>
+                 <Button variant="outline" className="w-full" asChild>
+                    <Link href="/">Revenir à l'accueil</Link>
                 </Button>
               </CardFooter>
             </form>
