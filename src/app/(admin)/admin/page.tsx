@@ -31,7 +31,7 @@ import { useMemoFirebase } from '@/firebase/provider';
 import { collection, query } from 'firebase/firestore';
 import { useTranslation } from '@/hooks/use-translation';
 import type { UsageLog, Station, Client } from '@/app/lib/data';
-import { differenceInMinutes, subDays, startOfDay, endOfDay, isWithinInterval, format } from 'date-fns';
+import { differenceInMinutes, subDays, format } from 'date-fns';
 
 function calculatePrice(stationType: Station['type'], durationInMinutes: number, startTime: Date): number {
     const startHour = startTime.getHours();
@@ -124,11 +124,9 @@ export default function AdminDashboard() {
     }
 
     for (const log of usageLogs) {
-      if (log.endTime) {
+      if (log.endTime) { // This is the critical fix
         const startTime = new Date(log.startTime);
-        const endTime = new
- 
-Date(log.endTime);
+        const endTime = new Date(log.endTime);
         const duration = differenceInMinutes(endTime, startTime);
         const stationType = stationTypesMap.get(log.stationId);
 
