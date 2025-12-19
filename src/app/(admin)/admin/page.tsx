@@ -1,7 +1,7 @@
 
-"use client";
+'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useEffect, useState } from 'react';
 import { BarChart, DollarSign, Gamepad2, Users } from 'lucide-react';
 import {
   Card,
@@ -28,7 +28,7 @@ import { formatCurrency } from '@/lib/utils';
 import { PageHeader } from '@/components/page-header';
 import { useCollection, useFirestore } from '@/firebase';
 import { useMemoFirebase } from '@/firebase/provider';
-import { collection, query } from 'firebase/firestore';
+import { collection, query, onSnapshot } from 'firebase/firestore';
 import { useTranslation } from '@/hooks/use-translation';
 import type { UsageLog, Station, Client } from '@/app/lib/data';
 import { differenceInMinutes, subDays, format } from 'date-fns';
@@ -54,7 +54,7 @@ function calculatePrice(stationType: Station['type'], durationInMinutes: number,
                 if (durationInMinutes <= 30) price = 20;
                 else if (durationInMinutes <= 60) price = 30;
                 else if (durationInMinutes <= 120) price = 50;
-                else price = Math.ceil(hours / 2) * 50; 
+                else price = Math.ceil(durationInMinutes / 60 / 2) * 50; 
             } else { // Tarif de jour
                 if (durationInMinutes <= 30) {
                     price = 10; // Prix pour 30 minutes
@@ -69,7 +69,7 @@ function calculatePrice(stationType: Station['type'], durationInMinutes: number,
              if (durationInMinutes <= 30) price = 25; // Base price for up to 30 mins
              else if (durationInMinutes <= 60) price = 45;
              else if (durationInMinutes <= 120) price = 75;
-             else price = Math.ceil(hours / 2) * 75;
+             else price = Math.ceil(durationInMinutes / 60 / 2) * 75;
             break;
     }
     return price;
@@ -91,11 +91,27 @@ export default function AdminDashboard() {
   );
   const { data: clients, isLoading: isLoadingClients } = useCollection<Client>(clientsQuery);
   
-  const usageLogsQuery = useMemoFirebase(
-    () => (firestore ? query(collection(firestore, 'usageLogs')) : null),
-    [firestore]
-  );
-  const { data: usageLogs, isLoading: isLoadingUsageLogs } = useCollection<UsageLog>(usageLogsQuery);
+  const [usageLogs, setUsageLogs] = useState<UsageLog[] | null>(null);
+  const [isLoadingUsageLogs, setIsLoadingUsageLogs] = useState(true);
+
+  useEffect(() => {
+    if (!firestore) return;
+    
+    setIsLoadingUsageLogs(true);
+    const usageLogsQuery = query(collection(firestore, 'usageLogs'));
+    
+    const unsubscribe = onSnapshot(usageLogsQuery, (snapshot) => {
+      const logs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as UsageLog));
+      setUsageLogs(logs);
+      setIsLoadingUsageLogs(false);
+    }, (error) => {
+      console.error("Error fetching usage logs in real-time: ", error);
+      setIsLoadingUsageLogs(false);
+    });
+
+    return () => unsubscribe();
+  }, [firestore]);
+
 
   const chartConfig = {
     revenue: {
@@ -141,7 +157,7 @@ export default function AdminDashboard() {
         const duration = differenceInMinutes(endTime, startTime);
         const stationType = stationTypesMap.get(log.stationId);
 
-        if (stationType) { // No need to check duration > 0 as calculatePrice handles it
+        if (stationType) {
           const cost = calculatePrice(stationType, duration, startTime);
           totalRevenue += cost;
           
