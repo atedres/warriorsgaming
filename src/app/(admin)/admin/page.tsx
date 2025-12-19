@@ -38,30 +38,41 @@ function calculatePrice(stationType: Station['type'], durationInMinutes: number,
     const isEvening = startHour >= 20;
 
     let price = 0;
-    const hours = durationInMinutes / 60;
+    
+    // Ensure minimum duration is not 0 to avoid free sessions
+    if (durationInMinutes <= 0) return 0;
+
+    const hours = Math.ceil(durationInMinutes / 60);
 
     switch(stationType) {
         case 'PC':
+             // Facturation à l'heure, arrondie à l'heure supérieure.
             price = hours * 20;
             break;
         case 'PS5':
-            if (isEvening) {
+            if (isEvening) { // Tarif de soirée
                 if (durationInMinutes <= 30) price = 20;
                 else if (durationInMinutes <= 60) price = 30;
                 else if (durationInMinutes <= 120) price = 50;
                 else price = Math.ceil(hours / 2) * 50; 
-            } else {
-                price = hours * 20;
+            } else { // Tarif de jour
+                if (durationInMinutes <= 30) {
+                    price = 10; // Prix pour 30 minutes
+                } else {
+                    // Si plus de 30 mins, facturer l'heure complète (ou plus)
+                    price = hours * 20;
+                }
             }
             break;
         case 'PS5 VIP':
         case 'VR Simulator':
-            if (durationInMinutes <= 60) price = 45;
-            else if (durationInMinutes <= 120) price = 75;
-            else price = Math.ceil(hours / 2) * 75;
+             if (durationInMinutes <= 30) price = 25; // Base price for up to 30 mins
+             else if (durationInMinutes <= 60) price = 45;
+             else if (durationInMinutes <= 120) price = 75;
+             else price = Math.ceil(hours / 2) * 75;
             break;
     }
-    return Math.ceil(price);
+    return price;
 }
 
 export default function AdminDashboard() {
@@ -124,13 +135,13 @@ export default function AdminDashboard() {
     }
 
     for (const log of usageLogs) {
-      if (log.endTime) { // This is the critical fix
+      if (log.endTime) {
         const startTime = new Date(log.startTime);
         const endTime = new Date(log.endTime);
         const duration = differenceInMinutes(endTime, startTime);
         const stationType = stationTypesMap.get(log.stationId);
 
-        if (duration > 0 && stationType) {
+        if (stationType) { // No need to check duration > 0 as calculatePrice handles it
           const cost = calculatePrice(stationType, duration, startTime);
           totalRevenue += cost;
           
@@ -141,7 +152,9 @@ export default function AdminDashboard() {
           }
 
           // Station popularity
-          stationUsageCount[stationType] = (stationUsageCount[stationType] || 0) + 1;
+          if (duration > 0) { // Only count sessions that actually lasted some time
+            stationUsageCount[stationType] = (stationUsageCount[stationType] || 0) + 1;
+          }
         }
       }
     }
