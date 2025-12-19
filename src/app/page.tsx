@@ -1,6 +1,7 @@
+
 'use client';
 import Image from 'next/image';
-import { Gamepad2, Headset, Monitor, Instagram, MapPin, Phone, Clock, Calendar, Ticket, User as UserIcon } from 'lucide-react';
+import { Gamepad2, Headset, Monitor, Instagram, MapPin, Phone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -17,16 +18,33 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { addHours, format } from 'date-fns';
+import { addHours, format, setHours, setMinutes, startOfToday, endOfToday, max, isBefore, startOfHour } from 'date-fns';
 
 function ReservationDialog({ station, user }: { station: Station, user: any }) {
     const { t } = useTranslation();
     const [isOpen, setIsOpen] = useState(false);
-    const [startTime, setStartTime] = useState(format(new Date(), "yyyy-MM-dd'T'HH:mm"));
-    const [endTime, setEndTime] = useState(format(addHours(new Date(), 1), "yyyy-MM-dd'T'HH:mm"));
+    
+    // Set booking window
+    const today = new Date();
+    const openingTime = setMinutes(setHours(startOfToday(), 11), 0); // Today at 11:00
+    const closingTime = endOfToday(); // Today at 23:59:59
+
+    // Determine the earliest possible start time
+    const now = new Date();
+    const nextHour = startOfHour(addHours(now, 1));
+    const earliestStartTime = max([openingTime, isBefore(now, openingTime) ? openingTime : nextHour]);
+    
+    const [startTime, setStartTime] = useState(format(earliestStartTime, "yyyy-MM-dd'T'HH:mm"));
+    const [endTime, setEndTime] = useState(format(addHours(earliestStartTime, 1), "yyyy-MM-dd'T'HH:mm"));
+    
     const [isSubmitting, setIsSubmitting] = useState(false);
     const firestore = useFirestore();
     const { toast } = useToast();
+
+    // Format min/max for the input element
+    const minDate = format(openingTime, "yyyy-MM-dd'T'HH:mm");
+    const maxDate = format(closingTime, "yyyy-MM-dd'T'HH:mm");
+
 
     const handleReservation = async () => {
         if (!firestore || !user || !user.uid) {
@@ -37,8 +55,20 @@ function ReservationDialog({ station, user }: { station: Station, user: any }) {
             });
             return;
         }
+
+        const start = new Date(startTime);
+        const end = new Date(endTime);
         
-        if (new Date(startTime) >= new Date(endTime)) {
+        if (isBefore(start, openingTime) || isBefore(end, openingTime)) {
+            toast({
+                variant: 'destructive',
+                title: 'Heure invalide',
+                description: "Les réservations ne peuvent pas commencer avant 11h00."
+            });
+            return;
+        }
+        
+        if (isBefore(end, start)) {
             toast({
                 variant: 'destructive',
                 title: 'Date invalide',
@@ -53,9 +83,9 @@ function ReservationDialog({ station, user }: { station: Station, user: any }) {
             await addDoc(reservationsRef, {
                 clientId: user.uid,
                 stationId: station.id,
-                startTime: new Date(startTime).toISOString(),
-                endTime: new Date(endTime).toISOString(),
-                status: 'pending' // Default status
+                startTime: start.toISOString(),
+                endTime: end.toISOString(),
+                status: 'pending'
             });
 
             toast({
@@ -68,7 +98,7 @@ function ReservationDialog({ station, user }: { station: Station, user: any }) {
             toast({ 
                 variant: 'destructive', 
                 title: "Erreur de Réservation", 
-                description: "Une erreur est survenue. Il est possible que les règles de sécurité aient refusé l'action."
+                description: "Une erreur est survenue lors de la création de votre réservation. Veuillez réessayer."
             });
         } finally {
             setIsSubmitting(false);
@@ -91,7 +121,7 @@ function ReservationDialog({ station, user }: { station: Station, user: any }) {
                 <DialogHeader>
                     <DialogTitle>Réserver le poste {station.id}</DialogTitle>
                     <DialogDescription>
-                        Sélectionnez la date et l'heure pour votre session de jeu.
+                        Les réservations sont pour aujourd'hui, entre 11h00 et minuit.
                     </DialogDescription>
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
@@ -102,6 +132,8 @@ function ReservationDialog({ station, user }: { station: Station, user: any }) {
                             type="datetime-local"
                             value={startTime}
                             onChange={(e) => setStartTime(e.target.value)}
+                            min={minDate}
+                            max={maxDate}
                         />
                     </div>
                     <div className="grid gap-2">
@@ -111,6 +143,8 @@ function ReservationDialog({ station, user }: { station: Station, user: any }) {
                             type="datetime-local"
                             value={endTime}
                             onChange={(e) => setEndTime(e.target.value)}
+                            min={minDate}
+                            max={maxDate}
                         />
                     </div>
                 </div>
@@ -314,3 +348,5 @@ export default function Home() {
     </div>
   );
 }
+
+    
