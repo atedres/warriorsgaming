@@ -127,11 +127,6 @@
       "type": "object",
       "description": "Represents a reservation for a gaming station.",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the reservation.",
-          "format": "uuid"
-        },
         "clientId": {
           "type": "string",
           "description": "Reference to Client UID. (Relationship: Client 1:N Reservation)"
@@ -152,7 +147,6 @@
         }
       },
       "required": [
-        "id",
         "clientId",
         "stationId",
         "startTime",

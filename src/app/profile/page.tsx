@@ -69,7 +69,7 @@ export default function ProfilePage() {
   const { data: client, isLoading: isLoadingClient } = useDoc<Client>(clientRef);
 
   const reservationsQuery = useMemoFirebase(
-      () => (user ? query(collection(firestore!, 'reservations'), where('clientId', '==', user.uid), orderBy('startTime', 'desc')) : null),
+      () => (firestore && user ? query(collection(firestore, 'reservations'), where('clientId', '==', user.uid), orderBy('startTime', 'desc')) : null),
       [user, firestore]
   );
   const { data: reservations, isLoading: isLoadingReservations } = useCollection<Reservation>(reservationsQuery);

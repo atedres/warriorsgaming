@@ -1,21 +1,114 @@
 'use client';
 import Image from 'next/image';
-import { Gamepad2, Headset, Monitor, Instagram, MapPin, Phone } from 'lucide-react';
+import { Gamepad2, Headset, Monitor, Instagram, MapPin, Phone, Clock, Calendar, Ticket, User as UserIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import ClientHeader from '@/components/client/header';
-import { useCollection, useFirestore } from '@/firebase';
-import { collection, query } from 'firebase/firestore';
+import { useCollection, useFirestore, useUser } from '@/firebase';
+import { collection, query, doc, addDoc } from 'firebase/firestore';
 import { useMemoFirebase } from '@/firebase/provider';
 import type { Station } from '@/app/lib/data';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
 import Link from 'next/link';
 import { useTranslation } from '@/hooks/use-translation';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import { useToast } from '@/hooks/use-toast';
+import { addHours, format } from 'date-fns';
+
+function ReservationDialog({ station, user }: { station: Station, user: any }) {
+    const [isOpen, setIsOpen] = useState(false);
+    const [startTime, setStartTime] = useState(format(new Date(), "yyyy-MM-dd'T'HH:mm"));
+    const [endTime, setEndTime] = useState(format(addHours(new Date(), 1), "yyyy-MM-dd'T'HH:mm"));
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const firestore = useFirestore();
+    const { toast } = useToast();
+
+    const handleReservation = async () => {
+        if (!firestore || !user) {
+            toast({ variant: 'destructive', title: "Erreur", description: "Vous devez être connecté pour réserver." });
+            return;
+        }
+
+        setIsSubmitting(true);
+        try {
+            await addDoc(collection(firestore, 'reservations'), {
+                clientId: user.uid,
+                stationId: station.id,
+                startTime: new Date(startTime).toISOString(),
+                endTime: new Date(endTime).toISOString(),
+            });
+
+            toast({
+                title: "Réservation confirmée !",
+                description: `Votre réservation pour le poste ${station.id} a bien été enregistrée.`,
+            });
+            setIsOpen(false);
+        } catch (error) {
+            console.error("Error creating reservation: ", error);
+            toast({ variant: 'destructive', title: "Erreur", description: "Une erreur est survenue lors de la réservation." });
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+    
+    return (
+        <Dialog open={isOpen} onOpenChange={setIsOpen}>
+            <DialogTrigger asChild>
+                <Button 
+                    variant="outline" 
+                    className="mt-4" 
+                    disabled={station.status !== 'available' || !user}
+                    title={!user ? "Connectez-vous pour réserver" : ""}
+                >
+                  {t('bookNow')}
+                </Button>
+            </DialogTrigger>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Réserver le poste {station.id}</DialogTitle>
+                    <DialogDescription>
+                        Sélectionnez la date et l'heure pour votre session de jeu.
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                    <div className="grid gap-2">
+                        <Label htmlFor="start-time">Heure de début</Label>
+                        <Input
+                            id="start-time"
+                            type="datetime-local"
+                            value={startTime}
+                            onChange={(e) => setStartTime(e.target.value)}
+                        />
+                    </div>
+                    <div className="grid gap-2">
+                        <Label htmlFor="end-time">Heure de fin</Label>
+                        <Input
+                            id="end-time"
+                            type="datetime-local"
+                            value={endTime}
+                            onChange={(e) => setEndTime(e.target.value)}
+                        />
+                    </div>
+                </div>
+                <DialogFooter>
+                    <Button variant="outline" onClick={() => setIsOpen(false)}>Annuler</Button>
+                    <Button onClick={handleReservation} disabled={isSubmitting}>
+                        {isSubmitting ? "Réservation..." : "Confirmer"}
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    )
+}
+
 
 export default function Home() {
   const { t } = useTranslation();
+  const { user } = useUser();
   const [filter, setFilter] = useState('All');
   const firestore = useFirestore();
   const stationsQuery = useMemoFirebase(
@@ -30,7 +123,7 @@ export default function Home() {
         return <Monitor className="h-6 w-6" />;
       case 'PS5':
         return <Gamepad2 className="h-6 w-6" />;
-      case 'VIP PS5':
+      case 'PS5 VIP':
         return <Gamepad2 className="h-6 w-6 text-primary" />;
       case 'VR Simulator':
         return <Headset className="h-6 w-6" />;
@@ -150,13 +243,7 @@ export default function Home() {
                         {station.status}
                       </Badge>
                     </div>
-                    <Button
-                      variant="outline"
-                      className="mt-4"
-                      disabled={station.status !== 'available'}
-                    >
-                      {t('bookNow')}
-                    </Button>
+                    <ReservationDialog station={station} user={user} />
                   </CardContent>
                 </Card>
               ))}
