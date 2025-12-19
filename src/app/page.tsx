@@ -1,7 +1,7 @@
 
 'use client';
 import Image from 'next/image';
-import { Gamepad2, Headset, Monitor, Instagram, MapPin, Phone } from 'lucide-react';
+import { Gamepad2, Headset, Monitor, Instagram, MapPin, Phone, LogIn } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -15,6 +15,7 @@ import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { useTranslation } from '@/hooks/use-translation';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { addHours, format, setHours, setMinutes, startOfToday, getHours } from 'date-fns';
@@ -33,6 +34,7 @@ function ReservationDialog({
 }) {
     const { t } = useTranslation();
     const [isOpen, setIsOpen] = useState(false);
+    const [isLoginAlertOpen, setIsLoginAlertOpen] = useState(false);
     const [selectedHour, setSelectedHour] = useState<string>('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const firestore = useFirestore();
@@ -65,7 +67,6 @@ function ReservationDialog({
             return;
         }
 
-        // --- Single Reservation Logic ---
         if (client?.currentStationId) {
             toast({
                 variant: "destructive",
@@ -84,7 +85,6 @@ function ReservationDialog({
             });
             return;
         }
-        // --- End of Logic ---
 
         if (!selectedHour) {
             toast({
@@ -126,6 +126,39 @@ function ReservationDialog({
             setIsSubmitting(false);
         }
     };
+
+    if (!user) {
+        return (
+            <AlertDialog open={isLoginAlertOpen} onOpenChange={setIsLoginAlertOpen}>
+                <AlertDialogTrigger asChild>
+                    <Button 
+                        variant="outline" 
+                        className="mt-4"
+                        disabled={station.status !== 'available'}
+                    >
+                        {t('bookNow')}
+                    </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Connexion requise</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Vous devez être connecté pour pouvoir réserver un poste. Veuillez vous connecter ou créer un compte.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Annuler</AlertDialogCancel>
+                        <AlertDialogAction asChild>
+                            <Link href="/login-client">
+                                <LogIn className="mr-2 h-4 w-4" />
+                                Se connecter
+                            </Link>
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+        )
+    }
     
     return (
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -133,8 +166,7 @@ function ReservationDialog({
                 <Button 
                     variant="outline" 
                     className="mt-4" 
-                    disabled={station.status !== 'available' || !user}
-                    title={!user ? "Connectez-vous pour réserver" : ""}
+                    disabled={station.status !== 'available'}
                 >
                   {t('bookNow')}
                 </Button>

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -40,7 +41,7 @@ export default function LoginClientPage() {
     // This effect can still be useful to redirect already logged-in users
     // who land on this page by mistake.
     if (!isUserLoading && user) {
-      router.push('/profile');
+      router.push('/');
     }
   }, [user, isUserLoading, router]);
 
@@ -56,7 +57,7 @@ export default function LoginClientPage() {
         password
       );
       // Redirect immediately on success
-      router.push('/profile');
+      router.push('/');
     } catch (error: any) {
       toast({
         variant: 'destructive',
@@ -108,7 +109,7 @@ export default function LoginClientPage() {
         description: 'Bienvenue ! Vous allez être redirigé.',
       });
       // Redirect immediately on success
-      router.push('/profile');
+      router.push('/');
     } catch (error: any) {
         let description = "Une erreur inattendue est survenue.";
         if (error.code === 'auth/email-already-in-use') {
