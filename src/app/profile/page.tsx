@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useUser, useFirestore, useDoc, useCollection } from '@/firebase';
@@ -16,7 +15,6 @@ import { format } from 'date-fns';
 import ClientHeader from '@/components/client/header';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
-// Explicitly type Reservation to include an `id` field
 type Reservation = {
   id: string;
   clientId: string;
@@ -223,5 +221,3 @@ export default function ProfilePage() {
     </>
   );
 }
-
-    
