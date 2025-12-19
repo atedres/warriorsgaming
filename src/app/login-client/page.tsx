@@ -22,6 +22,7 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Logo } from '@/components/logo';
 import { useToast } from '@/hooks/use-toast';
+import Link from 'next/link';
 
 export default function LoginClientPage() {
   const [email, setEmail] = useState('');
@@ -37,9 +38,9 @@ export default function LoginClientPage() {
 
   useEffect(() => {
     if (!isUserLoading && user) {
-      // If user is already logged in, check their role and redirect
       checkUserRoleAndRedirect(user.uid);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, isUserLoading]);
 
   const checkUserRoleAndRedirect = async (uid: string) => {
@@ -49,7 +50,7 @@ export default function LoginClientPage() {
     if (adminDoc.exists()) {
       router.push('/admin');
     } else {
-      router.push('/');
+      router.push('/profile');
     }
   };
 
@@ -59,12 +60,12 @@ export default function LoginClientPage() {
     setLoading(true);
 
     try {
-      const userCredential = await signInWithEmailAndPassword(
+      await signInWithEmailAndPassword(
         auth,
         email,
         password
       );
-      // Let the useEffect handle the redirection
+      // Let the useEffect handle the redirection to /profile
     } catch (error: any) {
       toast({
         variant: 'destructive',
@@ -115,7 +116,7 @@ export default function LoginClientPage() {
         title: 'Compte créé',
         description: 'Bienvenue ! Vous êtes maintenant connecté.',
       });
-      // Let the useEffect handle redirection
+      // Let the useEffect handle redirection to /profile
     } catch (error: any) {
         let description = "Une erreur inattendue est survenue.";
         if (error.code === 'auth/email-already-in-use') {
@@ -130,7 +131,7 @@ export default function LoginClientPage() {
     }
   };
 
-  if (isUserLoading || user) {
+  if (isUserLoading) {
     return (
       <div className="flex h-screen w-full flex-col items-center justify-center bg-muted/40">
         <Logo className="h-12 w-auto animate-pulse" />
@@ -142,8 +143,10 @@ export default function LoginClientPage() {
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-muted/40 p-4">
-      <div className="mb-8">
-        <Logo className="h-12 w-auto" />
+      <div className="mb-8 text-center">
+        <Link href="/" className="inline-block">
+          <Logo className="h-12 w-auto" />
+        </Link>
       </div>
       <Tabs defaultValue="login" className="w-full max-w-sm">
         <TabsList className="grid w-full grid-cols-2">
@@ -184,9 +187,12 @@ export default function LoginClientPage() {
                   />
                 </div>
               </CardContent>
-              <CardFooter>
+              <CardFooter className="flex flex-col gap-2">
                 <Button type="submit" className="w-full" disabled={loading}>
                   {loading ? 'Connexion...' : 'Se connecter'}
+                </Button>
+                 <Button variant="outline" className="w-full" asChild>
+                    <Link href="/login">Accès Admin</Link>
                 </Button>
               </CardFooter>
             </form>

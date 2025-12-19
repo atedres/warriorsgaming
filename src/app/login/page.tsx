@@ -40,7 +40,8 @@ export default function LoginPage() {
     if (!isUserLoading && user) {
         checkAdminAndRedirect(user.uid);
     }
-  }, [user, isUserLoading, router, firestore]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, isUserLoading]);
 
   const checkAdminAndRedirect = async (uid: string) => {
     if (!firestore) return;
@@ -69,7 +70,7 @@ export default function LoginPage() {
         toast({
           variant: 'destructive',
           title: 'Accès non autorisé',
-          description: "Ce compte n'a pas les permissions d'administrateur.",
+          description: "Ce compte n'a pas les permissions d'administrateur. Utilisez l'espace de connexion client.",
         });
       }
     } catch (error: any) {
@@ -114,8 +115,7 @@ export default function LoginPage() {
         });
         
         toast({ title: "Compte Admin créé", description: `Bienvenue ${name}. Vous pouvez maintenant vous connecter.` });
-        router.push('/admin');
-
+        // The useEffect will handle the redirect
     } catch (error: any) {
         let description = "Une erreur inattendue est survenue.";
         if (error.code === 'auth/email-already-in-use') {
@@ -127,7 +127,7 @@ export default function LoginPage() {
     }
   };
   
-  if (isUserLoading || user) {
+  if (isUserLoading) {
     return (
       <div className="flex h-screen w-full flex-col items-center justify-center bg-muted/40">
         <Logo className="h-12 w-auto animate-pulse" />
@@ -139,8 +139,10 @@ export default function LoginPage() {
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-muted/40 p-4">
-      <div className="mb-8">
-        <Logo className="h-12 w-auto" />
+       <div className="mb-8 text-center">
+        <Link href="/" className="inline-block">
+          <Logo className="h-12 w-auto" />
+        </Link>
       </div>
        <Tabs defaultValue="login" className="w-full max-w-sm">
         <TabsList className="grid w-full grid-cols-2">
@@ -184,7 +186,7 @@ export default function LoginPage() {
                     {loading ? 'Connexion...' : 'Se connecter'}
                     </Button>
                      <Button variant="outline" className="w-full" asChild>
-                        <Link href="/">Retour à l'accueil</Link>
+                        <Link href="/login-client">Espace Client</Link>
                     </Button>
                 </CardFooter>
                 </form>
