@@ -6,10 +6,10 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import ClientHeader from '@/components/client/header';
-import { useCollection, useFirestore, useUser } from '@/firebase';
-import { collection, query, doc, addDoc } from 'firebase/firestore';
+import { useCollection, useDoc, useFirestore, useUser } from '@/firebase';
+import { collection, query, doc, addDoc, where } from 'firebase/firestore';
 import { useMemoFirebase } from '@/firebase/provider';
-import type { Station } from '@/app/lib/data';
+import type { Station, Client, Reservation } from '@/app/lib/data';
 import { cn } from '@/lib/utils';
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
@@ -17,10 +17,20 @@ import { useTranslation } from '@/hooks/use-translation';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { addHours, format, setHours, setMinutes, startOfToday, isBefore, startOfHour, getHours } from 'date-fns';
+import { addHours, format, setHours, setMinutes, startOfToday, getHours } from 'date-fns';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
-function ReservationDialog({ station, user }: { station: Station, user: any }) {
+function ReservationDialog({ 
+    station, 
+    user,
+    client,
+    clientReservations
+}: { 
+    station: Station, 
+    user: any,
+    client: Client | null,
+    clientReservations: Reservation[] | null 
+}) {
     const { t } = useTranslation();
     const [isOpen, setIsOpen] = useState(false);
     const [selectedHour, setSelectedHour] = useState<string>('');
@@ -54,6 +64,27 @@ function ReservationDialog({ station, user }: { station: Station, user: any }) {
             });
             return;
         }
+
+        // --- Single Reservation Logic ---
+        if (client?.currentStationId) {
+            toast({
+                variant: "destructive",
+                title: "Réservation impossible",
+                description: `Vous avez déjà une session en cours sur le poste ${client.currentStationId}.`,
+            });
+            return;
+        }
+
+        const hasActiveReservation = clientReservations?.some(res => res.status === 'pending' || res.status === 'confirmed');
+        if (hasActiveReservation) {
+            toast({
+                variant: "destructive",
+                title: "Réservation impossible",
+                description: "Vous avez déjà une réservation en attente ou confirmée. Vous ne pouvez en avoir qu'une à la fois.",
+            });
+            return;
+        }
+        // --- End of Logic ---
 
         if (!selectedHour) {
             toast({
@@ -159,6 +190,22 @@ export default function Home() {
     [firestore]
   );
   const { data: stations, isLoading } = useCollection<Station>(stationsQuery);
+
+  const clientRef = useMemoFirebase(
+    () => (user ? doc(firestore!, 'clients', user.uid) : null),
+    [user, firestore]
+  );
+  const { data: client } = useDoc<Client>(clientRef);
+
+  const reservationsQuery = useMemoFirebase(
+      () => user && firestore ? query(
+          collection(firestore, 'clients', user.uid, 'reservations'),
+          where('status', 'in', ['pending', 'confirmed'])
+      ) : null,
+      [user, firestore]
+  );
+  const { data: reservations } = useCollection<Reservation>(reservationsQuery);
+
 
   const getIcon = (type: string) => {
     switch (type) {
@@ -286,7 +333,7 @@ export default function Home() {
                         {station.status}
                       </Badge>
                     </div>
-                    <ReservationDialog station={station} user={user} />
+                    <ReservationDialog station={station} user={user} client={client} clientReservations={reservations} />
                   </CardContent>
                 </Card>
               ))}
