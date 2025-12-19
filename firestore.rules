@@ -17,11 +17,12 @@ service cloud.firestore {
       // Seuls les admins peuvent mettre à jour, supprimer ou lister tous les clients.
       allow list, update, delete: if get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.role in ['manager', 'superadmin'];
 
-      // Un client peut gérer ses propres réservations
+      // Gestion des sous-collections
       match /reservations/{reservationId} {
+        // Un client peut créer et lire ses propres réservations
         allow read, list, create: if request.auth.uid == clientId;
-        // Les admins peuvent tout faire
-        allow read, list, write, delete: if get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.role in ['manager', 'superadmin'];
+        // Les admins peuvent lire, mettre à jour (confirmer) et supprimer (annuler) n'importe quelle réservation.
+        allow update, delete: if get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.role in ['manager', 'superadmin'];
       }
       
       // Un client peut lire son historique, les admins peuvent aussi le lire et y écrire.
@@ -42,12 +43,12 @@ service cloud.firestore {
        allow read, list, write: if get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.role in ['manager', 'superadmin'];
     }
     
-    // Les admins ont un accès en lecture/écriture
+    // Les admins ont un accès en lecture/écriture à leurs propres documents admin
     match /admins/{adminId} {
-      allow read, write: if get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.role in ['manager', 'superadmin'];
+      allow read, write: if request.auth.uid == adminId || get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.role == 'superadmin';
     }
 
-    // Règle pour la collection de groupe 'reservations'
+    // Règle pour la collection de groupe 'reservations' (permet aux admins de lister toutes les réservations)
     match /{path=**}/reservations/{reservationId} {
       allow read, list: if get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.role in ['manager', 'superadmin'];
     }
