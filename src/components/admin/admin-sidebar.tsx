@@ -30,6 +30,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useLanguage, useTranslation } from "@/hooks/use-translation";
 import { ThemeToggle } from "../theme-toggle";
+import { useState } from "react";
 
 
 export function AdminHeader() {
@@ -37,12 +38,18 @@ export function AdminHeader() {
     const router = useRouter();
     const { setLanguage } = useLanguage();
     const { t } = useTranslation();
+    const [isSheetOpen, setIsSheetOpen] = useState(false);
+
     const handleLogout = async () => {
         if (auth) {
             await signOut(auth);
         }
     };
     
+    const handleLinkClick = () => {
+        setIsSheetOpen(false);
+    };
+
     const navItems = [
       { href: "/admin", icon: Home, label: t('dashboard') },
       { href: "/admin/clients", icon: Users2, label: t('clients') },
@@ -56,7 +63,7 @@ export function AdminHeader() {
 
     return (
         <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
-          <Sheet>
+          <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
             <SheetTrigger asChild>
               <Button size="icon" variant="outline" className="sm:hidden">
                 <PanelLeft className="h-5 w-5" />
@@ -68,6 +75,7 @@ export function AdminHeader() {
                 <Link
                   href="/admin"
                   className="group flex h-10 w-10 shrink-0 items-center justify-center gap-2 rounded-full bg-primary text-lg font-semibold text-primary-foreground md:text-base"
+                  onClick={handleLinkClick}
                 >
                   <Logo className="h-5 w-5 transition-all group-hover:scale-110" />
                   <span className="sr-only">Warriors Gaming</span>
@@ -77,13 +85,14 @@ export function AdminHeader() {
                     key={item.href}
                     href={item.href}
                     className="flex items-center gap-4 px-2.5 text-muted-foreground hover:text-foreground"
+                    onClick={handleLinkClick}
                   >
                     <item.icon className="h-5 w-5" />
                     {item.label}
                   </Link>
                 ))}
                   <button
-                    onClick={handleLogout}
+                    onClick={() => { handleLogout(); handleLinkClick(); }}
                     className="flex items-center gap-4 px-2.5 text-muted-foreground hover:text-foreground"
                     >
                     <LogOut className="h-5 w-5" />
