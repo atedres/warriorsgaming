@@ -22,7 +22,7 @@ import { ClientActions, QrCodeDialog, ClientHistoryDialog } from './client-actio
 import { PageHeader } from '@/components/page-header';
 import { useCollection, useFirestore } from '@/firebase';
 import { useMemoFirebase } from '@/firebase/provider';
-import { collection, query, where, doc, getDoc, setDoc } from 'firebase/firestore';
+import { collection, query } from 'firebase/firestore';
 import type { Client } from '@/app/lib/data';
 import { Input } from '@/components/ui/input';
 import { Search } from 'lucide-react';
@@ -71,75 +71,124 @@ export default function ClientsPage() {
           </div>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>{t('clientName')}</TableHead>
-                <TableHead className="hidden sm:table-cell">{t('subscription')}</TableHead>
-                <TableHead className="hidden lg:table-cell">{t('subscriptionHours')}</TableHead>
-                <TableHead className="hidden md:table-cell">
-                  {t('memberSince')}
-                </TableHead>
-                <TableHead>
-                  <span className="sr-only">{t('actions')}</span>
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isLoading &&
-                Array.from({ length: 4 }).map((_, i) => (
-                  <TableRow key={i}>
-                    <TableCell colSpan={5}>
-                      <div className="h-8 w-full animate-pulse rounded-md bg-muted" />
-                    </TableCell>
-                  </TableRow>
-                ))}
-              {filteredClients.length === 0 && !isLoading ? (
+          {/* Desktop Table View */}
+          <div className="hidden md:block">
+            <Table>
+              <TableHeader>
                 <TableRow>
-                    <TableCell colSpan={5} className="text-center">
-                        {t('noClientsFound')}
-                    </TableCell>
+                  <TableHead>{t('clientName')}</TableHead>
+                  <TableHead>{t('subscription')}</TableHead>
+                  <TableHead className="hidden lg:table-cell">{t('subscriptionHours')}</TableHead>
+                  <TableHead className="hidden md:table-cell">
+                    {t('memberSince')}
+                  </TableHead>
+                  <TableHead>
+                    <span className="sr-only">{t('actions')}</span>
+                  </TableHead>
                 </TableRow>
+              </TableHeader>
+              <TableBody>
+                {isLoading &&
+                  Array.from({ length: 4 }).map((_, i) => (
+                    <TableRow key={i}>
+                      <TableCell colSpan={5}>
+                        <div className="h-8 w-full animate-pulse rounded-md bg-muted" />
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                {filteredClients.length === 0 && !isLoading ? (
+                  <TableRow>
+                      <TableCell colSpan={5} className="text-center">
+                          {t('noClientsFound')}
+                      </TableCell>
+                  </TableRow>
+                ) : filteredClients.map((client) => (
+                    <TableRow key={client.id}>
+                      <TableCell>
+                        <div className="font-medium">{client.name}</div>
+                        <div className="text-sm text-muted-foreground">
+                          {client.email}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={
+                            client.subscriptionTier === 'VIP'
+                              ? 'default'
+                              : 'secondary'
+                          }
+                          className={
+                            client.subscriptionTier === 'VIP'
+                              ? `bg-accent text-accent-foreground`
+                              : `bg-primary/80 text-primary-foreground`
+                          }
+                        >
+                          {client.subscriptionTier}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="hidden lg:table-cell">{client.subscriptionHours ?? 0}</TableCell>
+                      <TableCell className="hidden md:table-cell">
+                        {client.memberSince}
+                      </TableCell>
+                      <TableCell className='text-right'>
+                        <div className="flex items-center justify-end gap-2">
+                          <QrCodeDialog client={client} />
+                          <ClientHistoryDialog client={client} />
+                          <ClientActions mode="edit" client={client} />
+                          <ClientActions mode="delete" client={client} />
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+              </TableBody>
+            </Table>
+          </div>
+
+          {/* Mobile Card View */}
+          <div className="grid gap-4 md:hidden">
+             {isLoading &&
+                Array.from({ length: 4 }).map((_, i) => (
+                    <Card key={i} className="p-4">
+                        <div className="h-24 w-full animate-pulse rounded-md bg-muted" />
+                    </Card>
+            ))}
+             {filteredClients.length === 0 && !isLoading ? (
+                <div className="text-center text-muted-foreground py-8">
+                    {t('noClientsFound')}
+                </div>
               ) : filteredClients.map((client) => (
-                  <TableRow key={client.id}>
-                    <TableCell>
-                      <div className="font-medium">{client.name}</div>
-                      <div className="text-sm text-muted-foreground md:hidden">
-                        {client.email}
-                      </div>
-                    </TableCell>
-                    <TableCell className="hidden sm:table-cell">
-                      <Badge
-                        variant={
-                          client.subscriptionTier === 'VIP'
-                            ? 'default'
-                            : 'secondary'
-                        }
-                        className={
-                          client.subscriptionTier === 'VIP'
-                            ? `bg-accent text-accent-foreground`
-                            : `bg-primary/80 text-primary-foreground`
-                        }
-                      >
-                        {client.subscriptionTier}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="hidden lg:table-cell">{client.subscriptionHours ?? 0}</TableCell>
-                    <TableCell className="hidden md:table-cell">
-                      {client.memberSince}
-                    </TableCell>
-                    <TableCell className='text-right'>
-                      <div className="flex items-center justify-end gap-2">
+                  <Card key={client.id} className="p-4">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <div className="font-medium">{client.name}</div>
+                            <div className="text-sm text-muted-foreground">{client.email}</div>
+                        </div>
+                        <ClientActions mode="delete" client={client} />
+                    </div>
+                    <div className="mt-4 flex items-center justify-between text-sm">
+                        <Badge
+                            variant={client.subscriptionTier === 'VIP' ? 'default' : 'secondary'}
+                             className={
+                                client.subscriptionTier === 'VIP'
+                                ? `bg-accent text-accent-foreground`
+                                : `bg-primary/80 text-primary-foreground`
+                            }
+                        >
+                            {client.subscriptionTier}
+                        </Badge>
+                        <div className="text-muted-foreground">
+                            Membre depuis: {client.memberSince}
+                        </div>
+                    </div>
+                     <div className="mt-4 pt-4 border-t flex items-center justify-end gap-2">
                         <QrCodeDialog client={client} />
                         <ClientHistoryDialog client={client} />
                         <ClientActions mode="edit" client={client} />
-                        <ClientActions mode="delete" client={client} />
                       </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-            </TableBody>
-          </Table>
+                  </Card>
+            ))}
+          </div>
+
         </CardContent>
       </Card>
     </>
