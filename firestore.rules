@@ -19,9 +19,9 @@ service cloud.firestore {
 
       // Gestion des sous-collections
       match /reservations/{reservationId} {
-        // Un client peut créer et lire ses propres réservations
-        allow read, list, create: if request.auth.uid == clientId;
-        // Les admins peuvent lire, mettre à jour (confirmer) et supprimer (annuler) n'importe quelle réservation.
+        // Un client peut créer, lire et supprimer ses propres réservations
+        allow create, read, list, delete: if request.auth.uid == clientId;
+        // Les admins peuvent lire, mettre à jour (confirmer) et supprimer n'importe quelle réservation.
         allow update, delete: if get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.role in ['manager', 'superadmin'];
       }
       

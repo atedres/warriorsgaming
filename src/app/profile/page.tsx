@@ -6,15 +6,17 @@ import { PageHeader } from '@/components/page-header';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { Clock, Hourglass, QrCode, User as UserIcon, Calendar } from 'lucide-react';
+import { Clock, Hourglass, QrCode, User as UserIcon, Calendar, Trash2 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useMemoFirebase } from '@/firebase/provider';
-import { doc, collection, query, orderBy } from 'firebase/firestore';
+import { doc, collection, query, orderBy, deleteDoc } from 'firebase/firestore';
 import Image from 'next/image';
 import { format } from 'date-fns';
 import ClientHeader from '@/components/client/header';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import { useToast } from '@/hooks/use-toast';
 
 function ProfileSkeleton() {
     return (
@@ -65,6 +67,7 @@ function ProfileSkeleton() {
 export default function ProfilePage() {
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
+  const { toast } = useToast();
 
   const clientRef = useMemoFirebase(
     () => (user ? doc(firestore!, 'clients', user.uid) : null),
@@ -82,7 +85,7 @@ export default function ProfilePage() {
         : null,
     [user, firestore]
   );
-  const { data: reservations, isLoading: isLoadingReservations } = useCollection<Reservation>(reservationsQuery);
+  const { data: reservations, isLoading: isLoadingReservations } = useCollection<Reservation & {id: string}>(reservationsQuery);
 
 
   const qrCodeUrl = client ? `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(
@@ -125,6 +128,25 @@ export default function ProfilePage() {
       case 'pending':
       default:
         return 'bg-yellow-500 text-white';
+    }
+  };
+
+  const handleCancelReservation = async (reservationId: string) => {
+    if (!firestore || !user) return;
+    const reservationRef = doc(firestore, 'clients', user.uid, 'reservations', reservationId);
+    try {
+      await deleteDoc(reservationRef);
+      toast({
+        title: "Réservation annulée",
+        description: "Votre réservation a été annulée avec succès."
+      });
+    } catch (error) {
+      console.error("Error cancelling reservation: ", error);
+      toast({
+        variant: "destructive",
+        title: "Erreur",
+        description: "Impossible d'annuler la réservation. Veuillez réessayer."
+      });
     }
   };
 
@@ -186,8 +208,8 @@ export default function ProfilePage() {
                                     <TableRow>
                                         <TableHead>Poste</TableHead>
                                         <TableHead>Début</TableHead>
-                                        <TableHead>Fin</TableHead>
                                         <TableHead>Statut</TableHead>
+                                        <TableHead className='text-right'>Actions</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -205,11 +227,18 @@ export default function ProfilePage() {
                                             <TableRow key={reservation.id}>
                                                 <TableCell className="font-medium">{reservation.stationId}</TableCell>
                                                 <TableCell>{format(new Date(reservation.startTime), "d MMM, HH:mm")}</TableCell>
-                                                <TableCell>{format(new Date(reservation.endTime), "d MMM, HH:mm")}</TableCell>
                                                 <TableCell>
                                                     <Badge className={cn("capitalize", getStatusBadge(reservation.status))}>
                                                         {reservation.status}
                                                     </Badge>
+                                                </TableCell>
+                                                <TableCell className="text-right">
+                                                    {(reservation.status === 'pending' || reservation.status === 'confirmed') && (
+                                                        <Button variant="ghost" size="sm" className='text-red-500 hover:text-red-600' onClick={() => handleCancelReservation(reservation.id)}>
+                                                            <Trash2 className="h-4 w-4 mr-2"/>
+                                                            Annuler
+                                                        </Button>
+                                                    )}
                                                 </TableCell>
                                             </TableRow>
                                         ))
