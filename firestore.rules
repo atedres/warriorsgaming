@@ -8,9 +8,14 @@ service cloud.firestore {
     }
 
     match /clients/{clientId} {
-      // Un utilisateur ne peut lire que son propre profil. Les admins peuvent tout lire/écrire.
+      // Un nouvel utilisateur peut créer son propre profil.
+      allow create: if request.auth.uid == clientId;
+      
+      // Un utilisateur peut lire son propre profil. Les admins peuvent tout lire.
       allow read: if request.auth.uid == clientId || get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.role in ['manager', 'superadmin'];
-      allow list, write: if get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.role in ['manager', 'superadmin'];
+
+      // Seuls les admins peuvent mettre à jour, supprimer ou lister tous les clients.
+      allow list, update, delete: if get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.role in ['manager', 'superadmin'];
 
       // Un client peut gérer ses propres réservations
       match /reservations/{reservationId} {
