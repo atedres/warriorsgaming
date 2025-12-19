@@ -7,23 +7,23 @@ service cloud.firestore {
       allow write: if get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.role in ['manager', 'superadmin'];
     }
 
-    // Un utilisateur ne peut lire que son propre profil client. Les admins peuvent tout lire/écrire.
     match /clients/{clientId} {
+      // Un utilisateur ne peut lire que son propre profil. Les admins peuvent tout lire/écrire.
       allow read: if request.auth.uid == clientId || get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.role in ['manager', 'superadmin'];
       allow list, write: if get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.role in ['manager', 'superadmin'];
+
+      // Un client peut gérer ses propres réservations
+      match /reservations/{reservationId} {
+        allow read, list, create: if request.auth.uid == clientId;
+        // Seuls les admins peuvent supprimer
+        allow delete: if get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.role in ['manager', 'superadmin'];
+      }
       
       // Un client peut lire/lister son propre historique
       match /history/{historyId} {
         allow read, list: if request.auth.uid == clientId;
         allow write: if get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.role in ['manager', 'superadmin'];
       }
-    }
-
-    // Un utilisateur peut créer/lire ses propres réservations. Les admins peuvent tout gérer.
-    match /reservations/{reservationId} {
-      allow create: if request.auth != null && request.resource.data.clientId == request.auth.uid;
-      allow read: if request.auth != null && (resource.data.clientId == request.auth.uid || get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.role in ['manager', 'superadmin']);
-      allow list, update, delete: if get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.role in ['manager', 'superadmin'];
     }
     
     // Les admins peuvent gérer les jeux
@@ -40,11 +40,6 @@ service cloud.firestore {
     // Les admins ont un accès en lecture/écriture
     match /admins/{adminId} {
       allow read, write: if get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.role in ['manager', 'superadmin'];
-    }
-
-    // Par défaut, refuser toutes les autres opérations.
-    match /{document=**} {
-      allow read, write: if false;
     }
   }
 }

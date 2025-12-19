@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
   Card,
   CardContent,
@@ -20,7 +20,7 @@ import {
 import { PageHeader } from '@/components/page-header';
 import { useCollection, useFirestore, useUser } from '@/firebase';
 import { useMemoFirebase } from '@/firebase/provider';
-import { collection, query, doc, orderBy } from 'firebase/firestore';
+import { collection, query, doc, orderBy, getDocs } from 'firebase/firestore';
 import type { Client } from '@/app/lib/data';
 import { useTranslation } from '@/hooks/use-translation';
 import { format } from 'date-fns';
@@ -29,8 +29,8 @@ import { MoreHorizontal, Trash2 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { useToast } from '@/hooks/use-toast';
+import { Skeleton } from '@/components/ui/skeleton';
 
-// Explicitly type Reservation to include an `id` field
 type Reservation = {
   id: string;
   clientId: string;
@@ -39,7 +39,6 @@ type Reservation = {
   endTime: string;
 };
 
-// Combine reservation with client name for easier display
 type EnrichedReservation = Reservation & {
   clientName: string;
 };
@@ -50,7 +49,7 @@ function ReservationActions({ reservation }: { reservation: EnrichedReservation 
 
     const handleDelete = () => {
         if (!firestore) return;
-        const reservationRef = doc(firestore, 'reservations', reservation.id);
+        const reservationRef = doc(firestore, 'clients', reservation.clientId, 'reservations', reservation.id);
         deleteDocumentNonBlocking(reservationRef);
         toast({
             title: "Réservation annulée",
@@ -77,39 +76,49 @@ function ReservationActions({ reservation }: { reservation: EnrichedReservation 
     )
 }
 
-
 export default function ReservationsPage() {
   const { t } = useTranslation();
-  const { user } = useUser();
   const firestore = useFirestore();
-  const { toast } = useToast();
+  const { user } = useUser();
 
-  const reservationsQuery = useMemoFirebase(
-    () => (user && firestore ? query(collection(firestore, 'reservations'), orderBy('startTime', 'desc')) : null),
-    [user, firestore]
-  );
-  const { data: reservations, isLoading: isLoadingReservations } = useCollection<Reservation>(reservationsQuery);
+  const [allReservations, setAllReservations] = useState<EnrichedReservation[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   const clientsQuery = useMemoFirebase(
     () => (user && firestore ? query(collection(firestore, 'clients')) : null),
     [user, firestore]
   );
   const { data: clients, isLoading: isLoadingClients } = useCollection<Client>(clientsQuery);
+  
+  useEffect(() => {
+    const fetchAllReservations = async () => {
+      if (!firestore || !clients) {
+          if (!isLoadingClients) setIsLoading(false);
+          return;
+      }
+      
+      setIsLoading(true);
+      const reservationPromises = clients.map(async (client) => {
+        const reservationsRef = collection(firestore, 'clients', client.id, 'reservations');
+        const reservationsSnapshot = await getDocs(query(reservationsRef, orderBy('startTime', 'desc')));
+        return reservationsSnapshot.docs.map(doc => ({
+          ...(doc.data() as Omit<Reservation, 'id'>),
+          id: doc.id,
+          clientName: client.name
+        }));
+      });
 
-  const clientMap = useMemo(() => {
-    if (!clients) return new Map();
-    return new Map(clients.map(client => [client.id, client.name]));
-  }, [clients]);
+      const allRes = (await Promise.all(reservationPromises)).flat();
+      allRes.sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime());
+      
+      setAllReservations(allRes);
+      setIsLoading(false);
+    };
 
-  const enrichedReservations = useMemo(() => {
-    if (!reservations) return [];
-    return reservations.map(res => ({
-      ...res,
-      clientName: clientMap.get(res.clientId) || 'Client inconnu',
-    }));
-  }, [reservations, clientMap]);
+    fetchAllReservations();
 
-  const isLoading = isLoadingReservations || isLoadingClients;
+  }, [firestore, clients, isLoadingClients]);
+
 
   return (
     <>
@@ -143,17 +152,17 @@ export default function ReservationsPage() {
                 Array.from({ length: 5 }).map((_, i) => (
                   <TableRow key={i}>
                     <TableCell colSpan={5}>
-                      <div className="h-8 w-full animate-pulse rounded-md bg-muted" />
+                      <Skeleton className="h-8 w-full" />
                     </TableCell>
                   </TableRow>
                 ))}
-              {!isLoading && enrichedReservations.length === 0 ? (
+              {!isLoading && allReservations.length === 0 ? (
                 <TableRow>
                     <TableCell colSpan={5} className="text-center">
                         {t('noReservationsFound')}
                     </TableCell>
                 </TableRow>
-              ) : enrichedReservations.map((reservation) => (
+              ) : allReservations.map((reservation) => (
                   <TableRow key={reservation.id}>
                     <TableCell className="font-medium">
                       {reservation.clientName}

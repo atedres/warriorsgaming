@@ -85,8 +85,7 @@ export default function ProfilePage() {
     () =>
       user && firestore
         ? query(
-            collection(firestore, 'reservations'),
-            where('clientId', '==', user.uid),
+            collection(firestore, 'clients', user.uid, 'reservations'),
             orderBy('startTime', 'desc')
           )
         : null,

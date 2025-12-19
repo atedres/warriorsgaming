@@ -40,8 +40,10 @@ function ReservationDialog({ station, user }: { station: Station, user: any }) {
 
         setIsSubmitting(true);
         try {
-            await addDoc(collection(firestore, 'reservations'), {
-                clientId: user.uid,
+            // Write to the user's subcollection for reservations
+            const reservationsRef = collection(firestore, 'clients', user.uid, 'reservations');
+            await addDoc(reservationsRef, {
+                clientId: user.uid, // Still useful to have for reference
                 stationId: station.id,
                 startTime: new Date(startTime).toISOString(),
                 endTime: new Date(endTime).toISOString(),
