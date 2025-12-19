@@ -91,16 +91,21 @@ export default function ReservationsPage() {
   
   useEffect(() => {
     const fetchAllReservations = async () => {
-      if (!firestore || isLoadingClients || !clients) {
-        if (!isLoadingClients) {
-          setIsLoading(false);
-        }
+      // Wait until clients are loaded.
+      if (isLoadingClients || !firestore) {
         return;
       }
-      
+
       setIsLoading(true);
       
       try {
+        // If there are no clients, there are no reservations to fetch.
+        if (!clients || clients.length === 0) {
+            setAllReservations([]);
+            setIsLoading(false);
+            return;
+        }
+
         const reservationsPromises = clients.map(async (client) => {
           const reservationsRef = collection(firestore, 'clients', client.id, 'reservations');
           const reservationsQuery = query(reservationsRef, orderBy('startTime', 'desc'));
@@ -122,6 +127,7 @@ export default function ReservationsPage() {
         setAllReservations(allRes);
       } catch (error) {
         console.error("Error fetching reservations: ", error);
+        setAllReservations([]); // Clear reservations on error
       } finally {
         setIsLoading(false);
       }
@@ -160,7 +166,7 @@ export default function ReservationsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {(isLoading || isLoadingClients) &&
+              {isLoading &&
                 Array.from({ length: 5 }).map((_, i) => (
                   <TableRow key={i}>
                     <TableCell colSpan={5}>
