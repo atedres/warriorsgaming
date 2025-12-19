@@ -20,8 +20,8 @@ service cloud.firestore {
       // Un client peut gérer ses propres réservations
       match /reservations/{reservationId} {
         allow read, list, create: if request.auth.uid == clientId;
-        // Seuls les admins peuvent supprimer
-        allow delete: if get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.role in ['manager', 'superadmin'];
+        // Les admins peuvent tout faire
+        allow read, list, write, delete: if get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.role in ['manager', 'superadmin'];
       }
       
       // Un client peut lire son historique, les admins peuvent aussi le lire et y écrire.
@@ -45,6 +45,11 @@ service cloud.firestore {
     // Les admins ont un accès en lecture/écriture
     match /admins/{adminId} {
       allow read, write: if get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.role in ['manager', 'superadmin'];
+    }
+
+    // Règle pour la collection de groupe 'reservations'
+    match /{path=**}/reservations/{reservationId} {
+      allow read, list: if get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.role in ['manager', 'superadmin'];
     }
   }
 }

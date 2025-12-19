@@ -20,6 +20,14 @@ export type Client = {
   currentStationId?: string;
 };
 
+export type Reservation = {
+  clientId: string;
+  stationId: string;
+  startTime: string;
+  endTime: string;
+  status: 'pending' | 'confirmed' | 'cancelled';
+}
+
 export type Game = {
     id: string;
     name: string;

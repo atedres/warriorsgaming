@@ -1,7 +1,7 @@
 'use client';
 
 import { useUser, useFirestore, useDoc, useCollection } from '@/firebase';
-import type { Client } from '@/app/lib/data';
+import type { Client, Reservation } from '@/app/lib/data';
 import { PageHeader } from '@/components/page-header';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -14,14 +14,7 @@ import Image from 'next/image';
 import { format } from 'date-fns';
 import ClientHeader from '@/components/client/header';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-
-type Reservation = {
-  id: string;
-  clientId: string;
-  stationId: string;
-  startTime: string;
-  endTime: string;
-};
+import { cn } from '@/lib/utils';
 
 function ProfileSkeleton() {
     return (
@@ -123,6 +116,18 @@ export default function ProfilePage() {
       )
   }
 
+  const getStatusBadge = (status: Reservation['status']) => {
+    switch (status) {
+      case 'confirmed':
+        return 'bg-green-500 text-white';
+      case 'cancelled':
+        return 'bg-red-500 text-white';
+      case 'pending':
+      default:
+        return 'bg-yellow-500 text-white';
+    }
+  };
+
   return (
     <>
         <ClientHeader />
@@ -182,13 +187,14 @@ export default function ProfilePage() {
                                         <TableHead>Poste</TableHead>
                                         <TableHead>Début</TableHead>
                                         <TableHead>Fin</TableHead>
+                                        <TableHead>Statut</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
                                     {isLoadingReservations && (
                                         Array.from({length: 3}).map((_, i) => (
                                             <TableRow key={i}>
-                                                <TableCell colSpan={3}>
+                                                <TableCell colSpan={4}>
                                                      <Skeleton className="h-8 w-full" />
                                                 </TableCell>
                                             </TableRow>
@@ -200,12 +206,17 @@ export default function ProfilePage() {
                                                 <TableCell className="font-medium">{reservation.stationId}</TableCell>
                                                 <TableCell>{format(new Date(reservation.startTime), "d MMM, HH:mm")}</TableCell>
                                                 <TableCell>{format(new Date(reservation.endTime), "d MMM, HH:mm")}</TableCell>
+                                                <TableCell>
+                                                    <Badge className={cn("capitalize", getStatusBadge(reservation.status))}>
+                                                        {reservation.status}
+                                                    </Badge>
+                                                </TableCell>
                                             </TableRow>
                                         ))
                                     ) : (
                                         !isLoadingReservations && (
                                             <TableRow>
-                                                <TableCell colSpan={3} className="text-center text-muted-foreground">
+                                                <TableCell colSpan={4} className="text-center text-muted-foreground">
                                                     Vous n'avez aucune réservation.
                                                 </TableCell>
                                             </TableRow>

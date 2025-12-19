@@ -55,6 +55,7 @@ function ReservationDialog({ station, user }: { station: Station, user: any }) {
                 stationId: station.id,
                 startTime: new Date(startTime).toISOString(),
                 endTime: new Date(endTime).toISOString(),
+                status: 'pending' // Default status
             });
 
             toast({
