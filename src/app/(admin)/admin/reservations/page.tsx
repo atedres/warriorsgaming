@@ -2,8 +2,9 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import { collection, collectionGroup, getDocs, query, orderBy, doc, updateDoc, deleteDoc, where } from 'firebase/firestore';
+import { collection, collectionGroup, getDocs, query, orderBy, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { useCollection, useFirestore } from '@/firebase';
+import { useMemoFirebase } from '@/firebase/provider';
 import type { Client } from '@/app/lib/data';
 import { PageHeader } from '@/components/page-header';
 import { useTranslation } from '@/hooks/use-translation';
@@ -13,7 +14,7 @@ import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
-import { Check, Trash2, Clock } from 'lucide-react';
+import { Check, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Reservation as ReservationType } from '@/app/lib/data';
 
@@ -30,9 +31,12 @@ export default function ReservationsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
-  const { data: clients, isLoading: isLoadingClients } = useCollection<Client>(
-    useMemo(() => (firestore ? query(collection(firestore, 'clients')) : null), [firestore])
+  const clientsQuery = useMemoFirebase(
+    () => (firestore ? query(collection(firestore, 'clients')) : null),
+    [firestore]
   );
+  const { data: clients, isLoading: isLoadingClients } = useCollection<Client>(clientsQuery);
+
 
   useEffect(() => {
     const fetchAllReservations = async () => {
@@ -46,17 +50,22 @@ export default function ReservationsPage() {
 
       try {
         const querySnapshot = await getDocs(reservationsQuery);
-        const allReservations: EnrichedReservation[] = querySnapshot.docs.map(doc => {
-          const data = doc.data() as ReservationType;
-          const client = clients?.find(c => c.id === data.clientId);
-          return {
-            ...data,
-            reservationId: doc.id,
-            clientDocId: client?.id,
-            clientName: client?.name || 'Unknown Client',
-          };
-        });
-        setReservations(allReservations);
+        if (clients) {
+          const allReservations: EnrichedReservation[] = querySnapshot.docs.map(doc => {
+            const data = doc.data() as ReservationType;
+            const client = clients.find(c => c.id === data.clientId);
+            return {
+              ...data,
+              reservationId: doc.id,
+              clientDocId: client?.id,
+              clientName: client?.name || 'Unknown Client',
+            };
+          });
+          setReservations(allReservations);
+        } else if (!isLoadingClients) {
+          // If clients have loaded and there are none, we can assume no reservations
+           setReservations([]);
+        }
       } catch (error) {
         console.error("Error fetching reservations: ", error);
         toast({
@@ -65,15 +74,18 @@ export default function ReservationsPage() {
           description: "Could not fetch reservations. Check security rules.",
         });
       } finally {
-        setIsLoading(false);
+        // Only stop loading if we aren't waiting for clients anymore
+        if(!isLoadingClients){
+            setIsLoading(false);
+        }
       }
     };
 
-    if (!isLoadingClients) {
+    // We run the effect if firestore is available and client loading has finished
+    if (firestore && !isLoadingClients) {
         fetchAllReservations();
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [firestore, clients, isLoadingClients]);
+  }, [firestore, clients, isLoadingClients, toast]);
   
   const handleUpdateStatus = async (reservation: EnrichedReservation, status: 'confirmed' | 'cancelled') => {
       if (!firestore || !reservation.clientDocId) return;
@@ -133,7 +145,7 @@ export default function ReservationsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {isLoading || isLoadingClients ? (
+              {isLoading ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <TableRow key={i}>
                     <TableCell colSpan={5}>
