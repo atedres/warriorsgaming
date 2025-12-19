@@ -37,6 +37,15 @@ function ReservationDialog({ station, user }: { station: Station, user: any }) {
             });
             return;
         }
+        
+        if (new Date(startTime) >= new Date(endTime)) {
+            toast({
+                variant: 'destructive',
+                title: 'Date invalide',
+                description: "L'heure de fin doit être après l'heure de début."
+            });
+            return;
+        }
 
         setIsSubmitting(true);
         try {

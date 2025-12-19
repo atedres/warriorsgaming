@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Clock, Hourglass, QrCode, User as UserIcon, Calendar } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useMemoFirebase } from '@/firebase/provider';
-import { doc, collection, query, where, orderBy } from 'firebase/firestore';
+import { doc, collection, query, orderBy } from 'firebase/firestore';
 import Image from 'next/image';
 import { format } from 'date-fns';
 import ClientHeader from '@/components/client/header';
