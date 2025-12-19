@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -20,7 +19,7 @@ import {
 import { PageHeader } from '@/components/page-header';
 import { useCollection, useFirestore, useUser } from '@/firebase';
 import { useMemoFirebase } from '@/firebase/provider';
-import { collection, query, doc, orderBy, getDocs } from 'firebase/firestore';
+import { collection, query, doc, orderBy, getDocs, collectionGroup } from 'firebase/firestore';
 import type { Client } from '@/app/lib/data';
 import { useTranslation } from '@/hooks/use-translation';
 import { format } from 'date-fns';
@@ -79,37 +78,37 @@ function ReservationActions({ reservation }: { reservation: EnrichedReservation 
 export default function ReservationsPage() {
   const { t } = useTranslation();
   const firestore = useFirestore();
-  const { user } = useUser();
 
   const [allReservations, setAllReservations] = useState<EnrichedReservation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   const clientsQuery = useMemoFirebase(
-    () => (user && firestore ? query(collection(firestore, 'clients')) : null),
-    [user, firestore]
+    () => (firestore ? query(collection(firestore, 'clients')) : null),
+    [firestore]
   );
   const { data: clients, isLoading: isLoadingClients } = useCollection<Client>(clientsQuery);
   
   useEffect(() => {
     const fetchAllReservations = async () => {
-      if (!firestore || !clients) {
-          if (!isLoadingClients) setIsLoading(false);
+      if (!firestore || isLoadingClients) {
           return;
       }
       
       setIsLoading(true);
-      const reservationPromises = clients.map(async (client) => {
-        const reservationsRef = collection(firestore, 'clients', client.id, 'reservations');
-        const reservationsSnapshot = await getDocs(query(reservationsRef, orderBy('startTime', 'desc')));
-        return reservationsSnapshot.docs.map(doc => ({
-          ...(doc.data() as Omit<Reservation, 'id'>),
+      
+      // Use a collectionGroup query to get all reservations across all clients
+      const reservationsQuery = query(collectionGroup(firestore, 'reservations'), orderBy('startTime', 'desc'));
+      const reservationsSnapshot = await getDocs(reservationsQuery);
+      
+      const allRes: EnrichedReservation[] = reservationsSnapshot.docs.map(doc => {
+        const data = doc.data() as Omit<Reservation, 'id'>;
+        const client = clients?.find(c => c.id === data.clientId);
+        return {
+          ...data,
           id: doc.id,
-          clientName: client.name
-        }));
+          clientName: client?.name || 'Unknown Client',
+        };
       });
-
-      const allRes = (await Promise.all(reservationPromises)).flat();
-      allRes.sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime());
       
       setAllReservations(allRes);
       setIsLoading(false);
@@ -148,7 +147,7 @@ export default function ReservationsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {isLoading &&
+              {(isLoading || isLoadingClients) &&
                 Array.from({ length: 5 }).map((_, i) => (
                   <TableRow key={i}>
                     <TableCell colSpan={5}>
@@ -163,7 +162,7 @@ export default function ReservationsPage() {
                     </TableCell>
                 </TableRow>
               ) : allReservations.map((reservation) => (
-                  <TableRow key={reservation.id}>
+                  <TableRow key={reservation.clientId + reservation.id}>
                     <TableCell className="font-medium">
                       {reservation.clientName}
                     </TableCell>
