@@ -1,24 +1,34 @@
 
 'use client';
 
-import { useUser, useFirestore, useDoc } from '@/firebase';
+import { useUser, useFirestore, useDoc, useCollection } from '@/firebase';
 import type { Client } from '@/app/lib/data';
 import { PageHeader } from '@/components/page-header';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { Clock, Hourglass, QrCode, User as UserIcon } from 'lucide-react';
+import { Clock, Hourglass, QrCode, User as UserIcon, Calendar } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useMemoFirebase } from '@/firebase/provider';
-import { doc } from 'firebase/firestore';
+import { doc, collection, query, where, orderBy } from 'firebase/firestore';
 import Image from 'next/image';
 import { format } from 'date-fns';
 import ClientHeader from '@/components/client/header';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+
+// Explicitly type Reservation to include an `id` field
+type Reservation = {
+  id: string;
+  clientId: string;
+  stationId: string;
+  startTime: string;
+  endTime: string;
+};
 
 function ProfileSkeleton() {
     return (
-        <div className="grid gap-8 md:grid-cols-3">
-            <div className="md:col-span-1">
+        <div className="grid gap-8 md:grid-cols-2">
+            <div className="space-y-8">
                 <Card>
                     <CardHeader className="items-center text-center">
                         <Skeleton className="h-24 w-24 rounded-full" />
@@ -33,8 +43,6 @@ function ProfileSkeleton() {
                          <Skeleton className="h-10 w-full" />
                     </CardContent>
                 </Card>
-            </div>
-            <div className="md:col-span-2">
                 <Card>
                     <CardHeader>
                         <CardTitle>QR Code</CardTitle>
@@ -44,6 +52,21 @@ function ProfileSkeleton() {
                     </CardContent>
                 </Card>
             </div>
+             <div className="md:col-span-1">
+                 <Card>
+                    <CardHeader>
+                        <Skeleton className="h-6 w-48" />
+                        <Skeleton className="h-4 w-64 mt-2" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="space-y-4">
+                           <Skeleton className="h-12 w-full" />
+                           <Skeleton className="h-12 w-full" />
+                           <Skeleton className="h-12 w-full" />
+                        </div>
+                    </CardContent>
+                </Card>
+             </div>
         </div>
     )
 }
@@ -57,6 +80,20 @@ export default function ProfilePage() {
     [user, firestore]
   );
   const { data: client, isLoading: isLoadingClient } = useDoc<Client>(clientRef);
+
+  const reservationsQuery = useMemoFirebase(
+    () =>
+      user && firestore
+        ? query(
+            collection(firestore, 'reservations'),
+            where('clientId', '==', user.uid),
+            orderBy('startTime', 'desc')
+          )
+        : null,
+    [user, firestore]
+  );
+  const { data: reservations, isLoading: isLoadingReservations } = useCollection<Reservation>(reservationsQuery);
+
 
   const qrCodeUrl = client ? `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(
     JSON.stringify({ clientId: client.id, name: client.name })
@@ -93,10 +130,10 @@ export default function ProfilePage() {
     <>
         <ClientHeader />
         <main className='container py-8'>
-            <PageHeader title="Mon Profil" description="Consultez vos informations et votre QR code." />
-            <div className="grid gap-8 md:grid-cols-2">
-                {/* Client Info Card */}
-                <div className="md:col-span-1">
+            <PageHeader title="Mon Profil" description="Consultez vos informations, votre QR code et vos réservations." />
+            <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+                {/* Left Column: Info + QR */}
+                <div className="lg:col-span-1 space-y-8">
                     <Card>
                         <CardHeader className="items-center text-center">
                             <Avatar className='h-24 w-24 text-4xl'>
@@ -122,10 +159,7 @@ export default function ProfilePage() {
                             </div>
                         </CardContent>
                     </Card>
-                </div>
 
-                {/* QR Code */}
-                <div className="md:col-span-1">
                     <Card>
                         <CardHeader>
                             <CardTitle className='flex items-center gap-2'><QrCode/> Mon QR Code</CardTitle>
@@ -136,8 +170,59 @@ export default function ProfilePage() {
                         </CardContent>
                     </Card>
                 </div>
+
+                {/* Right Column: Reservations */}
+                <div className="lg:col-span-2">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className='flex items-center gap-2'><Calendar /> Mes Réservations</CardTitle>
+                            <CardDescription>Voici la liste de vos réservations passées et à venir.</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                             <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Poste</TableHead>
+                                        <TableHead>Début</TableHead>
+                                        <TableHead>Fin</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {isLoadingReservations && (
+                                        Array.from({length: 3}).map((_, i) => (
+                                            <TableRow key={i}>
+                                                <TableCell colSpan={3}>
+                                                     <Skeleton className="h-8 w-full" />
+                                                </TableCell>
+                                            </TableRow>
+                                        ))
+                                    )}
+                                    {!isLoadingReservations && reservations && reservations.length > 0 ? (
+                                        reservations.map(reservation => (
+                                            <TableRow key={reservation.id}>
+                                                <TableCell className="font-medium">{reservation.stationId}</TableCell>
+                                                <TableCell>{format(new Date(reservation.startTime), "d MMM, HH:mm")}</TableCell>
+                                                <TableCell>{format(new Date(reservation.endTime), "d MMM, HH:mm")}</TableCell>
+                                            </TableRow>
+                                        ))
+                                    ) : (
+                                        !isLoadingReservations && (
+                                            <TableRow>
+                                                <TableCell colSpan={3} className="text-center text-muted-foreground">
+                                                    Vous n'avez aucune réservation.
+                                                </TableCell>
+                                            </TableRow>
+                                        )
+                                    )}
+                                </TableBody>
+                            </Table>
+                        </CardContent>
+                    </Card>
+                </div>
             </div>
         </main>
     </>
   );
 }
+
+    
