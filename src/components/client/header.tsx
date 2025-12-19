@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from "next/link";
@@ -34,7 +35,7 @@ export default function ClientHeader() {
 
   return (
     <header className="px-4 lg:px-6 h-14 flex items-center bg-background/80 backdrop-blur-sm sticky top-0 z-50 border-b">
-      <Link href="/" className="flex items-center justify-center">
+      <Link href="/" className="flex items-center justify-center mr-4">
         <Logo />
         <span className="sr-only">Warriors Gaming</span>
       </Link>
@@ -85,10 +86,10 @@ export default function ClientHeader() {
             </DropdownMenuContent>
           </DropdownMenu>
         ) : (
-          <Button asChild>
+          <Button asChild size="sm">
               <Link href="/login-client">
-                  <LogIn className="mr-2 h-4 w-4" />
-                  Connexion
+                  <LogIn className="h-4 w-4 sm:mr-2" />
+                  <span className="sr-only sm:not-sr-only">Connexion</span>
               </Link>
           </Button>
         )}
@@ -97,5 +98,3 @@ export default function ClientHeader() {
     </header>
   );
 }
-
-    

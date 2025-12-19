@@ -314,7 +314,7 @@ export default function Home() {
                 ))}
               </div>
             </div>
-            <div className="mx-auto grid max-w-5xl grid-cols-1 gap-6 py-12 md:grid-cols-2 lg:grid-cols-3">
+            <div className="mx-auto grid max-w-5xl grid-cols-1 gap-6 py-12 sm:grid-cols-2 lg:grid-cols-3">
               {isLoading &&
                 Array.from({ length: 6 }).map((_, i) => (
                   <Card key={i} className="flex flex-col">
@@ -372,7 +372,7 @@ export default function Home() {
           </div>
         </section>
         
-        <section id="location" className="relative w-full h-[500px] bg-muted">
+        <section id="location" className="relative w-full h-[400px] md:h-[500px] bg-muted">
             <iframe
                 src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3323.708005397453!2d-7.600600025700212!3d33.58694384196167!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0xda7cdfcb5b2f5f1%3A0xcedf993af7b0b3e9!2sWarriors%20Gaming!5e0!3m2!1sen!2sma!4v1716304899532!5m2!1sen!2sma"
                 width="100%"
@@ -415,5 +415,3 @@ export default function Home() {
     </div>
   );
 }
-
-    
