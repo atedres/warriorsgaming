@@ -16,15 +16,19 @@ import {
 import { useLanguage } from "@/hooks/use-translation";
 import { useUser, useAuth } from "@/firebase";
 import { signOut } from "firebase/auth";
+import { useRouter } from "next/navigation";
 
 export default function ClientHeader() {
   const { setLanguage } = useLanguage();
   const { user } = useUser();
   const auth = useAuth();
+  const router = useRouter();
 
-  const handleLogout = () => {
+
+  const handleLogout = async () => {
     if (auth) {
-      signOut(auth);
+      await signOut(auth);
+      router.push('/');
     }
   };
 
@@ -93,3 +97,5 @@ export default function ClientHeader() {
     </header>
   );
 }
+
+    
