@@ -20,17 +20,21 @@ import { useToast } from '@/hooks/use-toast';
 import { addHours, format } from 'date-fns';
 
 function ReservationDialog({ station, user }: { station: Station, user: any }) {
+    const { t } = useTranslation();
     const [isOpen, setIsOpen] = useState(false);
     const [startTime, setStartTime] = useState(format(new Date(), "yyyy-MM-dd'T'HH:mm"));
     const [endTime, setEndTime] = useState(format(addHours(new Date(), 1), "yyyy-MM-dd'T'HH:mm"));
     const [isSubmitting, setIsSubmitting] = useState(false);
     const firestore = useFirestore();
     const { toast } = useToast();
-    const { t } = useTranslation();
 
     const handleReservation = async () => {
-        if (!firestore || !user) {
-            toast({ variant: 'destructive', title: "Erreur", description: "Vous devez être connecté pour réserver." });
+        if (!firestore || !user || !user.uid) {
+            toast({ 
+                variant: 'destructive', 
+                title: "Erreur", 
+                description: "Session non valide. Veuillez vous reconnecter pour réserver." 
+            });
             return;
         }
 
@@ -50,7 +54,11 @@ function ReservationDialog({ station, user }: { station: Station, user: any }) {
             setIsOpen(false);
         } catch (error) {
             console.error("Error creating reservation: ", error);
-            toast({ variant: 'destructive', title: "Erreur", description: "Une erreur est survenue lors de la réservation." });
+            toast({ 
+                variant: 'destructive', 
+                title: "Erreur de Réservation", 
+                description: "Une erreur est survenue. Il est possible que les règles de sécurité aient refusé l'action."
+            });
         } finally {
             setIsSubmitting(false);
         }
