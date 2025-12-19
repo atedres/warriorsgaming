@@ -194,7 +194,7 @@ function ChangePasswordCard() {
     };
 
     return (
-        <Card className="lg:col-span-1">
+        <Card>
             <CardHeader>
                 <CardTitle className="font-headline flex items-center gap-2">
                     <Lock className="h-5 w-5 text-primary" />
@@ -232,9 +232,9 @@ export default function SettingsPage() {
         description="Manage your application settings."
         className="px-0"
       />
-      <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-8 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
         {/* User Management Card */}
-        <Card className="lg:col-span-1">
+        <Card>
           <CardHeader>
             <CardTitle className="font-headline flex items-center gap-2">
                 <UserPlus className="h-5 w-5 text-primary" />
@@ -253,7 +253,7 @@ export default function SettingsPage() {
         <ChangePasswordCard />
 
         {/* Notification Settings Card */}
-        <Card className="lg:col-span-1">
+        <Card>
           <CardHeader>
             <CardTitle className="font-headline flex items-center gap-2">
                 <Bell className="h-5 w-5 text-primary" />
@@ -295,7 +295,7 @@ export default function SettingsPage() {
         </Card>
 
         {/* Appearance and Language Card */}
-         <Card className="lg:col-span-3">
+         <Card className="md:col-span-2 lg:col-span-3">
           <CardHeader>
             <CardTitle className="font-headline">Appearance & Language</CardTitle>
             <CardDescription>
@@ -328,7 +328,3 @@ export default function SettingsPage() {
     </>
   );
 }
-
-    
-
-    

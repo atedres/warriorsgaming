@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState, useActionState } from "react";
@@ -84,8 +85,8 @@ export function LoyaltyForm() {
   };
 
   return (
-    <div className="grid gap-8 md:grid-cols-3">
-      <div className="md:col-span-3 lg:col-span-1">
+    <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+      <div className="lg:col-span-1">
         <Card>
           <CardHeader>
             <CardTitle className="font-headline">Recommendation Engine</CardTitle>
@@ -158,7 +159,7 @@ export function LoyaltyForm() {
         </Card>
       </div>
 
-      <div className="md:col-span-3 lg:col-span-2">
+      <div className="md:col-span-1 lg:col-span-2">
         <Card className="min-h-full">
           <CardHeader>
             <CardTitle className="font-headline">AI Recommendation</CardTitle>

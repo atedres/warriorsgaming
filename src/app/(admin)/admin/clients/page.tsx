@@ -22,11 +22,12 @@ import { ClientActions, QrCodeDialog, ClientHistoryDialog } from './client-actio
 import { PageHeader } from '@/components/page-header';
 import { useCollection, useFirestore } from '@/firebase';
 import { useMemoFirebase } from '@/firebase/provider';
-import { collection, query } from 'firebase/firestore';
+import { collection, query, where, doc, getDoc, setDoc } from 'firebase/firestore';
 import type { Client } from '@/app/lib/data';
 import { Input } from '@/components/ui/input';
 import { Search } from 'lucide-react';
 import { useTranslation } from '@/hooks/use-translation';
+import { Button } from '@/components/ui/button';
 
 export default function ClientsPage() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -75,8 +76,7 @@ export default function ClientsPage() {
               <TableRow>
                 <TableHead>{t('clientName')}</TableHead>
                 <TableHead className="hidden sm:table-cell">{t('subscription')}</TableHead>
-                <TableHead className="hidden md:table-cell">{t('subscriptionHours')}</TableHead>
-                <TableHead className="hidden lg:table-cell">{t('bonusHours')}</TableHead>
+                <TableHead className="hidden lg:table-cell">{t('subscriptionHours')}</TableHead>
                 <TableHead className="hidden md:table-cell">
                   {t('memberSince')}
                 </TableHead>
@@ -89,23 +89,21 @@ export default function ClientsPage() {
               {isLoading &&
                 Array.from({ length: 4 }).map((_, i) => (
                   <TableRow key={i}>
-                    <TableCell colSpan={6}>
+                    <TableCell colSpan={5}>
                       <div className="h-8 w-full animate-pulse rounded-md bg-muted" />
                     </TableCell>
                   </TableRow>
                 ))}
               {filteredClients.length === 0 && !isLoading ? (
                 <TableRow>
-                    <TableCell colSpan={6} className="text-center">
+                    <TableCell colSpan={5} className="text-center">
                         {t('noClientsFound')}
                     </TableCell>
                 </TableRow>
               ) : filteredClients.map((client) => (
                   <TableRow key={client.id}>
-                    <TableCell className="font-medium">
-                      <div className="flex items-center gap-2">
-                        <div className="font-medium">{client.name}</div>
-                      </div>
+                    <TableCell>
+                      <div className="font-medium">{client.name}</div>
                       <div className="text-sm text-muted-foreground md:hidden">
                         {client.email}
                       </div>
@@ -126,13 +124,12 @@ export default function ClientsPage() {
                         {client.subscriptionTier}
                       </Badge>
                     </TableCell>
-                    <TableCell className="hidden md:table-cell">{client.subscriptionHours ?? 0}</TableCell>
-                    <TableCell className="hidden lg:table-cell">{client.bonusHours ?? 0}</TableCell>
+                    <TableCell className="hidden lg:table-cell">{client.subscriptionHours ?? 0}</TableCell>
                     <TableCell className="hidden md:table-cell">
                       {client.memberSince}
                     </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
+                    <TableCell className='text-right'>
+                      <div className="flex items-center justify-end gap-2">
                         <QrCodeDialog client={client} />
                         <ClientHistoryDialog client={client} />
                         <ClientActions mode="edit" client={client} />

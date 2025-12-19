@@ -105,7 +105,6 @@ export default function StationsPage() {
         description={t('stationManagementDescription')}
         className="px-0"
       >
-        <StationActions mode="add" />
       </PageHeader>
       
       <div className="grid gap-8 lg:grid-cols-3">
@@ -125,8 +124,8 @@ export default function StationsPage() {
                         <TableHead className="hidden sm:table-cell">{t('type')}</TableHead>
                         <TableHead className="hidden md:table-cell">{t('games')}</TableHead>
                         <TableHead>{t('status')}</TableHead>
-                        <TableHead>
-                        <span className="sr-only">{t('actions')}</span>
+                        <TableHead className='text-right'>
+                          <StationActions mode="add" />
                         </TableHead>
                     </TableRow>
                     </TableHeader>
@@ -159,7 +158,7 @@ export default function StationsPage() {
                             <TableCell>
                             <StationStatusSelector station={station} />
                             </TableCell>
-                            <TableCell>
+                            <TableCell className='text-right'>
                             <StationActions mode="actions" station={station} />
                             </TableCell>
                         </TableRow>
