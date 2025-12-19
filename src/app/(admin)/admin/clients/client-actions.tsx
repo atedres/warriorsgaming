@@ -57,10 +57,6 @@ type ClientFormValues = z.infer<typeof clientFormSchema>;
 
 type ClientActionsProps =
   | {
-      mode: "add";
-      client?: never;
-    }
-  | {
       mode: "edit";
       client: Client;
     }
@@ -177,24 +173,7 @@ export function ClientActions({ mode, client }: ClientActionsProps) {
     setIsSubmitting(true);
     
     try {
-      if (mode === "add") {
-        // NOTE: In a real app, you would create a Firebase Auth user first,
-        // then use that user's UID as the document ID here.
-        // For this prototyping environment, we'll use email as a stand-in ID,
-        // but this is NOT secure and not for production.
-        const newClientId = data.email;
-        const clientRef = doc(firestore, "clients", newClientId);
-        const clientData = {
-          ...data,
-          id: newClientId,
-          memberSince: new Date().toISOString().split("T")[0],
-          subscriptionHours: 0,
-          bonusHours: 0,
-          usageData: "New client.",
-        };
-        await setDocumentNonBlocking(clientRef, clientData, {});
-        toast({ title: "Client created", description: `${data.name} has been added.` });
-      } else if (mode === "edit" && client) {
+      if (mode === "edit" && client) {
         const clientRef = doc(firestore, "clients", client.id);
         updateDocumentNonBlocking(clientRef, data);
         toast({ title: "Client updated", description: `${data.name}'s profile has been updated.` });
@@ -219,30 +198,6 @@ export function ClientActions({ mode, client }: ClientActionsProps) {
     })
   }
   
-  if (mode === "add") {
-    return (
-      <Dialog open={isEditDialogOpen} onOpenChange={setEditDialogOpen}>
-        <DialogTrigger asChild>
-          <Button size="sm" className="h-8 gap-1">
-            <PlusCircle className="h-3.5 w-3.5" />
-            <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-              Add Client
-            </span>
-          </Button>
-        </DialogTrigger>
-        <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Add New Client</DialogTitle>
-              <DialogDescription>
-                Enter the client's details to create their profile. The email will be their unique ID.
-              </DialogDescription>
-            </DialogHeader>
-            <ClientForm onFormSubmit={handleFormSubmit} isSubmitting={isSubmitting} />
-        </DialogContent>
-      </Dialog>
-    );
-  }
-
   if (mode === "edit") {
      return (
        <Dialog open={isEditDialogOpen} onOpenChange={setEditDialogOpen}>

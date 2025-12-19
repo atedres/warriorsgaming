@@ -50,7 +50,6 @@ export default function ClientsPage() {
         description={t('clientManagementDescription')}
         className="px-0"
       >
-        <ClientActions mode="add" />
       </PageHeader>
       <Card>
         <CardHeader>
