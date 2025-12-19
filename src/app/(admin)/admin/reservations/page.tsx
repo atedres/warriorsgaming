@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import { collection, collectionGroup, getDocs, query, orderBy, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { collectionGroup, getDocs, query, orderBy, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { useCollection, useFirestore } from '@/firebase';
 import { useMemoFirebase } from '@/firebase/provider';
 import type { Client } from '@/app/lib/data';
@@ -20,7 +20,7 @@ import type { Reservation as ReservationType } from '@/app/lib/data';
 
 type EnrichedReservation = ReservationType & {
   clientName?: string;
-  clientDocId?: string; // a.k.a the UID
+  clientDocId: string; // The parent document ID (client UID)
   reservationId: string;
 };
 
@@ -40,7 +40,11 @@ export default function ReservationsPage() {
 
   useEffect(() => {
     const fetchAllReservations = async () => {
-      if (!firestore) return;
+      if (!firestore || isLoadingClients) {
+          if (!firestore) setIsLoading(false); // Stop loading if firestore isn't ready
+          return;
+      };
+
       setIsLoading(true);
 
       const reservationsQuery = query(
@@ -50,22 +54,22 @@ export default function ReservationsPage() {
 
       try {
         const querySnapshot = await getDocs(reservationsQuery);
-        if (clients) {
-          const allReservations: EnrichedReservation[] = querySnapshot.docs.map(doc => {
+        const clientsMap = new Map(clients?.map(c => [c.id, c.name]));
+
+        const allReservations: EnrichedReservation[] = querySnapshot.docs.map(doc => {
             const data = doc.data() as ReservationType;
-            const client = clients.find(c => c.id === data.clientId);
+            // The client ID comes from the parent path
+            const parentClientId = doc.ref.parent.parent!.id; 
+            
             return {
               ...data,
               reservationId: doc.id,
-              clientDocId: client?.id,
-              clientName: client?.name || 'Unknown Client',
+              clientDocId: parentClientId,
+              clientName: clientsMap.get(parentClientId) || 'Unknown Client',
             };
-          });
-          setReservations(allReservations);
-        } else if (!isLoadingClients) {
-          // If clients have loaded and there are none, we can assume no reservations
-           setReservations([]);
-        }
+        });
+        setReservations(allReservations);
+
       } catch (error) {
         console.error("Error fetching reservations: ", error);
         toast({
@@ -74,21 +78,18 @@ export default function ReservationsPage() {
           description: "Could not fetch reservations. Check security rules.",
         });
       } finally {
-        // Only stop loading if we aren't waiting for clients anymore
-        if(!isLoadingClients){
-            setIsLoading(false);
-        }
+        setIsLoading(false);
       }
     };
 
-    // We run the effect if firestore is available and client loading has finished
-    if (firestore && !isLoadingClients) {
-        fetchAllReservations();
-    }
+    fetchAllReservations();
   }, [firestore, clients, isLoadingClients, toast]);
   
   const handleUpdateStatus = async (reservation: EnrichedReservation, status: 'confirmed' | 'cancelled') => {
-      if (!firestore || !reservation.clientDocId) return;
+      if (!firestore || !reservation.clientDocId) {
+          toast({ variant: "destructive", title: "Action Failed", description: "Client ID is missing." });
+          return;
+      }
 
       const reservationRef = doc(firestore, 'clients', reservation.clientDocId, 'reservations', reservation.reservationId);
       
@@ -104,7 +105,7 @@ export default function ReservationsPage() {
           }
       } catch (error) {
            console.error("Error updating reservation: ", error);
-           toast({ variant: "destructive", title: "Update Failed" });
+           toast({ variant: "destructive", title: "Update Failed", description: "Could not update the reservation." });
       }
   }
 
