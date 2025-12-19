@@ -108,7 +108,7 @@ export default function AdminDashboard() {
         description={t('dashboardDescription')}
         className="px-0"
       />
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">{t('totalRevenue')}</CardTitle>
@@ -168,8 +168,8 @@ export default function AdminDashboard() {
           </CardContent>
         </Card>
       </div>
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7 mt-8">
-        <Card className="col-span-4">
+      <div className="grid gap-4 lg:grid-cols-7 mt-8">
+        <Card className="lg:col-span-4">
           <CardHeader>
             <CardTitle className="font-headline">{t('weeklyRevenue')}</CardTitle>
           </CardHeader>
@@ -212,7 +212,7 @@ export default function AdminDashboard() {
             </ChartContainer>
           </CardContent>
         </Card>
-        <Card className="col-span-4 lg:col-span-3">
+        <Card className="lg:col-span-3">
           <CardHeader>
             <CardTitle className="font-headline">{t('popularStations')}</CardTitle>
           </CardHeader>

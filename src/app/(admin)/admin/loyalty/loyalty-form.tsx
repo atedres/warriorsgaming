@@ -85,7 +85,7 @@ export function LoyaltyForm() {
 
   return (
     <div className="grid gap-8 md:grid-cols-3">
-      <div className="md:col-span-1">
+      <div className="md:col-span-3 lg:col-span-1">
         <Card>
           <CardHeader>
             <CardTitle className="font-headline">Recommendation Engine</CardTitle>
@@ -158,7 +158,7 @@ export function LoyaltyForm() {
         </Card>
       </div>
 
-      <div className="md:col-span-2">
+      <div className="md:col-span-3 lg:col-span-2">
         <Card className="min-h-full">
           <CardHeader>
             <CardTitle className="font-headline">AI Recommendation</CardTitle>

@@ -740,7 +740,7 @@ export default function ScanPage() {
                 ))}
               </div>
           </CardHeader>
-          <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          <CardContent className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               {isLoadingStations && Array.from({length: 8}).map((_, i) => (
                   <Card key={i}>
                       <CardHeader><div className="h-5 w-3/4 bg-muted animate-pulse rounded-md"></div></CardHeader>

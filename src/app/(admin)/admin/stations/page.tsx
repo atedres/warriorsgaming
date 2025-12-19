@@ -109,7 +109,7 @@ export default function StationsPage() {
       </PageHeader>
       
       <div className="grid gap-8 lg:grid-cols-3">
-        <div className="lg:col-span-2">
+        <div className="lg:col-span-2 order-1">
             <Card>
                 <CardHeader>
                 <CardTitle className="font-headline">{t('stations')}</CardTitle>
@@ -122,8 +122,8 @@ export default function StationsPage() {
                     <TableHeader>
                     <TableRow>
                         <TableHead>{t('stationId')}</TableHead>
-                        <TableHead>{t('type')}</TableHead>
-                        <TableHead>{t('games')}</TableHead>
+                        <TableHead className="hidden sm:table-cell">{t('type')}</TableHead>
+                        <TableHead className="hidden md:table-cell">{t('games')}</TableHead>
                         <TableHead>{t('status')}</TableHead>
                         <TableHead>
                         <span className="sr-only">{t('actions')}</span>
@@ -143,13 +143,13 @@ export default function StationsPage() {
                         stations.map((station) => (
                         <TableRow key={station.id}>
                             <TableCell className="font-medium">{station.id}</TableCell>
-                            <TableCell>
+                            <TableCell className="hidden sm:table-cell">
                             <div className="flex items-center gap-2">
                                 {getIcon(station.type)}
                                 {station.type}
                             </div>
                             </TableCell>
-                            <TableCell>
+                            <TableCell className="hidden md:table-cell">
                             <div className="flex flex-wrap gap-1 max-w-xs">
                                 {station.games?.map(game => (
                                 <Badge key={game} variant="secondary">{game}</Badge>
@@ -175,7 +175,7 @@ export default function StationsPage() {
                 </CardContent>
             </Card>
         </div>
-        <div className="lg:col-span-1">
+        <div className="lg:col-span-1 order-2 lg:order-last">
             <GameManagement />
         </div>
       </div>

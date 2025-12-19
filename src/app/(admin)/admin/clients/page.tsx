@@ -74,9 +74,9 @@ export default function ClientsPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>{t('clientName')}</TableHead>
-                <TableHead>{t('subscription')}</TableHead>
-                <TableHead>{t('subscriptionHours')}</TableHead>
-                <TableHead>{t('bonusHours')}</TableHead>
+                <TableHead className="hidden sm:table-cell">{t('subscription')}</TableHead>
+                <TableHead className="hidden md:table-cell">{t('subscriptionHours')}</TableHead>
+                <TableHead className="hidden lg:table-cell">{t('bonusHours')}</TableHead>
                 <TableHead className="hidden md:table-cell">
                   {t('memberSince')}
                 </TableHead>
@@ -106,11 +106,11 @@ export default function ClientsPage() {
                       <div className="flex items-center gap-2">
                         <div className="font-medium">{client.name}</div>
                       </div>
-                      <div className="hidden text-sm text-muted-foreground md:inline">
+                      <div className="text-sm text-muted-foreground md:hidden">
                         {client.email}
                       </div>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="hidden sm:table-cell">
                       <Badge
                         variant={
                           client.subscriptionTier === 'VIP'
@@ -126,8 +126,8 @@ export default function ClientsPage() {
                         {client.subscriptionTier}
                       </Badge>
                     </TableCell>
-                    <TableCell>{client.subscriptionHours ?? 0}</TableCell>
-                    <TableCell>{client.bonusHours ?? 0}</TableCell>
+                    <TableCell className="hidden md:table-cell">{client.subscriptionHours ?? 0}</TableCell>
+                    <TableCell className="hidden lg:table-cell">{client.bonusHours ?? 0}</TableCell>
                     <TableCell className="hidden md:table-cell">
                       {client.memberSince}
                     </TableCell>

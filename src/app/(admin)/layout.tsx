@@ -34,7 +34,7 @@ export default function AdminLayout({
       <AdminSidebar />
       <div className="flex flex-col flex-1 sm:ml-14">
         <AdminHeader />
-        <main className="flex-1 p-4 sm:px-6 sm:py-0 md:gap-8">
+        <main className="flex-1 p-4 sm:p-6">
           {children}
         </main>
       </div>

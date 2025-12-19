@@ -15,7 +15,7 @@ export default function LoyaltyPage() {
         description={description}
         className="px-0"
       />
-      <div className="p-1">
+      <div>
         <LoyaltyForm />
       </div>
     </>
