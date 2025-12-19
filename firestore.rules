@@ -24,9 +24,9 @@ service cloud.firestore {
         allow delete: if get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.role in ['manager', 'superadmin'];
       }
       
-      // Un client peut lire/lister son propre historique
+      // Un client peut lire son historique, les admins peuvent aussi le lire et y écrire.
       match /history/{historyId} {
-        allow read, list: if request.auth.uid == clientId;
+        allow read, list: if request.auth.uid == clientId || get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.role in ['manager', 'superadmin'];
         allow write: if get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.role in ['manager', 'superadmin'];
       }
     }
