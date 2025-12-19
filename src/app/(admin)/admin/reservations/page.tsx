@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -17,9 +18,9 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { PageHeader } from '@/components/page-header';
-import { useCollection, useFirestore, useUser } from '@/firebase';
+import { useCollection, useFirestore } from '@/firebase';
 import { useMemoFirebase } from '@/firebase/provider';
-import { collection, query, doc, orderBy, getDocs, collectionGroup } from 'firebase/firestore';
+import { collection, query, doc, orderBy, getDocs } from 'firebase/firestore';
 import type { Client } from '@/app/lib/data';
 import { useTranslation } from '@/hooks/use-translation';
 import { format } from 'date-fns';
@@ -90,28 +91,40 @@ export default function ReservationsPage() {
   
   useEffect(() => {
     const fetchAllReservations = async () => {
-      if (!firestore || isLoadingClients) {
-          return;
+      if (!firestore || isLoadingClients || !clients) {
+        if (!isLoadingClients) {
+          setIsLoading(false);
+        }
+        return;
       }
       
       setIsLoading(true);
       
-      // Use a collectionGroup query to get all reservations across all clients
-      const reservationsQuery = query(collectionGroup(firestore, 'reservations'), orderBy('startTime', 'desc'));
-      const reservationsSnapshot = await getDocs(reservationsQuery);
-      
-      const allRes: EnrichedReservation[] = reservationsSnapshot.docs.map(doc => {
-        const data = doc.data() as Omit<Reservation, 'id'>;
-        const client = clients?.find(c => c.id === data.clientId);
-        return {
-          ...data,
-          id: doc.id,
-          clientName: client?.name || 'Unknown Client',
-        };
-      });
-      
-      setAllReservations(allRes);
-      setIsLoading(false);
+      try {
+        const reservationsPromises = clients.map(async (client) => {
+          const reservationsRef = collection(firestore, 'clients', client.id, 'reservations');
+          const reservationsQuery = query(reservationsRef, orderBy('startTime', 'desc'));
+          const reservationsSnapshot = await getDocs(reservationsQuery);
+          return reservationsSnapshot.docs.map(doc => {
+            const data = doc.data() as Omit<Reservation, 'id'>;
+            return {
+              ...data,
+              id: doc.id,
+              clientName: client.name,
+              clientId: client.id, // Ensure clientId is present for actions
+            } as EnrichedReservation;
+          });
+        });
+
+        const results = await Promise.all(reservationsPromises);
+        const allRes = results.flat().sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime());
+
+        setAllReservations(allRes);
+      } catch (error) {
+        console.error("Error fetching reservations: ", error);
+      } finally {
+        setIsLoading(false);
+      }
     };
 
     fetchAllReservations();
