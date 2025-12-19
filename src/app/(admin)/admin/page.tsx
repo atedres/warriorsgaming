@@ -1,6 +1,7 @@
 
 "use client";
 
+import { useMemo } from 'react';
 import { BarChart, DollarSign, Gamepad2, Users } from 'lucide-react';
 import {
   Card,
@@ -29,28 +30,61 @@ import { useCollection, useFirestore } from '@/firebase';
 import { useMemoFirebase } from '@/firebase/provider';
 import { collection, query } from 'firebase/firestore';
 import { useTranslation } from '@/hooks/use-translation';
+import type { UsageLog, Station, Client } from '@/app/lib/data';
+import { differenceInMinutes, subDays, startOfDay, endOfDay, isWithinInterval, format } from 'date-fns';
+
+function calculatePrice(stationType: Station['type'], durationInMinutes: number, startTime: Date): number {
+    const startHour = startTime.getHours();
+    const isEvening = startHour >= 20;
+
+    let price = 0;
+    const hours = durationInMinutes / 60;
+
+    switch(stationType) {
+        case 'PC':
+            price = hours * 20;
+            break;
+        case 'PS5':
+            if (isEvening) {
+                if (durationInMinutes <= 30) price = 20;
+                else if (durationInMinutes <= 60) price = 30;
+                else if (durationInMinutes <= 120) price = 50;
+                else price = Math.ceil(hours / 2) * 50; 
+            } else {
+                price = hours * 20;
+            }
+            break;
+        case 'PS5 VIP':
+        case 'VR Simulator':
+            if (durationInMinutes <= 60) price = 45;
+            else if (durationInMinutes <= 120) price = 75;
+            else price = Math.ceil(hours / 2) * 75;
+            break;
+    }
+    return Math.ceil(price);
+}
 
 export default function AdminDashboard() {
   const { t } = useTranslation();
   const firestore = useFirestore();
+
   const stationsQuery = useMemoFirebase(
     () => (firestore ? query(collection(firestore, 'stations')) : null),
     [firestore]
   );
-  const { data: stations, isLoading: isLoadingStations } =
-    useCollection(stationsQuery);
+  const { data: stations, isLoading: isLoadingStations } = useCollection<Station>(stationsQuery);
+
   const clientsQuery = useMemoFirebase(
     () => (firestore ? query(collection(firestore, 'clients')) : null),
     [firestore]
   );
-  const { data: clients, isLoading: isLoadingClients } =
-    useCollection(clientsQuery);
+  const { data: clients, isLoading: isLoadingClients } = useCollection<Client>(clientsQuery);
   
   const usageLogsQuery = useMemoFirebase(
     () => (firestore ? query(collection(firestore, 'usageLogs')) : null),
     [firestore]
   );
-  const { data: usageLogs, isLoading: isLoadingUsageLogs } = useCollection(usageLogsQuery);
+  const { data: usageLogs, isLoading: isLoadingUsageLogs } = useCollection<UsageLog>(usageLogsQuery);
 
   const chartConfig = {
     revenue: {
@@ -61,45 +95,77 @@ export default function AdminDashboard() {
       label: 'Users',
       color: 'hsl(var(--primary))',
     },
-    pc: {
-      label: 'PC',
-      color: 'hsl(var(--chart-1))',
-    },
-    ps5: {
-      label: 'PS5',
-      color: 'hsl(var(--chart-2))',
-    },
-    ps5_vip: {
-      label: 'PS5 VIP',
-      color: 'hsl(var(--accent))',
-    },
-    vr: {
-      label: 'VR',
-      color: 'hsl(var(--chart-5))',
-    },
+    pc: { label: 'PC', color: 'hsl(var(--chart-1))' },
+    ps5: { label: 'PS5', color: 'hsl(var(--chart-2))' },
+    "ps5 vip": { label: 'PS5 VIP', color: 'hsl(var(--accent))' },
+    "vr simulator": { label: 'VR', color: 'hsl(var(--chart-5))' },
   };
 
+  const dashboardData = useMemo(() => {
+    if (!usageLogs || !stations) {
+      return {
+        totalRevenue: 0,
+        dailyRevenue: [],
+        popularStations: [],
+        mostPopularType: 'N/A'
+      };
+    }
+    
+    let totalRevenue = 0;
+    const stationUsageCount: Record<string, number> = { 'PC': 0, 'PS5': 0, 'PS5 VIP': 0, 'VR Simulator': 0 };
+    const stationTypesMap = new Map(stations.map(s => [s.id, s.type]));
+    
+    const revenueByDay: Record<string, number> = {};
+    const today = new Date();
+    for (let i = 6; i >= 0; i--) {
+        const day = subDays(today, i);
+        const dayKey = format(day, 'yyyy-MM-dd');
+        revenueByDay[dayKey] = 0;
+    }
+
+    for (const log of usageLogs) {
+      if (log.endTime) {
+        const startTime = new Date(log.startTime);
+        const endTime = new
+ 
+Date(log.endTime);
+        const duration = differenceInMinutes(endTime, startTime);
+        const stationType = stationTypesMap.get(log.stationId);
+
+        if (duration > 0 && stationType) {
+          const cost = calculatePrice(stationType, duration, startTime);
+          totalRevenue += cost;
+          
+          // Weekly revenue
+          const logDayKey = format(startTime, 'yyyy-MM-dd');
+          if(logDayKey in revenueByDay) {
+              revenueByDay[logDayKey] += cost;
+          }
+
+          // Station popularity
+          stationUsageCount[stationType] = (stationUsageCount[stationType] || 0) + 1;
+        }
+      }
+    }
+    
+    const dailyRevenue = Object.entries(revenueByDay).map(([date, revenue]) => ({
+      date: format(new Date(date), 'EEE'),
+      revenue,
+    }));
+    
+    const popularStations = Object.entries(stationUsageCount)
+        .map(([station, users]) => ({ station, users }))
+        .sort((a,b) => b.users - a.users);
+
+    const mostPopularType = popularStations[0]?.station || "N/A";
+
+    return { totalRevenue, dailyRevenue, popularStations, mostPopularType };
+
+  }, [usageLogs, stations]);
+
+
   const stationsInUse = stations?.filter((s) => s.status === 'in use').length || 0;
-  // Note: revenue calculation would require price data, so we'll use a mock value for now.
-  const totalRevenue = 5631.50; 
-
-  const dailyRevenue = [
-    { date: 'Mon', revenue: 650 },
-    { date: 'Tue', revenue: 520 },
-    { date: 'Wed', revenue: 880 },
-    { date: 'Thu', revenue: 730 },
-    { date: 'Fri', revenue: 1100 },
-    { date: 'Sat', revenue: 1540 },
-    { date: 'Sun', revenue: 1210 },
-  ];
-
-  const popularStations = [
-    { station: 'PC', users: 400 },
-    { station: 'PS5', users: 300 },
-    { station: 'PS5 VIP', users: 180 },
-    { station: 'VR', users: 120 },
-  ];
-
+  const isLoading = isLoadingClients || isLoadingStations || isLoadingUsageLogs;
 
   return (
     <div className="flex flex-col">
@@ -108,16 +174,20 @@ export default function AdminDashboard() {
         description={t('dashboardDescription')}
         className="px-0"
       />
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">{t('totalRevenue')}</CardTitle>
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {formatCurrency(totalRevenue)}
-            </div>
+             {isLoading ? (
+                <div className="h-8 w-1/2 animate-pulse rounded-md bg-muted" />
+            ) : (
+                <div className="text-2xl font-bold">
+                    {formatCurrency(dashboardData.totalRevenue)}
+                </div>
+            )}
             <p className="text-xs text-muted-foreground">{t('thisWeek')}</p>
           </CardContent>
         </Card>
@@ -161,55 +231,63 @@ export default function AdminDashboard() {
             <BarChart className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">PC Gaming</div>
+             {isLoading ? (
+                <div className="h-8 w-1/2 animate-pulse rounded-md bg-muted" />
+             ) : (
+                <div className="text-2xl font-bold">{dashboardData.mostPopularType}</div>
+             )}
             <p className="text-xs text-muted-foreground">
               {t('mostUsedStationType')}
             </p>
           </CardContent>
         </Card>
       </div>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-8">
+      <div className="mt-8 grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader>
             <CardTitle className="font-headline">{t('weeklyRevenue')}</CardTitle>
           </CardHeader>
           <CardContent className="pl-2">
-            <ChartContainer config={chartConfig} className="h-[300px] w-full">
-              <AreaChart
-                accessibilityLayer
-                data={dailyRevenue}
-                margin={{
-                  left: 12,
-                  right: 12,
-                }}
-              >
-                <CartesianGrid vertical={false} strokeDasharray="3 3" />
-                <XAxis
-                  dataKey="date"
-                  tickLine={false}
-                  axisLine={false}
-                  tickMargin={8}
-                />
-                <YAxis
-                  tickFormatter={(value) => `$${value}`}
-                  tickLine={false}
-                  axisLine={false}
-                  tickMargin={8}
-                />
-                <ChartTooltip
-                  cursor={false}
-                  content={<ChartTooltipContent indicator="dot" />}
-                />
-                <Area
-                  dataKey="revenue"
-                  type="natural"
-                  fill="var(--color-revenue)"
-                  fillOpacity={0.4}
-                  stroke="var(--color-revenue)"
-                  stackId="a"
-                />
-              </AreaChart>
-            </ChartContainer>
+            {isLoading ? (
+                 <div className="h-[300px] w-full animate-pulse rounded-md bg-muted" />
+            ) : (
+                <ChartContainer config={chartConfig} className="h-[300px] w-full">
+                <AreaChart
+                    accessibilityLayer
+                    data={dashboardData.dailyRevenue}
+                    margin={{
+                    left: 12,
+                    right: 12,
+                    }}
+                >
+                    <CartesianGrid vertical={false} strokeDasharray="3 3" />
+                    <XAxis
+                    dataKey="date"
+                    tickLine={false}
+                    axisLine={false}
+                    tickMargin={8}
+                    />
+                    <YAxis
+                    tickFormatter={(value) => formatCurrency(Number(value), 'MAD').replace(/\s/g, '')}
+                    tickLine={false}
+                    axisLine={false}
+                    tickMargin={8}
+                    />
+                    <ChartTooltip
+                    cursor={false}
+                    content={<ChartTooltipContent indicator="dot" formatter={(value) => formatCurrency(Number(value))}/>}
+                    />
+                    <Area
+                    dataKey="revenue"
+                    type="natural"
+                    fill="var(--color-revenue)"
+                    fillOpacity={0.4}
+                    stroke="var(--color-revenue)"
+                    stackId="a"
+                    />
+                </AreaChart>
+                </ChartContainer>
+            )}
           </CardContent>
         </Card>
         <Card>
@@ -217,29 +295,33 @@ export default function AdminDashboard() {
             <CardTitle className="font-headline">{t('popularStations')}</CardTitle>
           </CardHeader>
           <CardContent>
-            <ChartContainer config={chartConfig} className="h-[300px] w-full">
-              <RechartsBarChart
-                accessibilityLayer
-                data={popularStations}
-                layout="vertical"
-                margin={{ right: 10, left: 10 }}
-              >
-                <CartesianGrid horizontal={false} />
-                <YAxis
-                  dataKey="station"
-                  type="category"
-                  tickLine={false}
-                  tickMargin={10}
-                  axisLine={false}
-                />
-                <XAxis dataKey="users" type="number" hide />
-                <ChartTooltip
-                  cursor={false}
-                  content={<ChartTooltipContent hideLabel />}
-                />
-                <Bar dataKey="users" layout="vertical" radius={5}></Bar>
-              </RechartsBarChart>
-            </ChartContainer>
+             {isLoading ? (
+                <div className="h-[300px] w-full animate-pulse rounded-md bg-muted" />
+             ) : (
+                <ChartContainer config={chartConfig} className="h-[300px] w-full">
+                <RechartsBarChart
+                    accessibilityLayer
+                    data={dashboardData.popularStations}
+                    layout="vertical"
+                    margin={{ right: 10, left: 10 }}
+                >
+                    <CartesianGrid horizontal={false} />
+                    <YAxis
+                    dataKey="station"
+                    type="category"
+                    tickLine={false}
+                    tickMargin={10}
+                    axisLine={false}
+                    />
+                    <XAxis dataKey="users" type="number" hide />
+                    <ChartTooltip
+                        cursor={false}
+                        content={<ChartTooltipContent hideLabel />}
+                    />
+                    <Bar dataKey="users" layout="vertical" radius={5} fill="var(--color-users)"/>
+                </RechartsBarChart>
+                </ChartContainer>
+             )}
           </CardContent>
         </Card>
       </div>
