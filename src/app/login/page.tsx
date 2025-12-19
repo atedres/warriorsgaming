@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -188,6 +189,9 @@ export default function LoginPage() {
                      <Button variant="outline" className="w-full" asChild>
                         <Link href="/login-client">Espace Client</Link>
                     </Button>
+                    <Button variant="outline" className="w-full" asChild>
+                        <Link href="/">Revenir à l'accueil</Link>
+                    </Button>
                 </CardFooter>
                 </form>
             </Card>
@@ -221,9 +225,12 @@ export default function LoginPage() {
                   <Input id="invite-code" type="password" required value={inviteCode} onChange={(e) => setInviteCode(e.target.value)} placeholder="Code secret" />
                 </div>
               </CardContent>
-              <CardFooter>
+              <CardFooter className="flex flex-col gap-2">
                 <Button type="submit" className="w-full" disabled={loading}>
                   {loading ? "Création du compte..." : "S'inscrire"}
+                </Button>
+                <Button variant="outline" className="w-full" asChild>
+                    <Link href="/">Revenir à l'accueil</Link>
                 </Button>
               </CardFooter>
             </form>
