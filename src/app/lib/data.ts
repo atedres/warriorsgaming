@@ -5,6 +5,7 @@ export type Station = {
   currentClientId?: string | null;
   sessionStartTime?: string | null;
   games?: string[];
+  currentUsageLogId?: string | null;
 };
 
 export type Client = {
@@ -47,3 +48,5 @@ export type ClientHistoryLog = {
     type: 'bonus' | 'recharge' | 'check-in' | 'check-out' | 'system';
     description: string;
 }
+
+    

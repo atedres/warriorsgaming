@@ -12,7 +12,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import type { Client, Station } from "@/app/lib/data";
+import type { Client, Station, UsageLog } from "@/app/lib/data";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
@@ -158,32 +158,46 @@ function AssignClientDialog({ station, clients }: { station: Station; clients: C
     const firestore = useFirestore();
     const { toast } = useToast();
 
-    const handleAssignStation = (scannedClient: Client) => {
+    const handleAssignStation = async (scannedClient: Client) => {
         if (!firestore) return;
         const startTime = new Date().toISOString();
 
+        // 1. Create the UsageLog first
+        const usageLogRef = await addDocumentNonBlocking(collection(firestore, "usageLogs"), {
+            clientId: scannedClient.id,
+            stationId: station.id,
+            startTime: startTime,
+            endTime: null,
+        });
+
+        if (!usageLogRef) {
+             toast({
+                title: "Erreur",
+                description: "Impossible de créer le journal de session.",
+                variant: "destructive"
+            });
+            return;
+        }
+
+        // 2. Update Station with client and usage log info
         const stationRef = doc(firestore, "stations", station.id);
         updateDocumentNonBlocking(stationRef, {
             status: 'in use',
             currentClientId: scannedClient.id,
-            sessionStartTime: startTime
+            sessionStartTime: startTime,
+            currentUsageLogId: usageLogRef.id, // Store the new usage log ID
         });
 
+        // 3. Update Client
         const clientRef = doc(firestore, "clients", scannedClient.id);
         updateDocumentNonBlocking(clientRef, { currentStationId: station.id });
-
+        
+        // 4. Update Client History
         const historyRef = collection(firestore, 'clients', scannedClient.id, 'history');
         addDocumentNonBlocking(historyRef, {
             timestamp: startTime,
             type: 'check-in',
             description: `Checked in at station ${station.id} (${station.type})`,
-        });
-
-        addDocumentNonBlocking(collection(firestore, "usageLogs"), {
-            clientId: scannedClient.id,
-            stationId: station.id,
-            startTime: startTime,
-            endTime: null,
         });
 
         toast({
@@ -475,9 +489,19 @@ function ReleaseStationDialog({ station, client, allClients }: { station: Statio
     const handleConfirmRelease = () => {
         if(!firestore) return;
 
-        const stationRef = doc(firestore, "stations", station.id);
-        updateDocumentNonBlocking(stationRef, { status: 'available', currentClientId: null, sessionStartTime: null });
+        const endTime = new Date().toISOString();
 
+        // 1. Update the UsageLog with endTime
+        if (station.currentUsageLogId) {
+            const usageLogRef = doc(firestore, "usageLogs", station.currentUsageLogId);
+            updateDocumentNonBlocking(usageLogRef, { endTime: endTime });
+        }
+
+        // 2. Update the Station
+        const stationRef = doc(firestore, "stations", station.id);
+        updateDocumentNonBlocking(stationRef, { status: 'available', currentClientId: null, sessionStartTime: null, currentUsageLogId: null });
+
+        // 3. Update the Client
         if(station.currentClientId) {
             const clientRef = doc(firestore, "clients", station.currentClientId);
             updateDocumentNonBlocking(clientRef, { 
@@ -488,7 +512,7 @@ function ReleaseStationDialog({ station, client, allClients }: { station: Statio
             const historyRef = collection(firestore, 'clients', station.currentClientId, 'history');
             const historyDescription = `Checked out from ${station.id}. Session: ${durationString}. Cost: ${formatCurrency(totalCost, 'MAD')}. ${useBonus ? `Used ${bonusHoursToUse.toFixed(2)} bonus hours.` : ''}`;
             addDocumentNonBlocking(historyRef, {
-                timestamp: new Date().toISOString(),
+                timestamp: endTime,
                 type: 'check-out',
                 description: historyDescription,
             });
@@ -763,3 +787,5 @@ export default function ScanPage() {
     </>
   );
 }
+
+    
