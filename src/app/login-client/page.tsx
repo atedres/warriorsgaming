@@ -37,26 +37,16 @@ export default function LoginClientPage() {
   const { toast } = useToast();
 
   useEffect(() => {
+    // This effect can still be useful to redirect already logged-in users
+    // who land on this page by mistake.
     if (!isUserLoading && user) {
-      checkUserRoleAndRedirect(user.uid);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, isUserLoading]);
-
-  const checkUserRoleAndRedirect = async (uid: string) => {
-    if (!firestore) return;
-    const adminRef = doc(firestore, 'admins', uid);
-    const adminDoc = await getDoc(adminRef);
-    if (adminDoc.exists()) {
-      router.push('/admin');
-    } else {
       router.push('/profile');
     }
-  };
+  }, [user, isUserLoading, router]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!auth || !firestore) return;
+    if (!auth) return;
     setLoading(true);
 
     try {
@@ -65,7 +55,8 @@ export default function LoginClientPage() {
         email,
         password
       );
-      // Let the useEffect handle the redirection to /profile
+      // Redirect immediately on success
+      router.push('/profile');
     } catch (error: any) {
       toast({
         variant: 'destructive',
@@ -73,7 +64,7 @@ export default function LoginClientPage() {
         description:
           'Email ou mot de passe incorrect. Veuillez vérifier vos informations.',
       });
-      setLoading(false);
+      setLoading(false); // Only set loading to false on error
     }
   };
 
@@ -114,9 +105,10 @@ export default function LoginClientPage() {
 
       toast({
         title: 'Compte créé',
-        description: 'Bienvenue ! Vous êtes maintenant connecté.',
+        description: 'Bienvenue ! Vous allez être redirigé.',
       });
-      // Let the useEffect handle redirection to /profile
+      // Redirect immediately on success
+      router.push('/profile');
     } catch (error: any) {
         let description = "Une erreur inattendue est survenue.";
         if (error.code === 'auth/email-already-in-use') {
@@ -127,11 +119,11 @@ export default function LoginClientPage() {
             title: "Échec de l'inscription",
             description: description,
         });
-        setLoading(false);
+        setLoading(false); // Only set loading to false on error
     }
   };
 
-  if (isUserLoading) {
+  if (isUserLoading || user) { // Also show loading if user object exists, because we're about to redirect
     return (
       <div className="flex h-screen w-full flex-col items-center justify-center bg-muted/40">
         <Logo className="h-12 w-auto animate-pulse" />
