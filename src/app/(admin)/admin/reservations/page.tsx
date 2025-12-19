@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import { collectionGroup, getDocs, query, orderBy, doc, updateDoc, deleteDoc, collection } from 'firebase/firestore';
+import { collectionGroup, getDocs, query, orderBy, doc, updateDoc, deleteDoc, collection, onSnapshot, Unsubscribe } from 'firebase/firestore';
 import { useCollection, useFirestore } from '@/firebase';
 import { useMemoFirebase } from '@/firebase/provider';
 import type { Client } from '@/app/lib/data';
@@ -38,26 +38,30 @@ export default function ReservationsPage() {
 
 
   useEffect(() => {
-    const fetchAllReservations = async () => {
-      if (!firestore || isLoadingClients) {
-          if (!firestore) setIsLoading(false); // Stop loading if firestore isn't ready
-          return;
-      };
+    if (!firestore) {
+      setIsLoading(false);
+      return;
+    }
+    
+    // Don't start fetching reservations until clients are loaded.
+    // We need the client map to enrich the reservation data.
+    if (isLoadingClients) {
+        return;
+    }
 
-      setIsLoading(true);
+    setIsLoading(true);
 
-      const reservationsQuery = query(
-        collectionGroup(firestore, 'reservations'),
-        orderBy('startTime', 'desc')
-      );
-
-      try {
-        const querySnapshot = await getDocs(reservationsQuery);
+    const reservationsQuery = query(
+      collectionGroup(firestore, 'reservations'),
+      orderBy('startTime', 'desc')
+    );
+    
+    // Set up the real-time listener
+    const unsubscribe = onSnapshot(reservationsQuery, (querySnapshot) => {
         const clientsMap = new Map(clients?.map(c => [c.id, c.name]));
 
         const allReservations: EnrichedReservation[] = querySnapshot.docs.map(doc => {
             const data = doc.data() as ReservationType;
-            // The client ID comes from the parent path
             const parentClientId = doc.ref.parent.parent!.id; 
             
             return {
@@ -67,21 +71,23 @@ export default function ReservationsPage() {
               clientName: clientsMap.get(parentClientId) || 'Unknown Client',
             };
         });
+        
         setReservations(allReservations);
-
-      } catch (error) {
-        console.error("Error fetching reservations: ", error);
+        setIsLoading(false);
+    }, (error) => {
+        console.error("Error fetching reservations in real-time: ", error);
         toast({
           variant: "destructive",
           title: "Error",
-          description: "Could not fetch reservations. Check security rules.",
+          description: "Could not fetch reservations. Check security rules or console for details.",
         });
-      } finally {
         setIsLoading(false);
-      }
-    };
+    });
 
-    fetchAllReservations();
+    // Cleanup: Unsubscribe from the listener when the component unmounts
+    // or when dependencies change.
+    return () => unsubscribe();
+      
   }, [firestore, clients, isLoadingClients, toast]);
   
   const handleUpdateStatus = async (reservation: EnrichedReservation, status: 'confirmed' | 'cancelled') => {
@@ -95,11 +101,11 @@ export default function ReservationsPage() {
       try {
           if (status === 'cancelled') {
               await deleteDoc(reservationRef);
-              setReservations(prev => prev.filter(r => r.reservationId !== reservation.reservationId));
+              // No need to update state manually, onSnapshot will do it
               toast({ title: "Reservation Cancelled", description: "The reservation has been removed." });
           } else {
               await updateDoc(reservationRef, { status });
-              setReservations(prev => prev.map(r => r.reservationId === reservation.reservationId ? {...r, status} : r));
+               // No need to update state manually, onSnapshot will do it
               toast({ title: "Reservation Confirmed", description: "The reservation has been confirmed." });
           }
       } catch (error) {
