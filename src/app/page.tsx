@@ -26,6 +26,7 @@ function ReservationDialog({ station, user }: { station: Station, user: any }) {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const firestore = useFirestore();
     const { toast } = useToast();
+    const { t } = useTranslation();
 
     const handleReservation = async () => {
         if (!firestore || !user) {
