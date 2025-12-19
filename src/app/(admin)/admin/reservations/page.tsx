@@ -91,20 +91,21 @@ export default function ReservationsPage() {
   
   useEffect(() => {
     const fetchAllReservations = async () => {
-      // Wait until clients are loaded.
-      if (isLoadingClients || !firestore) {
+      if (!firestore || isLoadingClients) {
+        // We need to wait for clients to be loaded before we can fetch their reservations
         return;
       }
-
+      
       setIsLoading(true);
       
       try {
-        // If there are no clients, there are no reservations to fetch.
         if (!clients || clients.length === 0) {
+            // No clients means no reservations
             setAllReservations([]);
-            setIsLoading(false);
             return;
         }
+
+        const clientMap = new Map(clients.map(c => [c.id, c.name]));
 
         const reservationsPromises = clients.map(async (client) => {
           const reservationsRef = collection(firestore, 'clients', client.id, 'reservations');
@@ -115,8 +116,8 @@ export default function ReservationsPage() {
             return {
               ...data,
               id: doc.id,
-              clientName: client.name,
-              clientId: client.id, // Ensure clientId is present for actions
+              clientName: clientMap.get(data.clientId) || "Unknown Client",
+              clientId: client.id, 
             } as EnrichedReservation;
           });
         });
@@ -166,7 +167,7 @@ export default function ReservationsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {isLoading &&
+              {(isLoading || isLoadingClients) &&
                 Array.from({ length: 5 }).map((_, i) => (
                   <TableRow key={i}>
                     <TableCell colSpan={5}>
@@ -174,7 +175,7 @@ export default function ReservationsPage() {
                     </TableCell>
                   </TableRow>
                 ))}
-              {!isLoading && allReservations.length === 0 ? (
+              {!isLoading && !isLoadingClients && allReservations.length === 0 ? (
                 <TableRow>
                     <TableCell colSpan={5} className="text-center">
                         {t('noReservationsFound')}
