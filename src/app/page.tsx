@@ -133,8 +133,7 @@ function ReservationDialog({
                 <AlertDialogTrigger asChild>
                     <Button 
                         variant="outline" 
-                        className="mt-4"
-                        disabled={station.status !== 'available'}
+                        className="mt-4 w-full"
                     >
                         {t('bookNow')}
                     </Button>
@@ -165,7 +164,7 @@ function ReservationDialog({
             <DialogTrigger asChild>
                 <Button 
                     variant="outline" 
-                    className="mt-4" 
+                    className="mt-4 w-full" 
                     disabled={station.status !== 'available'}
                 >
                   {t('bookNow')}
@@ -271,7 +270,7 @@ export default function Home() {
     <div className="flex min-h-screen w-full flex-col">
       <ClientHeader />
       <main className="flex-1">
-        <section className="relative w-full py-12 md:py-24 lg:py-32 xl:py-48">
+        <section className="relative w-full py-20 md:py-32 lg:py-40">
           <Image
             src="https://picsum.photos/seed/cyberhub-hero/1920/1080"
             data-ai-hint="gaming setup neon"
@@ -315,7 +314,7 @@ export default function Home() {
                 ))}
               </div>
             </div>
-            <div className="mx-auto grid max-w-5xl grid-cols-1 gap-6 py-12 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="mx-auto grid max-w-5xl grid-cols-1 gap-6 py-12 md:grid-cols-2 lg:grid-cols-3">
               {isLoading &&
                 Array.from({ length: 6 }).map((_, i) => (
                   <Card key={i} className="flex flex-col">
@@ -373,7 +372,7 @@ export default function Home() {
           </div>
         </section>
         
-        <section id="location" className="relative w-full h-[600px] bg-muted">
+        <section id="location" className="relative w-full h-[500px] bg-muted">
             <iframe
                 src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3323.708005397453!2d-7.600600025700212!3d33.58694384196167!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0xda7cdfcb5b2f5f1%3A0xcedf993af7b0b3e9!2sWarriors%20Gaming!5e0!3m2!1sen!2sma!4v1716304899532!5m2!1sen!2sma"
                 width="100%"
@@ -416,3 +415,5 @@ export default function Home() {
     </div>
   );
 }
+
+    
