@@ -79,6 +79,7 @@ export default function ClientsPage() {
                   <TableHead>{t('clientName')}</TableHead>
                   <TableHead>{t('subscription')}</TableHead>
                   <TableHead className="hidden lg:table-cell">{t('subscriptionHours')}</TableHead>
+                  <TableHead className="hidden lg:table-cell">{t('bonusHours')}</TableHead>
                   <TableHead className="hidden md:table-cell">
                     {t('memberSince')}
                   </TableHead>
@@ -91,55 +92,62 @@ export default function ClientsPage() {
                 {isLoading &&
                   Array.from({ length: 4 }).map((_, i) => (
                     <TableRow key={i}>
-                      <TableCell colSpan={5}>
+                      <TableCell colSpan={6}>
                         <div className="h-8 w-full animate-pulse rounded-md bg-muted" />
                       </TableCell>
                     </TableRow>
                   ))}
                 {filteredClients.length === 0 && !isLoading ? (
                   <TableRow>
-                      <TableCell colSpan={5} className="text-center">
+                      <TableCell colSpan={6} className="text-center">
                           {t('noClientsFound')}
                       </TableCell>
                   </TableRow>
-                ) : filteredClients.map((client) => (
-                    <TableRow key={client.id}>
-                      <TableCell>
-                        <div className="font-medium">{client.name}</div>
-                        <div className="text-sm text-muted-foreground">
-                          {client.email}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          variant={
-                            client.subscriptionTier === 'VIP'
-                              ? 'default'
-                              : 'secondary'
-                          }
-                          className={
-                            client.subscriptionTier === 'VIP'
-                              ? `bg-accent text-accent-foreground`
-                              : `bg-primary/80 text-primary-foreground`
-                          }
-                        >
-                          {client.subscriptionTier}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="hidden lg:table-cell">{client.subscriptionHours ?? 0}</TableCell>
-                      <TableCell className="hidden md:table-cell">
-                        {client.memberSince}
-                      </TableCell>
-                      <TableCell className='text-right'>
-                        <div className="flex items-center justify-end gap-2">
-                          <QrCodeDialog client={client} />
-                          <ClientHistoryDialog client={client} />
-                          <ClientActions mode="edit" client={client} />
-                          <ClientActions mode="delete" client={client} />
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                ) : filteredClients.map((client) => {
+                    const bonusHours = client.bonusHours || 0;
+                    const hours = Math.floor(bonusHours);
+                    const minutes = Math.round((bonusHours - hours) * 60);
+
+                    return (
+                        <TableRow key={client.id}>
+                        <TableCell>
+                            <div className="font-medium">{client.name}</div>
+                            <div className="text-sm text-muted-foreground">
+                            {client.email}
+                            </div>
+                        </TableCell>
+                        <TableCell>
+                            <Badge
+                            variant={
+                                client.subscriptionTier === 'VIP'
+                                ? 'default'
+                                : 'secondary'
+                            }
+                            className={
+                                client.subscriptionTier === 'VIP'
+                                ? `bg-accent text-accent-foreground`
+                                : `bg-primary/80 text-primary-foreground`
+                            }
+                            >
+                            {client.subscriptionTier}
+                            </Badge>
+                        </TableCell>
+                        <TableCell className="hidden lg:table-cell">{client.subscriptionHours ?? 0}</TableCell>
+                        <TableCell className="hidden lg:table-cell">{`${hours}h ${minutes}m`}</TableCell>
+                        <TableCell className="hidden md:table-cell">
+                            {client.memberSince}
+                        </TableCell>
+                        <TableCell className='text-right'>
+                            <div className="flex items-center justify-end gap-2">
+                            <QrCodeDialog client={client} />
+                            <ClientHistoryDialog client={client} />
+                            <ClientActions mode="edit" client={client} />
+                            <ClientActions mode="delete" client={client} />
+                            </div>
+                        </TableCell>
+                        </TableRow>
+                    )
+                })}
               </TableBody>
             </Table>
           </div>
@@ -156,37 +164,46 @@ export default function ClientsPage() {
                 <div className="text-center text-muted-foreground py-8">
                     {t('noClientsFound')}
                 </div>
-              ) : filteredClients.map((client) => (
-                  <Card key={client.id} className="p-4">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <div className="font-medium">{client.name}</div>
-                            <div className="text-sm text-muted-foreground">{client.email}</div>
+              ) : filteredClients.map((client) => {
+                  const bonusHours = client.bonusHours || 0;
+                  const hours = Math.floor(bonusHours);
+                  const minutes = Math.round((bonusHours - hours) * 60);
+
+                  return (
+                    <Card key={client.id} className="p-4">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <div className="font-medium">{client.name}</div>
+                                <div className="text-sm text-muted-foreground">{client.email}</div>
+                            </div>
+                            <ClientActions mode="delete" client={client} />
                         </div>
-                        <ClientActions mode="delete" client={client} />
-                    </div>
-                    <div className="mt-4 flex items-center justify-between text-sm">
-                        <Badge
-                            variant={client.subscriptionTier === 'VIP' ? 'default' : 'secondary'}
-                             className={
-                                client.subscriptionTier === 'VIP'
-                                ? `bg-accent text-accent-foreground`
-                                : `bg-primary/80 text-primary-foreground`
-                            }
-                        >
-                            {client.subscriptionTier}
-                        </Badge>
-                        <div className="text-muted-foreground">
-                            Membre depuis: {client.memberSince}
+                        <div className="mt-4 flex flex-wrap items-center justify-between gap-y-2 text-sm">
+                            <Badge
+                                variant={client.subscriptionTier === 'VIP' ? 'default' : 'secondary'}
+                                className={
+                                    client.subscriptionTier === 'VIP'
+                                    ? `bg-accent text-accent-foreground`
+                                    : `bg-primary/80 text-primary-foreground`
+                                }
+                            >
+                                {client.subscriptionTier}
+                            </Badge>
+                             <div className="text-muted-foreground">
+                                {t('bonusHours')}: {`${hours}h ${minutes}m`}
+                            </div>
+                            <div className="text-muted-foreground">
+                                Membre depuis: {client.memberSince}
+                            </div>
                         </div>
-                    </div>
-                     <div className="mt-4 pt-4 border-t flex items-center justify-end gap-2">
-                        <QrCodeDialog client={client} />
-                        <ClientHistoryDialog client={client} />
-                        <ClientActions mode="edit" client={client} />
-                      </div>
-                  </Card>
-            ))}
+                        <div className="mt-4 pt-4 border-t flex items-center justify-end gap-2">
+                            <QrCodeDialog client={client} />
+                            <ClientHistoryDialog client={client} />
+                            <ClientActions mode="edit" client={client} />
+                        </div>
+                    </Card>
+                  )
+                })}
           </div>
 
         </CardContent>
