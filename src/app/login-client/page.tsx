@@ -29,6 +29,7 @@ export default function LoginClientPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
   const [loading, setLoading] = useState(false);
 
   const auth = useAuth();
@@ -80,6 +81,14 @@ export default function LoginClientPage() {
         });
         return;
     }
+    if (!phone) {
+        toast({
+            variant: "destructive",
+            title: "Champ Requis",
+            description: "Veuillez entrer votre numéro de téléphone.",
+        });
+        return;
+    }
     setLoading(true);
 
     try {
@@ -96,7 +105,7 @@ export default function LoginClientPage() {
         id: newUser.uid,
         name: name,
         email: email,
-        phone: '', // Can be collected later
+        phone: phone,
         memberSince: new Date().toISOString().split('T')[0],
         subscriptionTier: 'Basic',
         subscriptionHours: 0,
@@ -226,6 +235,17 @@ export default function LoginClientPage() {
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
+                  />
+                </div>
+                 <div className="space-y-2">
+                  <Label htmlFor="phone-signup">Téléphone</Label>
+                  <Input
+                    id="phone-signup"
+                    type="tel"
+                    placeholder="06 12 34 56 78"
+                    required
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
                   />
                 </div>
                 <div className="space-y-2">
