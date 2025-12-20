@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
@@ -22,7 +23,6 @@ import {
 import { Button } from '@/components/ui/button';
 import { 
   AlertDialog,
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -48,15 +48,13 @@ function DeleteHistoryDialog({ clients, onHistoryDeleted }: { clients: Client[] 
     const { t } = useTranslation();
 
     const handleDeleteAllHistory = async () => {
-        if (!firestore || !clients) {
-            toast({ variant: "destructive", title: "Erreur", description: "Impossible d'accéder à la base de données."});
+        if (!firestore || !clients || secretCode !== SECRET_CODE) {
+            toast({ variant: "destructive", title: "Erreur", description: "Le code secret est incorrect ou une erreur est survenue."});
             return;
         }
 
         setIsDeleting(true);
         try {
-            // Firestore allows a maximum of 500 operations in a single batch.
-            // We'll process clients' histories in chunks to stay within this limit.
             const historyRefs: DocumentData[] = [];
             for (const client of clients) {
                 const historySnapshot = await getDocs(query(collection(firestore, 'clients', client.id, 'history')));
@@ -67,6 +65,7 @@ function DeleteHistoryDialog({ clients, onHistoryDeleted }: { clients: Client[] 
                  toast({ title: "Information", description: "L'historique est déjà vide." });
                  setIsAlertOpen(false);
                  setIsDeleting(false);
+                 setSecretCode('');
                  return;
             }
 
@@ -79,7 +78,7 @@ function DeleteHistoryDialog({ clients, onHistoryDeleted }: { clients: Client[] 
             }
 
             toast({ title: "Succès", description: `L'historique complet (${historyRefs.length} entrées) a été supprimé.` });
-            onHistoryDeleted(); // Callback to refresh the UI
+            onHistoryDeleted();
         } catch (error) {
             console.error("Error deleting history:", error);
             toast({ variant: "destructive", title: "Erreur de suppression", description: "Une erreur est survenue." });
@@ -117,13 +116,13 @@ function DeleteHistoryDialog({ clients, onHistoryDeleted }: { clients: Client[] 
            </div>
           <AlertDialogFooter>
             <AlertDialogCancel>Annuler</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDeleteAllHistory}
-              disabled={secretCode !== SECRET_CODE || isDeleting}
-              className="bg-destructive hover:bg-destructive/90"
+             <Button
+                variant="destructive"
+                onClick={handleDeleteAllHistory}
+                disabled={secretCode !== SECRET_CODE || isDeleting}
             >
-              {isDeleting ? "Suppression en cours..." : "Supprimer tout l'historique"}
-            </AlertDialogAction>
+                {isDeleting ? "Suppression en cours..." : "Supprimer tout l'historique"}
+            </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
