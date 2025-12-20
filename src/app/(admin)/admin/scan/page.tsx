@@ -346,6 +346,11 @@ function BonusPointsDialog({ clients, trigger, initialClient, stationType }: { c
             }
         }
     }, [isOpen, initialClient])
+    
+    const bonusHours = selectedClient?.bonusHours || 0;
+    const hours = Math.floor(bonusHours);
+    const minutes = Math.round((bonusHours - hours) * 60);
+    const bonusString = `${hours}h ${minutes}m`;
 
     return (
          <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -380,7 +385,7 @@ function BonusPointsDialog({ clients, trigger, initialClient, stationType }: { c
                             <User className="h-10 w-10 text-muted-foreground" />
                             <div>
                                 <p className="font-semibold">{selectedClient.name}</p>
-                                <p className="text-sm text-muted-foreground">Heures bonus actuelles : {(selectedClient.bonusHours || 0).toFixed(2)}</p>
+                                <p className="text-sm text-muted-foreground">Heures bonus actuelles : {bonusString}</p>
                             </div>
                         </div>
                         <div className="grid grid-cols-3 gap-2">
@@ -531,6 +536,10 @@ function ReleaseStationDialog({ station, client, allClients }: { station: Statio
         setIsOpen(false);
     }
     
+    const bonusHours = client.bonusHours || 0;
+    const bonusHoursDisplay = Math.floor(bonusHours);
+    const bonusMinutesDisplay = Math.round((bonusHours - bonusHoursDisplay) * 60);
+
     return (
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
             <DialogTrigger asChild>
@@ -554,7 +563,7 @@ function ReleaseStationDialog({ station, client, allClients }: { station: Statio
                                 <span>{client.subscriptionTier}</span>
                                 <div className="flex items-center gap-1">
                                     <Star className="h-4 w-4 text-yellow-400" />
-                                    <span>{(client.bonusHours || 0).toFixed(2)}h bonus</span>
+                                    <span>{bonusHoursDisplay}h {bonusMinutesDisplay}m bonus</span>
                                 </div>
                             </div>
                         </div>

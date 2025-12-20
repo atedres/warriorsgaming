@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useUser, useFirestore, useDoc, useCollection } from '@/firebase';
@@ -149,6 +150,10 @@ export default function ProfilePage() {
       });
     }
   };
+  
+  const bonusHours = client.bonusHours || 0;
+  const hours = Math.floor(bonusHours);
+  const minutes = Math.round((bonusHours - hours) * 60);
 
   return (
     <>
@@ -175,7 +180,7 @@ export default function ProfilePage() {
                             </div>
                              <div className='flex items-center gap-3 p-2 rounded-md bg-muted/50'>
                                 <Clock className='h-5 w-5 text-primary' />
-                                <span>Heures bonus: <span className='font-bold'>{client.bonusHours?.toFixed(2) || 0}h</span></span>
+                                <span>Heures bonus: <span className='font-bold'>{hours}h {minutes}m</span></span>
                             </div>
                             <div className='flex items-center gap-3 p-2 rounded-md bg-muted/50'>
                                 <UserIcon className='h-5 w-5 text-primary' />
