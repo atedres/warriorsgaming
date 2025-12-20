@@ -15,6 +15,7 @@ if (!getApps().length) {
     });
   } else {
     // This will work in Firebase/Google Cloud environments
+    console.warn("Firebase Admin SDK service account not found, attempting to initialize with default credentials. This is expected in a Google Cloud environment.");
     adminApp = initializeApp();
   }
 } else {

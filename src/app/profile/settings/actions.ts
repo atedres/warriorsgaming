@@ -5,23 +5,19 @@ import { v2 as cloudinary } from "cloudinary";
 import { doc, updateDoc } from "firebase/firestore";
 import { getFirebaseAdmin } from "@/firebase/admin";
 
-if (!process.env.CLOUDINARY_CLOUD_NAME) {
-  throw new Error("CLOUDINARY_CLOUD_NAME is not set");
-}
-if (!process.env.CLOUDINARY_API_KEY) {
-  throw new Error("CLOUDINARY_API_KEY is not set");
-}
-if (!process.env.CLOUDINARY_API_SECRET) {
-  throw new Error("CLOUDINARY_API_SECRET is not set");
+if (process.env.CLOUDINARY_CLOUD_NAME) {
+  cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET,
+  });
 }
 
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
-});
 
 export async function uploadAvatarAction(userId: string, formData: FormData) {
+  if (!process.env.CLOUDINARY_API_SECRET) {
+      return { success: false, message: "Cloudinary is not configured." };
+  }
   try {
     const file = formData.get("avatar") as File;
     if (!file || file.size === 0) {
@@ -39,7 +35,6 @@ export async function uploadAvatarAction(userId: string, formData: FormData) {
           .upload_stream(
             {
               tags: ["avatar", userId],
-              upload_preset: "ml_default", // Make sure you have an unsigned upload preset named 'ml_default'
             },
             (error, result) => {
               if (error) {

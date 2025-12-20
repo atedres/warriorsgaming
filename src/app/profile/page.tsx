@@ -7,7 +7,7 @@ import { PageHeader } from '@/components/page-header';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { Clock, Hourglass, QrCode, User as UserIcon, Calendar, Trash2 } from 'lucide-react';
+import { Clock, Hourglass, QrCode, User as UserIcon, Calendar, Trash2, Settings } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useMemoFirebase } from '@/firebase/provider';
 import { doc, collection, query, orderBy, deleteDoc } from 'firebase/firestore';
@@ -18,6 +18,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
+import Link from 'next/link';
 
 function ProfileSkeleton() {
     return (
@@ -161,7 +162,14 @@ export default function ProfilePage() {
     <>
         <ClientHeader />
         <main className='container py-8'>
-            <PageHeader title="Mon Profil" description="Consultez vos informations, votre QR code et vos réservations." />
+            <PageHeader title="Mon Profil" description="Consultez vos informations, votre QR code et vos réservations.">
+              <Button asChild variant="outline">
+                <Link href="/profile/settings">
+                  <Settings className="mr-2 h-4 w-4" />
+                  Paramètres
+                </Link>
+              </Button>
+            </PageHeader>
             <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
                 {/* Left Column: Info + QR */}
                 <div className="lg:col-span-1 space-y-8">
