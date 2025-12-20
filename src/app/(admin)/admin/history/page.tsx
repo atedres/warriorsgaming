@@ -8,6 +8,7 @@ import { useMemoFirebase } from '@/firebase/provider';
 import type { Client, ClientHistoryLog } from '@/app/lib/data';
 import { PageHeader } from '@/components/page-header';
 import { useTranslation } from '@/hooks/use-translation';
+import { formatHistoryDescription } from '@/lib/translations';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Clock } from 'lucide-react';
@@ -122,7 +123,7 @@ export default function HistoryPage() {
                     <Clock className="h-5 w-5 text-muted-foreground" />
                   </div>
                   <div className="flex-1">
-                    <p className="font-medium">{log.description}</p>
+                    <p className="font-medium">{formatHistoryDescription(t, log)}</p>
                     <div className="text-sm text-muted-foreground flex items-center gap-2">
                         <span>{log.clientName}</span>
                         <span>&bull;</span>

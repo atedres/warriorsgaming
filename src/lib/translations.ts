@@ -94,6 +94,13 @@ export const translations = {
     filterByClient: "Filter by client...",
     noHistoryFound: "No history found.",
     allClients: "All Clients",
+
+    // History Descriptions
+    history_checkIn: "Checked in at station {stationId} ({stationType})",
+    history_checkOut: "Checked out from {stationId}. Session: {duration}. Cost: {cost}. {bonusUsed}",
+    history_bonusUsed: "Used {bonusHours} bonus hours.",
+    history_bonusAdded: "Added {bonusValue} bonus {bonusUnit} for {stationType}.",
+    history_generalBonus: "Added {bonusValue} bonus {bonusUnit} for general use.",
   },
   fr: {
     welcome: "Bienvenue chez Warriors Gaming",
@@ -189,6 +196,13 @@ export const translations = {
     filterByClient: "Filtrer par client...",
     noHistoryFound: "Aucun historique trouvé.",
     allClients: "Tous les clients",
+
+    // History Descriptions
+    history_checkIn: "Enregistré au poste {stationId} ({stationType})",
+    history_checkOut: "A quitté le poste {stationId}. Session : {duration}. Coût : {cost}. {bonusUsed}",
+    history_bonusUsed: "{bonusHours} heures bonus utilisées.",
+    history_bonusAdded: "{bonusValue} {bonusUnit} de bonus ajoutées pour {stationType}.",
+    history_generalBonus: "{bonusValue} {bonusUnit} de bonus ajoutées pour usage général.",
   },
   ar: {
     welcome: "مرحباً بكم في ووريورز جيمنج",
@@ -283,6 +297,13 @@ export const translations = {
     filterByClient: "تصفية حسب العميل...",
     noHistoryFound: "لم يتم العثور على سجل.",
     allClients: "جميع العملاء",
+
+    // History Descriptions
+    history_checkIn: "تسجيل الدخول في المحطة {stationId} ({stationType})",
+    history_checkOut: "تسجيل الخروج من المحطة {stationId}. الجلسة: {duration}. التكلفة: {cost}. {bonusUsed}",
+    history_bonusUsed: "تم استخدام {bonusHours} ساعة إضافية.",
+    history_bonusAdded: "تمت إضافة {bonusValue} {bonusUnit} إضافية لـ {stationType}.",
+    history_generalBonus: "تمت إضافة {bonusValue} {bonusUnit} إضافية للاستخدام العام.",
   },
 };
 
@@ -301,3 +322,19 @@ type Translations = {
 const checkTranslations: Translations = translations;
 
     
+export function formatHistoryDescription(t: (key: any) => string, log: any): string {
+    if (typeof log.description === 'string') {
+        // Handle legacy descriptions
+        return log.description;
+    }
+    if (log.description && log.description.key) {
+        let translated = t(log.description.key);
+        if (log.description.metadata) {
+            for (const key in log.description.metadata) {
+                translated = translated.replace(`{${key}}`, log.description.metadata[key]);
+            }
+        }
+        return translated;
+    }
+    return t('noHistoryFound'); // Or some default/error text
+}

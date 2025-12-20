@@ -42,11 +42,16 @@ export type UsageLog = {
     endTime: string | null;
 }
 
+export type HistoryLogDescription = {
+    key: string;
+    metadata: Record<string, string | number>;
+}
+
 export type ClientHistoryLog = {
     id: string;
     timestamp: string;
     type: 'bonus' | 'recharge' | 'check-in' | 'check-out' | 'system';
-    description: string;
+    description: string | HistoryLogDescription;
 }
 
     

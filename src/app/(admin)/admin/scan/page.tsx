@@ -197,7 +197,13 @@ function AssignClientDialog({ station, clients }: { station: Station; clients: C
         addDocumentNonBlocking(historyRef, {
             timestamp: startTime,
             type: 'check-in',
-            description: `Checked in at station ${station.id} (${station.type})`,
+            description: {
+                key: 'history_checkIn',
+                metadata: {
+                    stationId: station.id,
+                    stationType: station.type,
+                }
+            },
         });
 
         toast({
@@ -318,11 +324,28 @@ function BonusPointsDialog({ clients, trigger, initialClient, stationType }: { c
         updateDocumentNonBlocking(clientRef, { bonusHours: newBonusHours });
 
         const historyRef = collection(firestore, 'clients', selectedClient.id, 'history');
-        const bonusDescription = `Added ${bonusValue} bonus ${bonusUnit} for ${stationType || 'general use'}.`;
+        
+        const description = stationType 
+            ? { 
+                key: 'history_bonusAdded',
+                metadata: {
+                    bonusValue: bonusValue,
+                    bonusUnit: bonusUnit,
+                    stationType: stationType
+                }
+              }
+            : {
+                key: 'history_generalBonus',
+                metadata: {
+                    bonusValue: bonusValue,
+                    bonusUnit: bonusUnit,
+                }
+              };
+
         addDocumentNonBlocking(historyRef, {
             timestamp: new Date().toISOString(),
             type: 'bonus',
-            description: bonusDescription,
+            description: description,
         });
 
         toast({
@@ -385,6 +408,7 @@ function BonusPointsDialog({ clients, trigger, initialClient, stationType }: { c
                             <User className="h-10 w-10 text-muted-foreground" />
                             <div>
                                 <p className="font-semibold">{selectedClient.name}</p>
+
                                 <p className="text-sm text-muted-foreground">Heures bonus actuelles : {bonusString}</p>
                             </div>
                         </div>
@@ -521,11 +545,19 @@ function ReleaseStationDialog({ station, client, allClients }: { station: Statio
              });
 
             const historyRef = collection(firestore, 'clients', station.currentClientId, 'history');
-            const historyDescription = `Checked out from ${station.id}. Session: ${durationString}. Cost: ${formatCurrency(totalCost, 'MAD')}. ${useBonus ? `Used ${bonusHoursToUse.toFixed(2)} bonus hours.` : ''}`;
+            const bonusUsedString = useBonus ? t('history_bonusUsed').replace('{bonusHours}', bonusHoursToUse.toFixed(2)) : '';
             addDocumentNonBlocking(historyRef, {
                 timestamp: endTime,
                 type: 'check-out',
-                description: historyDescription,
+                description: {
+                    key: 'history_checkOut',
+                    metadata: {
+                        stationId: station.id,
+                        duration: durationString,
+                        cost: formatCurrency(totalCost, 'MAD'),
+                        bonusUsed: bonusUsedString,
+                    }
+                }
             });
         }
 

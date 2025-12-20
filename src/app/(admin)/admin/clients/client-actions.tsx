@@ -10,6 +10,8 @@ import * as z from "zod";
 import { useCollection, useFirestore } from "@/firebase";
 import { collection, doc, orderBy, query } from "firebase/firestore";
 import { format } from 'date-fns';
+import { useTranslation } from "@/hooks/use-translation";
+import { formatHistoryDescription } from "@/lib/translations";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -355,6 +357,7 @@ export function QrCodeDialog({ client }: { client: Client }) {
 export function ClientHistoryDialog({ client }: { client: Client }) {
     const [isOpen, setIsOpen] = useState(false);
     const firestore = useFirestore();
+    const { t } = useTranslation();
 
     const historyQuery = useMemoFirebase(() => {
         if (!firestore) return null;
@@ -389,7 +392,7 @@ export function ClientHistoryDialog({ client }: { client: Client }) {
                                     <Clock className="h-5 w-5 text-muted-foreground"/>
                                 </div>
                                 <div className="flex-1">
-                                    <p className="font-medium">{log.description}</p>
+                                    <p className="font-medium">{formatHistoryDescription(t, log)}</p>
                                     <p className="text-sm text-muted-foreground">
                                         {format(new Date(log.timestamp), "d MMM yyyy 'at' HH:mm")}
                                     </p>
