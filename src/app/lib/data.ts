@@ -19,6 +19,7 @@ export type Client = {
   bonusHours?: number;
   usageData: string;
   currentStationId?: string;
+  avatarUrl?: string;
 };
 
 export type Reservation = {

@@ -155,6 +155,8 @@ export default function ProfilePage() {
   const hours = Math.floor(bonusHours);
   const minutes = Math.round((bonusHours - hours) * 60);
 
+  const avatarSrc = client.avatarUrl || `https://api.dicebear.com/8.x/bottts/svg?seed=${client.id}`;
+
   return (
     <>
         <ClientHeader />
@@ -166,7 +168,7 @@ export default function ProfilePage() {
                     <Card>
                         <CardHeader className="items-center text-center">
                             <Avatar className='h-24 w-24 text-4xl'>
-                                <AvatarImage src={`https://api.dicebear.com/8.x/bottts/svg?seed=${client.id}`} alt={client.name} />
+                                <AvatarImage src={avatarSrc} alt={client.name} />
                                 <AvatarFallback>{client.name.charAt(0)}</AvatarFallback>
                             </Avatar>
                             <CardTitle className="font-headline text-2xl pt-4">{client.name}</CardTitle>

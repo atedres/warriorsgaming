@@ -19,7 +19,8 @@ import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Lock, User as UserIcon } from 'lucide-react';
+import { Lock, User as UserIcon, Image as ImageIcon } from 'lucide-react';
+import { AvatarUpload } from './avatar-upload';
 
 const profileFormSchema = z.object({
   name: z.string().min(2, { message: "Le nom doit contenir au moins 2 caractères." }),
@@ -153,94 +154,107 @@ export default function ProfileSettingsPage() {
         <main className='container py-8'>
             <PageHeader title="Paramètres du Profil" description="Modifiez vos informations personnelles et de sécurité." />
             
-            <div className="grid gap-8 md:grid-cols-2">
-                <Card>
-                    <Form {...profileForm}>
-                        <form onSubmit={profileForm.handleSubmit(handleProfileUpdate)}>
-                            <CardHeader>
-                                <CardTitle className="flex items-center gap-2"><UserIcon /> Informations Personnelles</CardTitle>
-                                <CardDescription>Mettez à jour votre nom et numéro de téléphone.</CardDescription>
-                            </CardHeader>
-                            <CardContent className="space-y-4">
-                                <FormField
-                                    control={profileForm.control}
-                                    name="name"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>Nom</FormLabel>
-                                            <FormControl>
-                                                <Input {...field} />
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-                                <FormField
-                                    control={profileForm.control}
-                                    name="phone"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>Téléphone</FormLabel>
-                                            <FormControl>
-                                                <Input {...field} />
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-                            </CardContent>
-                            <CardFooter>
-                                <Button type="submit" disabled={profileForm.formState.isSubmitting}>
-                                    {profileForm.formState.isSubmitting ? 'Enregistrement...' : 'Enregistrer les modifications'}
-                                </Button>
-                            </CardFooter>
-                        </form>
-                    </Form>
-                </Card>
+            <div className="grid gap-8 grid-cols-1 lg:grid-cols-3">
+                <div className="lg:col-span-2 grid gap-8">
+                     <Card>
+                        <Form {...profileForm}>
+                            <form onSubmit={profileForm.handleSubmit(handleProfileUpdate)}>
+                                <CardHeader>
+                                    <CardTitle className="flex items-center gap-2"><UserIcon /> Informations Personnelles</CardTitle>
+                                    <CardDescription>Mettez à jour votre nom et numéro de téléphone.</CardDescription>
+                                </CardHeader>
+                                <CardContent className="space-y-4">
+                                    <FormField
+                                        control={profileForm.control}
+                                        name="name"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Nom</FormLabel>
+                                                <FormControl>
+                                                    <Input {...field} />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <FormField
+                                        control={profileForm.control}
+                                        name="phone"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Téléphone</FormLabel>
+                                                <FormControl>
+                                                    <Input {...field} />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                </CardContent>
+                                <CardFooter>
+                                    <Button type="submit" disabled={profileForm.formState.isSubmitting}>
+                                        {profileForm.formState.isSubmitting ? 'Enregistrement...' : 'Enregistrer les modifications'}
+                                    </Button>
+                                </CardFooter>
+                            </form>
+                        </Form>
+                    </Card>
 
-                <Card>
-                     <Form {...passwordForm}>
-                        <form onSubmit={passwordForm.handleSubmit(handleChangePassword)}>
-                            <CardHeader>
-                                <CardTitle className="flex items-center gap-2"><Lock /> Sécurité</CardTitle>
-                                <CardDescription>Changez votre mot de passe.</CardDescription>
-                            </CardHeader>
-                            <CardContent className="space-y-4">
-                               <FormField
-                                    control={passwordForm.control}
-                                    name="currentPassword"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>Mot de passe actuel</FormLabel>
-                                            <FormControl>
-                                                <Input type="password" {...field} />
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
+                    <Card>
+                        <Form {...passwordForm}>
+                            <form onSubmit={passwordForm.handleSubmit(handleChangePassword)}>
+                                <CardHeader>
+                                    <CardTitle className="flex items-center gap-2"><Lock /> Sécurité</CardTitle>
+                                    <CardDescription>Changez votre mot de passe.</CardDescription>
+                                </CardHeader>
+                                <CardContent className="space-y-4">
                                 <FormField
-                                    control={passwordForm.control}
-                                    name="newPassword"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>Nouveau mot de passe</FormLabel>
-                                            <FormControl>
-                                                <Input type="password" {...field} />
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-                            </CardContent>
-                            <CardFooter>
-                                <Button type="submit" disabled={passwordForm.formState.isSubmitting}>
-                                    {passwordForm.formState.isSubmitting ? 'Modification...' : 'Changer le mot de passe'}
-                                </Button>
-                            </CardFooter>
-                        </form>
-                    </Form>
-                </Card>
+                                        control={passwordForm.control}
+                                        name="currentPassword"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Mot de passe actuel</FormLabel>
+                                                <FormControl>
+                                                    <Input type="password" {...field} />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <FormField
+                                        control={passwordForm.control}
+                                        name="newPassword"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Nouveau mot de passe</FormLabel>
+                                                <FormControl>
+                                                    <Input type="password" {...field} />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                </CardContent>
+                                <CardFooter>
+                                    <Button type="submit" disabled={passwordForm.formState.isSubmitting}>
+                                        {passwordForm.formState.isSubmitting ? 'Modification...' : 'Changer le mot de passe'}
+                                    </Button>
+                                </CardFooter>
+                            </form>
+                        </Form>
+                    </Card>
+                </div>
+                 <div className="lg:col-span-1">
+                    <Card>
+                         <CardHeader>
+                            <CardTitle className="flex items-center gap-2"><ImageIcon /> Photo de Profil</CardTitle>
+                            <CardDescription>Changez votre avatar.</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <AvatarUpload client={client} />
+                        </CardContent>
+                    </Card>
+                </div>
             </div>
         </main>
     </>
