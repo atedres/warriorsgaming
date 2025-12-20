@@ -1,11 +1,21 @@
+
 "use server";
 
 import { revalidatePath } from "next/cache";
 import { v2 as cloudinary } from "cloudinary";
 import { doc, updateDoc } from "firebase/firestore";
 import { getFirebaseAdmin } from "@/firebase/admin";
+import { config } from 'dotenv';
 
-if (process.env.CLOUDINARY_CLOUD_NAME) {
+// Load environment variables from .env file
+config();
+
+// Configure Cloudinary, but only if the necessary environment variables are present.
+if (
+  process.env.CLOUDINARY_CLOUD_NAME &&
+  process.env.CLOUDINARY_API_KEY &&
+  process.env.CLOUDINARY_API_SECRET
+) {
   cloudinary.config({
     cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
     api_key: process.env.CLOUDINARY_API_KEY,
@@ -13,11 +23,13 @@ if (process.env.CLOUDINARY_CLOUD_NAME) {
   });
 }
 
-
 export async function uploadAvatarAction(userId: string, formData: FormData) {
+  // Now, this check will correctly use the loaded environment variables.
   if (!process.env.CLOUDINARY_API_SECRET) {
-      return { success: false, message: "Cloudinary is not configured." };
+    console.error("Cloudinary secret key is not configured. Check your .env file.");
+    return { success: false, message: "Cloudinary is not configured." };
   }
+
   try {
     const file = formData.get("avatar") as File;
     if (!file || file.size === 0) {
