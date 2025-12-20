@@ -3,7 +3,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { MoreHorizontal, PlusCircle, QrCode, FilePenLine, History, Clock } from "lucide-react";
+import { MoreHorizontal, PlusCircle, QrCode, FilePenLine, History, Clock, Info } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -28,6 +28,7 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuTrigger,
+  DropdownMenuSeparator
 } from "@/components/ui/dropdown-menu";
 import {
   Form,
@@ -61,7 +62,7 @@ type ClientActionsProps =
       client: Client;
     }
   | {
-      mode: "delete";
+      mode: "actions";
       client: Client;
     };
 
@@ -161,6 +162,51 @@ function ClientForm({ client, onFormSubmit, isSubmitting }: { client?: Client, o
   )
 }
 
+function ClientInfoDialog({ client }: { client: Client }) {
+  return (
+    <Dialog>
+      <DialogTrigger asChild>
+        <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+            <Info className="mr-2 h-4 w-4" /> Infos clients
+        </DropdownMenuItem>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Informations sur {client.name}</DialogTitle>
+          <DialogDescription>Détails complets du profil client.</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-3 py-4 text-sm">
+            <div className="flex justify-between items-center">
+                <span className="text-muted-foreground">Nom:</span>
+                <span className="font-medium">{client.name}</span>
+            </div>
+            <div className="flex justify-between items-center">
+                <span className="text-muted-foreground">Email:</span>
+                <span className="font-medium">{client.email}</span>
+            </div>
+             <div className="flex justify-between items-center">
+                <span className="text-muted-foreground">Téléphone:</span>
+                <span className="font-medium">{client.phone}</span>
+            </div>
+            <div className="flex justify-between items-center">
+                <span className="text-muted-foreground">Abonnement:</span>
+                <span className="font-medium">{client.subscriptionTier}</span>
+            </div>
+             <div className="flex justify-between items-center">
+                <span className="text-muted-foreground">Membre depuis:</span>
+                <span className="font-medium">{format(new Date(client.memberSince), "d MMM yyyy")}</span>
+            </div>
+        </div>
+        <DialogFooter>
+          <DialogClose asChild>
+            <Button>Fermer</Button>
+          </DialogClose>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 
 export function ClientActions({ mode, client }: ClientActionsProps) {
   const [isEditDialogOpen, setEditDialogOpen] = useState(false);
@@ -220,7 +266,7 @@ export function ClientActions({ mode, client }: ClientActionsProps) {
      )
   }
   
-  if (mode === "delete") {
+  if (mode === "actions") {
     return (
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
@@ -231,6 +277,8 @@ export function ClientActions({ mode, client }: ClientActionsProps) {
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           <DropdownMenuLabel>Actions</DropdownMenuLabel>
+          <ClientInfoDialog client={client} />
+          <DropdownMenuSeparator />
           <DropdownMenuItem className="text-red-500" onSelect={handleDelete}>Delete</DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

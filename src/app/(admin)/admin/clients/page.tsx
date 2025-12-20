@@ -80,9 +80,6 @@ export default function ClientsPage() {
                   <TableHead>{t('subscription')}</TableHead>
                   <TableHead className="hidden lg:table-cell">{t('subscriptionHours')}</TableHead>
                   <TableHead className="hidden lg:table-cell">{t('bonusHours')}</TableHead>
-                  <TableHead className="hidden md:table-cell">
-                    {t('memberSince')}
-                  </TableHead>
                   <TableHead>
                     <span className="sr-only">{t('actions')}</span>
                   </TableHead>
@@ -92,14 +89,14 @@ export default function ClientsPage() {
                 {isLoading &&
                   Array.from({ length: 4 }).map((_, i) => (
                     <TableRow key={i}>
-                      <TableCell colSpan={6}>
+                      <TableCell colSpan={5}>
                         <div className="h-8 w-full animate-pulse rounded-md bg-muted" />
                       </TableCell>
                     </TableRow>
                   ))}
                 {filteredClients.length === 0 && !isLoading ? (
                   <TableRow>
-                      <TableCell colSpan={6} className="text-center">
+                      <TableCell colSpan={5} className="text-center">
                           {t('noClientsFound')}
                       </TableCell>
                   </TableRow>
@@ -134,15 +131,12 @@ export default function ClientsPage() {
                         </TableCell>
                         <TableCell className="hidden lg:table-cell">{client.subscriptionHours ?? 0}</TableCell>
                         <TableCell className="hidden lg:table-cell">{`${hours}h ${minutes}m`}</TableCell>
-                        <TableCell className="hidden md:table-cell">
-                            {client.memberSince}
-                        </TableCell>
                         <TableCell className='text-right'>
                             <div className="flex items-center justify-end gap-2">
                             <QrCodeDialog client={client} />
                             <ClientHistoryDialog client={client} />
                             <ClientActions mode="edit" client={client} />
-                            <ClientActions mode="delete" client={client} />
+                            <ClientActions mode="actions" client={client} />
                             </div>
                         </TableCell>
                         </TableRow>
@@ -176,7 +170,7 @@ export default function ClientsPage() {
                                 <div className="font-medium">{client.name}</div>
                                 <div className="text-sm text-muted-foreground">{client.email}</div>
                             </div>
-                            <ClientActions mode="delete" client={client} />
+                            <ClientActions mode="actions" client={client} />
                         </div>
                         <div className="mt-4 flex flex-wrap items-center justify-between gap-y-2 text-sm">
                             <Badge
@@ -191,9 +185,6 @@ export default function ClientsPage() {
                             </Badge>
                              <div className="text-muted-foreground">
                                 {t('bonusHours')}: {`${hours}h ${minutes}m`}
-                            </div>
-                            <div className="text-muted-foreground">
-                                Membre depuis: {client.memberSince}
                             </div>
                         </div>
                         <div className="mt-4 pt-4 border-t flex items-center justify-end gap-2">
