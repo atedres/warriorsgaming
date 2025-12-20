@@ -420,33 +420,39 @@ function BonusPointsDialog({ clients, trigger, initialClient, stationType }: { c
 function calculatePrice(stationType: Station['type'], durationInMinutes: number, startTime: Date): number {
     const startHour = startTime.getHours();
     const isEvening = startHour >= 20;
-
+    if (durationInMinutes <= 0) return 0;
+    
     let price = 0;
-    const hours = durationInMinutes / 60;
+    const hours = Math.ceil(durationInMinutes / 60);
 
     switch(stationType) {
         case 'PC':
-            price = hours * 20;
+            price = hours * 20; // 20 DH per hour, rounded up.
             break;
         case 'PS5':
-            if (isEvening) {
+            if (isEvening) { // Evening rates
                 if (durationInMinutes <= 30) price = 20;
                 else if (durationInMinutes <= 60) price = 30;
                 else if (durationInMinutes <= 120) price = 50;
-                else price = Math.ceil(hours / 2) * 50; 
-            } else {
-                price = hours * 20;
+                else price = Math.ceil(durationInMinutes / 60 / 2) * 50;
+            } else { // Day rates
+                if (durationInMinutes <= 30) {
+                    price = 10;
+                } else {
+                    price = hours * 20;
+                }
             }
             break;
         case 'PS5 VIP':
         case 'VR Simulator':
-            if (durationInMinutes <= 60) price = 45;
+            if (durationInMinutes <= 30) price = 25;
+            else if (durationInMinutes <= 60) price = 45;
             else if (durationInMinutes <= 120) price = 75;
-            else price = Math.ceil(hours / 2) * 75;
+            else price = Math.ceil(durationInMinutes / 60 / 2) * 75;
             break;
     }
-
-    return Math.ceil(price);
+    
+    return price;
 }
 
 
@@ -787,5 +793,3 @@ export default function ScanPage() {
     </>
   );
 }
-
-    

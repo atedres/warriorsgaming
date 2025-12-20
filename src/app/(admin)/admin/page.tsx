@@ -43,42 +43,38 @@ import { differenceInMinutes, subDays, format, isWithinInterval, startOfToday, e
 function calculatePrice(stationType: Station['type'], durationInMinutes: number, startTime: Date): number {
     const startHour = startTime.getHours();
     const isEvening = startHour >= 20;
-
-    let price = 0;
-    
-    // Ensure minimum duration is not 0 to avoid free sessions
     if (durationInMinutes <= 0) return 0;
-
+    
+    let price = 0;
     const hours = Math.ceil(durationInMinutes / 60);
 
     switch(stationType) {
         case 'PC':
-             // Facturation à l'heure, arrondie à l'heure supérieure.
-            price = hours * 20;
+            price = hours * 20; // 20 DH per hour, rounded up.
             break;
         case 'PS5':
-            if (isEvening) { // Tarif de soirée
+            if (isEvening) { // Evening rates
                 if (durationInMinutes <= 30) price = 20;
                 else if (durationInMinutes <= 60) price = 30;
                 else if (durationInMinutes <= 120) price = 50;
-                else price = Math.ceil(durationInMinutes / 60 / 2) * 50; 
-            } else { // Tarif de jour
+                else price = Math.ceil(durationInMinutes / 60 / 2) * 50;
+            } else { // Day rates
                 if (durationInMinutes <= 30) {
-                    price = 10; // Prix pour 30 minutes
+                    price = 10;
                 } else {
-                    // Si plus de 30 mins, facturer l'heure complète (ou plus)
                     price = hours * 20;
                 }
             }
             break;
         case 'PS5 VIP':
         case 'VR Simulator':
-             if (durationInMinutes <= 30) price = 25; // Base price for up to 30 mins
-             else if (durationInMinutes <= 60) price = 45;
-             else if (durationInMinutes <= 120) price = 75;
-             else price = Math.ceil(durationInMinutes / 60 / 2) * 75;
+            if (durationInMinutes <= 30) price = 25;
+            else if (durationInMinutes <= 60) price = 45;
+            else if (durationInMinutes <= 120) price = 75;
+            else price = Math.ceil(durationInMinutes / 60 / 2) * 75;
             break;
     }
+    
     return price;
 }
 
@@ -387,5 +383,3 @@ export default function AdminDashboard() {
     </div>
   );
 }
-
-    
