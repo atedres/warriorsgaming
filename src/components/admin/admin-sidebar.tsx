@@ -7,7 +7,6 @@ import {
   Home,
   Users2,
   QrCode,
-  Sparkles,
   Settings,
   LogOut,
   Gamepad2,
@@ -18,7 +17,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Logo } from "../logo";
-import { useAuth } from "@/firebase";
+import { useAuth, useDoc, useFirestore } from "@/firebase";
 import { signOut } from "firebase/auth";
 import { Sheet, SheetContent, SheetTrigger } from "../ui/sheet";
 import { Button } from "../ui/button";
@@ -30,8 +29,9 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useLanguage, useTranslation } from "@/hooks/use-translation";
 import { ThemeToggle } from "../theme-toggle";
-import { useState } from "react";
-
+import { useEffect, useState } from "react";
+import { collection, collectionGroup, doc, getDocs, onSnapshot, query, where } from "firebase/firestore";
+import { useUser } from "@/firebase/provider";
 
 export function AdminHeader() {
     const auth = useAuth();
@@ -39,6 +39,46 @@ export function AdminHeader() {
     const { setLanguage } = useLanguage();
     const { t } = useTranslation();
     const [isSheetOpen, setIsSheetOpen] = useState(false);
+    const { user } = useUser();
+    const firestore = useFirestore();
+    const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
+    const [pendingReservations, setPendingReservations] = useState(0);
+
+    // Check admin status
+    useEffect(() => {
+        if (user && firestore) {
+            const adminRef = doc(firestore, 'admins', user.uid);
+            const unsub = onSnapshot(adminRef, (doc) => {
+                setIsAdmin(doc.exists());
+            });
+            return () => unsub();
+        } else {
+            setIsAdmin(false);
+        }
+    }, [user, firestore]);
+
+    // Listen for pending reservations if the user is an admin
+    useEffect(() => {
+        if (!firestore || !isAdmin) {
+            setPendingReservations(0);
+            return;
+        }
+
+        const q = query(
+          collectionGroup(firestore, 'reservations'), 
+          where('status', '==', 'pending')
+        );
+
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            setPendingReservations(snapshot.size);
+        }, (error) => {
+            console.error("Error fetching pending reservations:", error);
+            setPendingReservations(0);
+        });
+
+        return () => unsubscribe();
+    }, [firestore, isAdmin]);
+
 
     const handleLogout = async () => {
         if (auth) {
@@ -54,9 +94,8 @@ export function AdminHeader() {
       { href: "/admin", icon: Home, label: t('dashboard') },
       { href: "/admin/clients", icon: Users2, label: t('clients') },
       { href: "/admin/stations", icon: Gamepad2, label: t('stations') },
-      { href: "/admin/reservations", icon: Calendar, label: t('reservationManagement')},
+      { href: "/admin/reservations", icon: Calendar, label: t('reservationManagement'), notifCount: pendingReservations},
       { href: "/admin/scan", icon: QrCode, label: t('scanner') },
-      { href: "/admin/loyalty", icon: Sparkles, label: t('loyaltyAI') },
       { href: "/admin/history", icon: History, label: t('history')},
       { href: "/admin/settings", icon: Settings, label: t('settings') },
     ];
@@ -84,11 +123,16 @@ export function AdminHeader() {
                     <Link
                     key={item.href}
                     href={item.href}
-                    className="flex items-center gap-4 px-2.5 text-muted-foreground hover:text-foreground"
+                    className="flex items-center gap-4 px-2.5 text-muted-foreground hover:text-foreground relative"
                     onClick={handleLinkClick}
                   >
                     <item.icon className="h-5 w-5" />
                     {item.label}
+                    {item.notifCount && item.notifCount > 0 ? (
+                        <span className="absolute left-6 top-0 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs text-white">
+                            {item.notifCount}
+                        </span>
+                    ) : null}
                   </Link>
                 ))}
                   <button
@@ -132,8 +176,53 @@ export function AdminHeader() {
 export function AdminSidebar() {
   const pathname = usePathname();
   const auth = useAuth();
-  const router = useRouter();
+  const { user } = useUser();
+  const firestore = useFirestore();
   const { t } = useTranslation();
+  const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
+  const [pendingReservations, setPendingReservations] = useState(0);
+
+  // Check admin status
+  useEffect(() => {
+    if (user && firestore) {
+      const adminRef = doc(firestore, 'admins', user.uid);
+      const unsub = onSnapshot(adminRef, (doc) => {
+        setIsAdmin(doc.exists());
+      });
+      return () => unsub();
+    } else {
+      setIsAdmin(false);
+    }
+  }, [user, firestore]);
+  
+  // Listen for pending reservations if the user is an admin
+  useEffect(() => {
+    if (!firestore || !isAdmin) {
+        if (pathname === '/admin/reservations') {
+             setPendingReservations(0);
+        }
+        return;
+    };
+
+    if (pathname === '/admin/reservations') {
+        setPendingReservations(0);
+        return;
+    }
+
+    const q = query(
+      collectionGroup(firestore, 'reservations'), 
+      where('status', '==', 'pending')
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+        setPendingReservations(snapshot.size);
+    }, (error) => {
+        console.error("Error fetching pending reservations:", error);
+        setPendingReservations(0);
+    });
+
+    return () => unsubscribe();
+  }, [firestore, isAdmin, pathname]);
 
   const handleLogout = async () => {
     if (auth) {
@@ -145,9 +234,8 @@ export function AdminSidebar() {
     { href: "/admin", icon: Home, label: t('dashboard') },
     { href: "/admin/clients", icon: Users2, label: t('clients') },
     { href: "/admin/stations", icon: Gamepad2, label: t('stations') },
-    { href: "/admin/reservations", icon: Calendar, label: t('reservationManagement')},
+    { href: "/admin/reservations", icon: Calendar, label: t('reservationManagement'), notifCount: pendingReservations },
     { href: "/admin/scan", icon: QrCode, label: t('scanner') },
-    { href: "/admin/loyalty", icon: Sparkles, label: t('loyaltyAI') },
     { href: "/admin/history", icon: History, label: t('history')},
   ];
 
@@ -166,12 +254,17 @@ export function AdminSidebar() {
                   key={item.href}
                   href={item.href}
                   className={cn(
-                    "flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:text-foreground md:h-8 md:w-8",
+                    "relative flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:text-foreground md:h-8 md:w-8",
                     { "bg-accent text-accent-foreground": pathname === item.href || (pathname.startsWith(item.href) && item.href !== "/admin") }
                   )}
                 >
                   <item.icon className="h-5 w-5" />
                   <span className="sr-only">{item.label}</span>
+                   {item.notifCount && item.notifCount > 0 ? (
+                        <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-xs text-white">
+                            {item.notifCount > 9 ? '9+' : item.notifCount}
+                        </span>
+                    ) : null}
                 </Link>
           ))}
         </nav>
@@ -197,3 +290,5 @@ export function AdminSidebar() {
     </aside>
   );
 }
+
+    

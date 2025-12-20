@@ -16,7 +16,6 @@ export const translations = {
     clients: "Clients",
     stations: "Stations",
     scanner: "Scanner",
-    loyaltyAI: "Loyalty AI",
     settings: "Settings",
     logOut: "Log Out",
     history: "History",
@@ -30,8 +29,6 @@ export const translations = {
     reservationManagementDescription: "View and manage all client reservations.",
     qrCodeScanner: "QR Code Scanner",
     qrCodeScannerDescription: "Scan a client's QR code to check them in or manage their account.",
-    loyaltyBonusRecs: "Loyalty & Bonus Recommendations",
-    loyaltyBonusRecsDescription: "Use AI to generate personalized bonus recommendations for clients.",
     dashboardDescription: "Here's a look at your gaming lounge's performance.",
     historyDescription: "A global log of all activities within the gaming center.",
 
@@ -114,7 +111,6 @@ export const translations = {
     clients: "Clients",
     stations: "Postes",
     scanner: "Scanner",
-    loyaltyAI: "IA de Fidélité",
     settings: "Paramètres",
     logOut: "Déconnexion",
     history: "Historique",
@@ -128,8 +124,6 @@ export const translations = {
     reservationManagementDescription: "Visualisez et gérez toutes les réservations des clients.",
     qrCodeScanner: "Scanneur de Code QR",
     qrCodeScannerDescription: "Scannez le code QR d'un client pour l'enregistrer ou gérer son compte.",
-    loyaltyBonusRecs: "Fidélité & Recommandations",
-    loyaltyBonusRecsDescription: "Utilisez l'IA pour générer des recommandations de bonus personnalisées.",
     dashboardDescription: "Voici un aperçu des performances de votre salle de jeu.",
     historyDescription: "Un journal global de toutes les activités au sein de la salle de jeu.",
 
@@ -212,7 +206,6 @@ export const translations = {
     clients: "العملاء",
     stations: "المحطات",
     scanner: "الماسح الضوئي",
-    loyaltyAI: "ذكاء الولاء",
     settings: "الإعدادات",
     logOut: "تسجيل الخروج",
     history: "السجل",
@@ -226,8 +219,6 @@ export const translations = {
     reservationManagementDescription: "عرض وإدارة جميع حجوزات العملاء.",
     qrCodeScanner: "ماسح رمز الاستجابة السريعة",
     qrCodeScannerDescription: "امسح رمز الاستجابة السريعة للعميل لتسجيل الوصول أو إدارة حسابه.",
-    loyaltyBonusRecs: "الولاء وتوصيات المكافآت",
-    loyaltyBonusRecsDescription: "استخدم الذكاء الاصطناعي لإنشاء توصيات مكافآت مخصصة للعملاء.",
     dashboardDescription: "إليك نظرة على أداء صالة الألعاب الخاصة بك.",
     historyDescription: "سجل عالمي لجميع الأنشطة داخل مركز الألعاب.",
 
@@ -308,3 +299,5 @@ type Translations = {
 
 // This will throw a type error if the keys are not consistent across languages
 const checkTranslations: Translations = translations;
+
+    
