@@ -24,6 +24,13 @@ import {
   ResponsiveContainer,
   BarChart as RechartsBarChart,
 } from 'recharts';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { formatCurrency } from '@/lib/utils';
 import { PageHeader } from '@/components/page-header';
 import { useCollection, useFirestore } from '@/firebase';
@@ -31,7 +38,7 @@ import { useMemoFirebase } from '@/firebase/provider';
 import { collection, query, onSnapshot } from 'firebase/firestore';
 import { useTranslation } from '@/hooks/use-translation';
 import type { UsageLog, Station, Client } from '@/app/lib/data';
-import { differenceInMinutes, subDays, format } from 'date-fns';
+import { differenceInMinutes, subDays, format, isWithinInterval, startOfToday, endOfToday, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from 'date-fns';
 
 function calculatePrice(stationType: Station['type'], durationInMinutes: number, startTime: Date): number {
     const startHour = startTime.getHours();
@@ -78,6 +85,7 @@ function calculatePrice(stationType: Station['type'], durationInMinutes: number,
 export default function AdminDashboard() {
   const { t } = useTranslation();
   const firestore = useFirestore();
+  const [revenuePeriod, setRevenuePeriod] = useState<'today' | 'week' | 'month'>('week');
 
   const stationsQuery = useMemoFirebase(
     () => (firestore ? query(collection(firestore, 'stations')) : null),
@@ -150,6 +158,12 @@ export default function AdminDashboard() {
         revenueByDay[dayKey] = 0;
     }
 
+    const revenueInterval = {
+      today: { start: startOfToday(), end: endOfToday() },
+      week: { start: startOfWeek(today), end: endOfWeek(today) },
+      month: { start: startOfMonth(today), end: endOfMonth(today) }
+    }[revenuePeriod];
+
     for (const log of usageLogs) {
       if (log.endTime) {
         const startTime = new Date(log.startTime);
@@ -159,9 +173,12 @@ export default function AdminDashboard() {
 
         if (stationType) {
           const cost = calculatePrice(stationType, duration, startTime);
-          totalRevenue += cost;
           
-          // Weekly revenue
+          if (isWithinInterval(startTime, revenueInterval)) {
+            totalRevenue += cost;
+          }
+          
+          // Weekly revenue for chart (always last 7 days)
           const logDayKey = format(startTime, 'yyyy-MM-dd');
           if(logDayKey in revenueByDay) {
               revenueByDay[logDayKey] += cost;
@@ -188,11 +205,17 @@ export default function AdminDashboard() {
 
     return { totalRevenue, dailyRevenue, popularStations, mostPopularType };
 
-  }, [usageLogs, stations]);
+  }, [usageLogs, stations, revenuePeriod]);
 
 
   const stationsInUse = stations?.filter((s) => s.status === 'in use').length || 0;
   const isLoading = isLoadingClients || isLoadingStations || isLoadingUsageLogs;
+
+  const revenuePeriodLabels = {
+    today: "Aujourd'hui",
+    week: "Cette semaine",
+    month: "Ce mois"
+  };
 
   return (
     <div className="flex flex-col">
@@ -205,7 +228,16 @@ export default function AdminDashboard() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">{t('totalRevenue')}</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
+             <Select value={revenuePeriod} onValueChange={(value: 'today' | 'week' | 'month') => setRevenuePeriod(value)}>
+                <SelectTrigger className="w-auto border-0 h-auto p-0 text-sm text-muted-foreground focus:ring-0">
+                    <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="today">Aujourd'hui</SelectItem>
+                    <SelectItem value="week">Cette semaine</SelectItem>
+                    <SelectItem value="month">Ce mois</SelectItem>
+                </SelectContent>
+             </Select>
           </CardHeader>
           <CardContent>
              {isLoading ? (
@@ -215,7 +247,7 @@ export default function AdminDashboard() {
                     {formatCurrency(dashboardData.totalRevenue)}
                 </div>
             )}
-            <p className="text-xs text-muted-foreground">{t('thisWeek')}</p>
+            <p className="text-xs text-muted-foreground">{revenuePeriodLabels[revenuePeriod]}</p>
           </CardContent>
         </Card>
         <Card>
@@ -355,3 +387,5 @@ export default function AdminDashboard() {
     </div>
   );
 }
+
+    
