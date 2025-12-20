@@ -163,6 +163,10 @@ function ClientForm({ client, onFormSubmit, isSubmitting }: { client?: Client, o
 }
 
 function ClientInfoDialog({ client }: { client: Client }) {
+  const bonusHours = client.bonusHours || 0;
+  const hours = Math.floor(bonusHours);
+  const minutes = Math.round((bonusHours - hours) * 60);
+
   return (
     <Dialog>
       <DialogTrigger asChild>
@@ -191,6 +195,14 @@ function ClientInfoDialog({ client }: { client: Client }) {
             <div className="flex justify-between items-center">
                 <span className="text-muted-foreground">Abonnement:</span>
                 <span className="font-medium">{client.subscriptionTier}</span>
+            </div>
+            <div className="flex justify-between items-center">
+                <span className="text-muted-foreground">Heures d'abonnement:</span>
+                <span className="font-medium">{client.subscriptionHours ?? 0}h</span>
+            </div>
+            <div className="flex justify-between items-center">
+                <span className="text-muted-foreground">Heures bonus:</span>
+                <span className="font-medium">{`${hours}h ${minutes}m`}</span>
             </div>
              <div className="flex justify-between items-center">
                 <span className="text-muted-foreground">Membre depuis:</span>
