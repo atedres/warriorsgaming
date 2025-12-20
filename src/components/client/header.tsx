@@ -79,6 +79,9 @@ export default function ClientHeader() {
               <DropdownMenuItem asChild>
                 <Link href="/profile">Profil</Link>
               </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href="/profile/settings">Paramètres</Link>
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={handleLogout}>
                 Déconnexion
