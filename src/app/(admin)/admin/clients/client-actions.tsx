@@ -408,3 +408,5 @@ export function ClientHistoryDialog({ client }: { client: Client }) {
         </Dialog>
     )
 }
+
+    
