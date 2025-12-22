@@ -400,7 +400,7 @@ export default function Home() {
       </main>
       <footer className="flex flex-col gap-4 sm:flex-row py-6 w-full shrink-0 items-center px-4 md:px-6 border-t">
         <p className="text-xs text-muted-foreground">
-          &copy; 2025 Warriors Gaming. {t('allRightsReserved')}.
+          &copy; 2026 Warriors Gaming. {t('allRightsReserved')}.
         </p>
         <div className="sm:ml-auto flex items-center gap-4 sm:gap-6">
             <Link href="https://www.instagram.com/warriorsgaming.ma?igsh=MTZ0bmE2b3JuN25wbQ==" target="_blank" rel="noopener noreferrer" className="text-xs hover:underline underline-offset-4">
@@ -415,5 +415,3 @@ export default function Home() {
     </div>
   );
 }
-
-    
