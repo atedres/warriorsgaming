@@ -38,14 +38,15 @@ export async function uploadAvatarAction(userId: string, formData: FormData) {
 
     // Convert file to buffer
     const arrayBuffer = await file.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer); // Use Buffer.from for correct conversion
+    const buffer = Buffer.from(arrayBuffer);
 
-    // Upload to Cloudinary
+    // Upload to Cloudinary using an "unsigned" preset
     const uploadResult = await new Promise<{ secure_url: string }>(
       (resolve, reject) => {
         cloudinary.uploader
           .upload_stream(
             {
+              upload_preset: "ml_default", // Utiliser le preset non signé
               tags: ["avatar", userId],
             },
             (error, result) => {
@@ -55,7 +56,6 @@ export async function uploadAvatarAction(userId: string, formData: FormData) {
               if (result) {
                 resolve(result);
               } else {
-                // Add a specific rejection for cases where there's no error but no result either
                 reject(new Error("Cloudinary upload failed without an error."));
               }
             }
