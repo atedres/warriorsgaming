@@ -10,13 +10,14 @@ export async function uploadAvatarAction(userId: string, formData: FormData) {
   if (!file || file.size === 0) {
     return { success: false, message: "Aucun fichier n'a été fourni." };
   }
-  
+
+  // Ces variables sont maintenant exposées au serveur via next.config.js
   const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
   const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
 
   if (!cloudName || !uploadPreset) {
-      console.error("Cloudinary cloud name or upload preset is not configured. Check your .env.local file.");
-      return { success: false, message: "Le serveur Cloudinary n'est pas configuré correctement." };
+    console.error("Les variables d'environnement Cloudinary ne sont pas configurées. Vérifiez vos fichiers .env.local et next.config.js.");
+    return { success: false, message: "Le serveur Cloudinary n'est pas configuré correctement." };
   }
 
   const uploadFormData = new FormData();
@@ -31,23 +32,21 @@ export async function uploadAvatarAction(userId: string, formData: FormData) {
       body: uploadFormData,
     });
 
-    if (!response.ok) {
-        const errorData = await response.json();
-        console.error("Erreur de téléversement Cloudinary:", errorData);
-        return { success: false, message: `Échec du téléversement: ${errorData.error.message}` };
-    }
-
     const uploadResult = await response.json();
-    const secureUrl = uploadResult.secure_url;
-    
-    if (!secureUrl) {
-         return { success: false, message: "L'URL de l'image n'a pas été retournée par Cloudinary." };
+
+    if (!response.ok || !uploadResult.secure_url) {
+      console.error("Erreur de téléversement Cloudinary:", uploadResult.error?.message || 'Réponse invalide');
+      return { success: false, message: `Échec du téléversement: ${uploadResult.error?.message || 'Une erreur inconnue est survenue.'}` };
     }
 
+    const secureUrl = uploadResult.secure_url;
+
+    // Mise à jour de Firestore avec la nouvelle URL
     const { firestore } = getFirebaseAdmin();
     const clientRef = doc(firestore, "clients", userId);
     await updateDoc(clientRef, { avatarUrl: secureUrl });
 
+    // Invalider le cache pour rafraîchir les données sur les pages concernées
     revalidatePath("/profile");
     revalidatePath("/profile/settings");
 
@@ -57,8 +56,8 @@ export async function uploadAvatarAction(userId: string, formData: FormData) {
       avatarUrl: secureUrl,
     };
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : "Une erreur inconnue est survenue.";
-    console.error("Erreur de téléversement:", errorMessage);
+    const errorMessage = error instanceof Error ? error.message : "Une erreur inconnue est survenue lors de la connexion à Cloudinary.";
+    console.error("Erreur de fetch lors du téléversement:", errorMessage);
     return { success: false, message: `Échec du téléversement: ${errorMessage}` };
   }
 }
