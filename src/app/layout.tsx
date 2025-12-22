@@ -25,6 +25,9 @@ const fontCode = Source_Code_Pro({
 export const metadata: Metadata = {
   title: 'Warriors Gaming',
   description: 'Warriors Gaming - Your ultimate gaming destination.',
+  icons: {
+    icon: 'https://storage.googleapis.com/project-os-prod-resources/studio-user-uploads/7618c701-d85c-48c0-827d-f421f1d1d8e1.png',
+  },
 };
 
 export default function RootLayout({
