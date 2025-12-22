@@ -1,9 +1,42 @@
 
 "use server";
 
+import "dotenv/config";
 import { revalidatePath } from "next/cache";
-import { doc, updateDoc } from "firebase/firestore";
 import { getFirebaseAdmin } from "@/firebase/admin";
+import { v2 as cloudinary } from "cloudinary";
+
+// Configure Cloudinary with credentials from .env
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+  secure: true,
+});
+
+async function uploadImageToCloudinary(file: File): Promise<string> {
+    const fileBuffer = Buffer.from(await file.arrayBuffer());
+
+    return new Promise((resolve, reject) => {
+        const uploadStream = cloudinary.uploader.upload_stream(
+            {
+                resource_type: "image",
+                folder: "warriors-gaming-avatars", // Optional: organize uploads
+            },
+            (error, result) => {
+                if (error) {
+                    console.error("Cloudinary upload error:", error);
+                    reject(new Error("Échec du téléversement sur Cloudinary."));
+                } else if (result) {
+                    resolve(result.secure_url);
+                } else {
+                    reject(new Error("Aucun résultat retourné par Cloudinary."));
+                }
+            }
+        );
+        uploadStream.end(fileBuffer);
+    });
+}
 
 export async function uploadAvatarAction(userId: string, formData: FormData) {
   const file = formData.get("avatar") as File;
@@ -11,42 +44,22 @@ export async function uploadAvatarAction(userId: string, formData: FormData) {
     return { success: false, message: "Aucun fichier n'a été fourni." };
   }
 
-  // Ces variables sont maintenant exposées au serveur via next.config.js
-  const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
-  const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
-
-  if (!cloudName || !uploadPreset) {
-    console.error("Les variables d'environnement Cloudinary ne sont pas configurées. Vérifiez vos fichiers .env.local et next.config.js.");
-    return { success: false, message: "Le serveur Cloudinary n'est pas configuré correctement." };
+  // Check if Cloudinary is configured
+  if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
+      const errorMessage = "Les variables d'environnement Cloudinary ne sont pas configurées sur le serveur. Veuillez vérifier votre fichier .env.";
+      console.error(errorMessage);
+      return { success: false, message: errorMessage };
   }
 
-  const uploadFormData = new FormData();
-  uploadFormData.append("file", file);
-  uploadFormData.append("upload_preset", uploadPreset);
-
-  const cloudinaryUrl = `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`;
-
   try {
-    const response = await fetch(cloudinaryUrl, {
-      method: "POST",
-      body: uploadFormData,
-    });
+    const secureUrl = await uploadImageToCloudinary(file);
 
-    const uploadResult = await response.json();
-
-    if (!response.ok || !uploadResult.secure_url) {
-      console.error("Erreur de téléversement Cloudinary:", uploadResult.error?.message || 'Réponse invalide');
-      return { success: false, message: `Échec du téléversement: ${uploadResult.error?.message || 'Une erreur inconnue est survenue.'}` };
-    }
-
-    const secureUrl = uploadResult.secure_url;
-
-    // Mise à jour de Firestore avec la nouvelle URL
+    // Update Firestore with the new URL using Firebase Admin SDK
     const { firestore } = getFirebaseAdmin();
-    const clientRef = doc(firestore, "clients", userId);
-    await updateDoc(clientRef, { avatarUrl: secureUrl });
-
-    // Invalider le cache pour rafraîchir les données sur les pages concernées
+    const clientRef = firestore.collection("clients").doc(userId);
+    await clientRef.update({ avatarUrl: secureUrl });
+    
+    // Invalidate cache to refresh data on relevant pages
     revalidatePath("/profile");
     revalidatePath("/profile/settings");
 
@@ -56,8 +69,8 @@ export async function uploadAvatarAction(userId: string, formData: FormData) {
       avatarUrl: secureUrl,
     };
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : "Une erreur inconnue est survenue lors de la connexion à Cloudinary.";
-    console.error("Erreur de fetch lors du téléversement:", errorMessage);
-    return { success: false, message: `Échec du téléversement: ${errorMessage}` };
+    const errorMessage = error instanceof Error ? error.message : "Une erreur inconnue est survenue.";
+    console.error("Erreur dans uploadAvatarAction:", errorMessage);
+    return { success: false, message: errorMessage };
   }
 }
