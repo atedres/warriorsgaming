@@ -19,8 +19,8 @@ import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Lock, User as UserIcon, Image as ImageIcon } from 'lucide-react';
-import { AvatarUpload } from './avatar-upload';
+import { Lock, User as UserIcon } from 'lucide-react';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 const profileFormSchema = z.object({
   name: z.string().min(2, { message: "Le nom doit contenir au moins 2 caractères." }),
@@ -147,6 +147,8 @@ export default function ProfileSettingsPage() {
         </>
       )
   }
+  
+  const avatarSrc = `https://api.dicebear.com/8.x/bottts/svg?seed=${client.id}`;
 
   return (
     <>
@@ -247,11 +249,14 @@ export default function ProfileSettingsPage() {
                  <div className="lg:col-span-1">
                     <Card>
                          <CardHeader>
-                            <CardTitle className="flex items-center gap-2"><ImageIcon /> Photo de Profil</CardTitle>
-                            <CardDescription>Changez votre avatar.</CardDescription>
+                            <CardTitle className="flex items-center gap-2">Votre Avatar</CardTitle>
                         </CardHeader>
-                        <CardContent>
-                            <AvatarUpload client={client} />
+                        <CardContent className="flex flex-col items-center space-y-4">
+                           <Avatar className="h-32 w-32 text-6xl">
+                              <AvatarImage src={avatarSrc} alt={client.name} />
+                              <AvatarFallback>{client.name.charAt(0)}</AvatarFallback>
+                            </Avatar>
+                            <p className="text-sm text-center text-muted-foreground">Votre avatar est généré automatiquement à partir de votre identifiant unique.</p>
                         </CardContent>
                     </Card>
                 </div>

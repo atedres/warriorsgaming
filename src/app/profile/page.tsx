@@ -156,7 +156,7 @@ export default function ProfilePage() {
   const hours = Math.floor(bonusHours);
   const minutes = Math.round((bonusHours - hours) * 60);
 
-  const avatarSrc = client.avatarUrl || `https://api.dicebear.com/8.x/bottts/svg?seed=${client.id}`;
+  const avatarSrc = `https://api.dicebear.com/8.x/bottts/svg?seed=${client.id}`;
 
   return (
     <>
