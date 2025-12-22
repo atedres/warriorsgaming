@@ -38,7 +38,7 @@ export async function uploadAvatarAction(userId: string, formData: FormData) {
 
     // Convert file to buffer
     const arrayBuffer = await file.arrayBuffer();
-    const buffer = new Uint8Array(arrayBuffer);
+    const buffer = Buffer.from(arrayBuffer); // Use Buffer.from for correct conversion
 
     // Upload to Cloudinary
     const uploadResult = await new Promise<{ secure_url: string }>(
@@ -54,6 +54,9 @@ export async function uploadAvatarAction(userId: string, formData: FormData) {
               }
               if (result) {
                 resolve(result);
+              } else {
+                // Add a specific rejection for cases where there's no error but no result either
+                reject(new Error("Cloudinary upload failed without an error."));
               }
             }
           )
