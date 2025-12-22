@@ -7,8 +7,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import type { Client } from "@/app/lib/data";
-import { uploadAvatarAction } from "./actions";
+import { saveAvatarUrlAction } from "./actions";
 import { Loader2 } from "lucide-react";
+
+// IMPORTANT: Assurez-vous que ces variables correspondent à votre configuration
+// dans le fichier .env.local ou directement ici si vous n'en avez pas.
+const CLOUDINARY_CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || "dp8sw0v9d"; 
+const CLOUDINARY_UPLOAD_PRESET = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET || "ml_default";
 
 export function AvatarUpload({ client }: { client: Client }) {
   const [preview, setPreview] = useState<string | null>(null);
@@ -19,6 +24,15 @@ export function AvatarUpload({ client }: { client: Client }) {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
     if (selectedFile) {
+      // Vérification de la taille du fichier (ex: max 5MB)
+      if (selectedFile.size > 5 * 1024 * 1024) {
+          toast({
+              variant: "destructive",
+              title: "Fichier trop volumineux",
+              description: "Veuillez choisir une image de moins de 5 Mo.",
+          });
+          return;
+      }
       setFile(selectedFile);
       const reader = new FileReader();
       reader.onloadend = () => {
@@ -37,26 +51,56 @@ export function AvatarUpload({ client }: { client: Client }) {
       });
       return;
     }
+     if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_UPLOAD_PRESET) {
+        toast({
+            variant: "destructive",
+            title: "Configuration manquante",
+            description: "Le nom du cloud ou le preset de téléversement n'est pas configuré.",
+        });
+        return;
+    }
 
     const formData = new FormData();
-    formData.append("avatar", file);
+    formData.append("file", file);
+    formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
 
     startTransition(async () => {
-      const result = await uploadAvatarAction(client.id, formData);
-      if (result.success) {
-        toast({
-          title: "Succès",
-          description: "Votre photo de profil a été mise à jour.",
-        });
-        setPreview(null);
-        setFile(null);
-      } else {
-        toast({
-          variant: "destructive",
-          title: "Échec du téléversement",
-          description: result.message,
-        });
-      }
+        try {
+            const response = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`, {
+                method: 'POST',
+                body: formData,
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error.message || "Un problème est survenu lors du téléversement.");
+            }
+            
+            const data = await response.json();
+            const secureUrl = data.secure_url;
+
+            // Une fois l'upload réussi, on sauvegarde l'URL dans Firestore via la Server Action
+            const saveResult = await saveAvatarUrlAction(client.id, secureUrl);
+
+            if (saveResult.success) {
+                toast({
+                    title: "Succès",
+                    description: "Votre photo de profil a été mise à jour.",
+                });
+                setPreview(null);
+                setFile(null);
+            } else {
+                 throw new Error(saveResult.message);
+            }
+
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : "Une erreur inconnue est survenue.";
+            toast({
+                variant: "destructive",
+                title: "Échec du téléversement",
+                description: errorMessage,
+            });
+        }
     });
   };
 
@@ -75,6 +119,7 @@ export function AvatarUpload({ client }: { client: Client }) {
         accept="image/png, image/jpeg, image/gif"
         onChange={handleFileChange}
         className="hidden"
+        disabled={isPending}
       />
       <label
         htmlFor="avatar-upload"
