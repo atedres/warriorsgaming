@@ -1,4 +1,5 @@
 
+
 export type Station = {
   id: string;
   type: 'PC' | 'PS5' | 'PS5 VIP' | 'VR' | 'Simulator';
@@ -56,4 +57,18 @@ export type ClientHistoryLog = {
     description: string | HistoryLogDescription;
 }
 
-    
+export type Promotion = {
+    id: string;
+    title: string;
+    description: string;
+    image: string;
+    imageHint: string;
+}
+
+export type Price = {
+    id: string;
+    stationType: 'PC' | 'PS5' | 'PS5 VIP' | 'VR' | 'Simulator';
+    duration: string; // e.g., "30 min", "1 heure", "Soirée"
+    price: number;
+    isEveningRate: boolean;
+}

@@ -1,0 +1,22 @@
+{
+  "placeholderImages": [
+    {
+      "id": "promo-1",
+      "description": "Weekly tournament announcement",
+      "imageUrl": "https://picsum.photos/seed/promo1/600/400",
+      "imageHint": "gaming tournament"
+    },
+    {
+      "id": "promo-2",
+      "description": "Student discount offer",
+      "imageUrl": "https://picsum.photos/seed/promo2/600/400",
+      "imageHint": "student gaming"
+    },
+    {
+      "id": "promo-3",
+      "description": "VIP Pass promotion",
+      "imageUrl": "https://picsum.photos/seed/promo3/600/400",
+      "imageHint": "vip gaming"
+    }
+  ]
+}

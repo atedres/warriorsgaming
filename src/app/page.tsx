@@ -1,7 +1,7 @@
 
 'use client';
 import Image from 'next/image';
-import { Gamepad2, Headset, Monitor, Instagram, MapPin, Phone, LogIn, Car } from 'lucide-react';
+import { Gamepad2, Headset, Monitor, Instagram, MapPin, Phone, LogIn, Car, Tag, Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -9,8 +9,8 @@ import ClientHeader from '@/components/client/header';
 import { useCollection, useDoc, useFirestore, useUser } from '@/firebase';
 import { collection, query, doc, addDoc, where } from 'firebase/firestore';
 import { useMemoFirebase } from '@/firebase/provider';
-import type { Station, Client, Reservation } from '@/app/lib/data';
-import { cn } from '@/lib/utils';
+import type { Station, Client, Reservation, Promotion, Price } from '@/app/lib/data';
+import { cn, formatCurrency } from '@/lib/utils';
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useTranslation } from '@/hooks/use-translation';
@@ -22,6 +22,7 @@ import { addHours, format, setHours, setMinutes, startOfToday, getHours } from '
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious, type CarouselApi } from '@/components/ui/carousel';
 import { Switch } from '@/components/ui/switch';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 function ReservationDialog({ 
     station, 
@@ -227,7 +228,19 @@ export default function Home() {
     () => (firestore ? query(collection(firestore, 'stations')) : null),
     [firestore]
   );
-  const { data: stations, isLoading } = useCollection<Station>(stationsQuery);
+  const { data: stations, isLoading: isLoadingStations } = useCollection<Station>(stationsQuery);
+
+  const promotionsQuery = useMemoFirebase(
+    () => (firestore ? query(collection(firestore, 'promotions')) : null),
+    [firestore]
+  );
+  const { data: promotions, isLoading: isLoadingPromotions } = useCollection<Promotion>(promotionsQuery);
+  
+  const pricesQuery = useMemoFirebase(
+    () => (firestore ? query(collection(firestore, 'prices')) : null),
+    [firestore]
+  );
+  const { data: prices, isLoading: isLoadingPrices } = useCollection<Price>(pricesQuery);
 
   const clientRef = useMemoFirebase(
     () => (user ? doc(firestore!, 'clients', user.uid) : null),
@@ -355,7 +368,7 @@ export default function Home() {
             <div className="mx-auto max-w-5xl py-12 px-4 sm:px-6 lg:px-8">
               <Carousel setApi={setApi} className="w-full">
                 <CarouselContent>
-                  {isLoading &&
+                  {isLoadingStations &&
                     Array.from({ length: 3 }).map((_, i) => (
                       <CarouselItem key={i} className="md:basis-1/2 lg:basis-1/3">
                         <div className="p-1">
@@ -374,7 +387,7 @@ export default function Home() {
                         </div>
                       </CarouselItem>
                   ))}
-                  {!isLoading && filteredStations.length > 0 ? filteredStations.map((station) => (
+                  {!isLoadingStations && filteredStations.length > 0 ? filteredStations.map((station) => (
                     <CarouselItem key={station.id} className="md:basis-1/2 lg:basis-1/3">
                       <div className="p-1 h-full">
                         <Card className="flex flex-col h-full">
@@ -441,6 +454,99 @@ export default function Home() {
           </div>
         </section>
         
+        <section id="promos" className="w-full py-12 md:py-24 lg:py-32 bg-muted">
+          <div className="container mx-auto px-4 md:px-6">
+            <div className="flex flex-col items-center justify-center space-y-4 text-center">
+              <div className="space-y-2">
+                <h2 className="font-headline text-3xl font-bold tracking-tighter sm:text-5xl">
+                  Promotions Actuelles
+                </h2>
+                <p className="max-w-[900px] text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
+                  Profitez de nos dernières offres et tournois !
+                </p>
+              </div>
+            </div>
+            <div className="mx-auto grid max-w-5xl items-start gap-8 py-12 sm:grid-cols-2 md:grid-cols-3">
+              {isLoadingPromotions && Array.from({length: 3}).map((_, i) => (
+                 <Card key={i} className="overflow-hidden">
+                    <div className="h-40 w-full animate-pulse rounded-md bg-background" />
+                    <CardHeader>
+                      <div className="h-6 w-3/4 animate-pulse rounded-md bg-background" />
+                    </CardHeader>
+                    <CardContent>
+                      <div className="h-4 w-full animate-pulse rounded-md bg-background" />
+                       <div className="mt-2 h-4 w-5/6 animate-pulse rounded-md bg-background" />
+                    </CardContent>
+                  </Card>
+              ))}
+              {!isLoadingPromotions && promotions?.map(promo => (
+                <Card key={promo.id} className="overflow-hidden shadow-lg transition-transform hover:scale-105">
+                  <Image src={promo.image} alt={promo.title} width={600} height={400} data-ai-hint={promo.imageHint} className="aspect-[3/2] w-full object-cover"/>
+                  <CardHeader>
+                    <CardTitle className='font-headline'>{promo.title}</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-muted-foreground">{promo.description}</p>
+                  </CardContent>
+                </Card>
+              ))}
+               {!isLoadingPromotions && promotions?.length === 0 && (
+                <p className="col-span-full text-center text-muted-foreground">Aucune promotion pour le moment.</p>
+               )}
+            </div>
+          </div>
+        </section>
+
+        <section id="prices" className="w-full py-12 md:py-24 lg:py-32">
+            <div className="container mx-auto px-4 md:px-6">
+                <div className="flex flex-col items-center justify-center space-y-4 text-center">
+                    <div className="space-y-2">
+                        <h2 className="font-headline text-3xl font-bold tracking-tighter sm:text-5xl">Nos Tarifs</h2>
+                        <p className="max-w-[900px] text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
+                            Des prix pour tous les gamers. Découvrez nos tarifs de jour et de soirée.
+                        </p>
+                    </div>
+                </div>
+                <div className="mx-auto max-w-5xl py-12">
+                   {isLoadingPrices ? (
+                    <div className="h-64 w-full animate-pulse rounded-md bg-muted" />
+                   ) : (
+                    <Card>
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead className="w-[200px]">Type de Poste</TableHead>
+                                    <TableHead>Durée</TableHead>
+                                    <TableHead className="text-right">Prix</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                             <TableBody>
+                                {prices?.sort((a,b) => a.price - b.price).map(price => (
+                                     <TableRow key={price.id}>
+                                        <TableCell className="font-medium flex items-center gap-2">
+                                            {getIcon(price.stationType)}
+                                            {price.stationType}
+                                        </TableCell>
+                                        <TableCell>
+                                            {price.duration}
+                                            {price.isEveningRate && <Badge variant="secondary" className="ml-2">Tarif Soir</Badge>}
+                                        </TableCell>
+                                        <TableCell className="text-right font-semibold">{formatCurrency(price.price)}</TableCell>
+                                    </TableRow>
+                                ))}
+                                {!isLoadingPrices && prices?.length === 0 && (
+                                     <TableRow>
+                                        <TableCell colSpan={3} className="text-center text-muted-foreground">Aucun tarif défini pour le moment.</TableCell>
+                                    </TableRow>
+                                )}
+                            </TableBody>
+                        </Table>
+                    </Card>
+                   )}
+                </div>
+            </div>
+        </section>
+
         <section id="location" className="relative w-full h-[400px] md:h-[500px] bg-muted">
             <iframe
                 src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3323.708005397453!2d-7.600600025700212!3d33.58694384196167!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0xda7cdfcb5b2f5f1%3A0xcedf993af7b0b3e9!2sWarriors%20Gaming!5e0!3m2!1sen!2sma!4v1716304899532!5m2!1sen!2sma"

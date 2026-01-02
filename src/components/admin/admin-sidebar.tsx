@@ -14,6 +14,7 @@ import {
   Globe,
   History,
   Calendar,
+  LayoutGrid,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Logo } from "../logo";
@@ -94,6 +95,7 @@ export function AdminHeader() {
       { href: "/admin", icon: Home, label: t('dashboard') },
       { href: "/admin/clients", icon: Users2, label: t('clients') },
       { href: "/admin/stations", icon: Gamepad2, label: t('stations') },
+      { href: "/admin/content", icon: LayoutGrid, label: "Contenu" },
       { href: "/admin/reservations", icon: Calendar, label: t('reservationManagement'), notifCount: pendingReservations},
       { href: "/admin/scan", icon: QrCode, label: t('scanner') },
       { href: "/admin/history", icon: History, label: t('history')},
@@ -234,6 +236,7 @@ export function AdminSidebar() {
     { href: "/admin", icon: Home, label: t('dashboard') },
     { href: "/admin/clients", icon: Users2, label: t('clients') },
     { href: "/admin/stations", icon: Gamepad2, label: t('stations') },
+    { href: "/admin/content", icon: LayoutGrid, label: "Contenu" },
     { href: "/admin/reservations", icon: Calendar, label: t('reservationManagement'), notifCount: pendingReservations },
     { href: "/admin/scan", icon: QrCode, label: t('scanner') },
     { href: "/admin/history", icon: History, label: t('history')},
@@ -290,5 +293,3 @@ export function AdminSidebar() {
     </aside>
   );
 }
-
-    
