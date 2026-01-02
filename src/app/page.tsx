@@ -21,6 +21,7 @@ import { useToast } from '@/hooks/use-toast';
 import { addHours, format, setHours, setMinutes, startOfToday, getHours } from 'date-fns';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious, type CarouselApi } from '@/components/ui/carousel';
+import { Switch } from '@/components/ui/switch';
 
 function ReservationDialog({ 
     station, 
@@ -216,6 +217,7 @@ export default function Home() {
   const { t } = useTranslation();
   const { user } = useUser();
   const [filter, setFilter] = useState('All');
+  const [showOnlyAvailable, setShowOnlyAvailable] = useState(false);
   const firestore = useFirestore();
   const [api, setApi] = useState<CarouselApi>()
   const [current, setCurrent] = useState(0)
@@ -269,10 +271,17 @@ export default function Home() {
     'Simulator',
   ];
 
-  const filteredStations =
-    stations?.filter(
-      (station) => filter === 'All' || station.type === filter
+  const filteredStations = useMemo(() => {
+    let typeFiltered = stations?.filter(
+        (station) => filter === 'All' || station.type === filter
     ) || [];
+
+    if (showOnlyAvailable) {
+        return typeFiltered.filter(station => station.status === 'available');
+    }
+
+    return typeFiltered;
+  }, [stations, filter, showOnlyAvailable]);
 
     useEffect(() => {
         if (!api) {
@@ -285,7 +294,7 @@ export default function Home() {
         api.on("select", () => {
           setCurrent(api.selectedScrollSnap() + 1)
         })
-      }, [api])
+      }, [api, filteredStations]); // Re-run when filteredStations changes
 
   return (
     <div className="flex min-h-screen w-full flex-col">
@@ -323,7 +332,7 @@ export default function Home() {
                   {t('stationStatusDescription')}
                 </p>
               </div>
-              <div className="flex flex-wrap items-center justify-center gap-2 pt-6">
+              <div className="flex flex-wrap items-center justify-center gap-4 pt-6">
                 {stationTypes.map((type) => (
                   <Button
                     key={type}
@@ -333,6 +342,14 @@ export default function Home() {
                     {type}
                   </Button>
                 ))}
+                <div className="flex items-center space-x-2 border rounded-md p-2">
+                    <Switch 
+                        id="available-only" 
+                        checked={showOnlyAvailable}
+                        onCheckedChange={setShowOnlyAvailable}
+                    />
+                    <Label htmlFor="available-only">{t('availableOnly')}</Label>
+                </div>
               </div>
             </div>
             <div className="mx-auto max-w-5xl py-12 px-4 sm:px-6 lg:px-8">
@@ -357,7 +374,7 @@ export default function Home() {
                         </div>
                       </CarouselItem>
                   ))}
-                  {!isLoading && filteredStations.map((station) => (
+                  {!isLoading && filteredStations.length > 0 ? filteredStations.map((station) => (
                     <CarouselItem key={station.id} className="md:basis-1/2 lg:basis-1/3">
                       <div className="p-1 h-full">
                         <Card className="flex flex-col h-full">
@@ -400,7 +417,13 @@ export default function Home() {
                         </Card>
                       </div>
                     </CarouselItem>
-                  ))}
+                  )) : (
+                     <CarouselItem>
+                        <div className="text-center py-12 text-muted-foreground">
+                            {t('noStationsFound')}
+                        </div>
+                     </CarouselItem>
+                  )}
                   </CarouselContent>
                   <CarouselPrevious className="hidden sm:flex" />
                   <CarouselNext className="hidden sm:flex" />

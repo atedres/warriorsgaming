@@ -10,6 +10,7 @@ export const translations = {
     findUs: "Find Us",
     getDirections: "Get Directions",
     allRightsReserved: "All rights reserved",
+    availableOnly: "Available Only",
 
     // Admin Sidebar
     dashboard: "Dashboard",
@@ -112,6 +113,7 @@ export const translations = {
     findUs: "Retrouvez-nous",
     getDirections: "Voir l'itinéraire",
     allRightsReserved: "Tous droits réservés",
+    availableOnly: "Disponible uniquement",
     
     // Admin Sidebar
     dashboard: "Tableau de bord",
@@ -214,6 +216,7 @@ export const translations = {
     findUs: "تجدنا",
     getDirections: "احصل على الاتجاهات",
     allRightsReserved: "كل الحقوق محفوظة",
+    availableOnly: "المتاح فقط",
 
     // Admin Sidebar
     dashboard: "لوحة التحكم",
