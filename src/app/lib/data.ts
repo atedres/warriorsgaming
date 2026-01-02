@@ -1,6 +1,7 @@
+
 export type Station = {
   id: string;
-  type: 'PC' | 'PS5' | 'PS5 VIP' | 'VR Simulator';
+  type: 'PC' | 'PS5' | 'PS5 VIP' | 'VR' | 'Simulator';
   status: 'available' | 'in use' | 'maintenance';
   currentClientId?: string | null;
   sessionStartTime?: string | null;

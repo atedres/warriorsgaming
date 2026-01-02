@@ -47,7 +47,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 
 const stationFormSchema = z.object({
   id: z.string().min(1, { message: "Station ID cannot be empty." }),
-  type: z.enum(["PC", "PS5", "PS5 VIP", "VR Simulator"]),
+  type: z.enum(["PC", "PS5", "PS5 VIP", "VR", "Simulator"]),
   status: z.enum(["available", "in use", "maintenance"]),
   games: z.array(z.string()).optional(),
 });
@@ -128,7 +128,8 @@ function StationForm({
                   <SelectItem value="PC">PC</SelectItem>
                   <SelectItem value="PS5">PS5</SelectItem>
                   <SelectItem value="PS5 VIP">PS5 VIP</SelectItem>
-                  <SelectItem value="VR Simulator">VR Simulator</SelectItem>
+                  <SelectItem value="VR">VR</SelectItem>
+                  <SelectItem value="Simulator">Simulator</SelectItem>
                 </SelectContent>
               </Select>
               <FormMessage />
@@ -339,7 +340,6 @@ export function StationActions({ mode, station }: StationActionsProps) {
     </DropdownMenu>
   );
 }
-
     
 
     

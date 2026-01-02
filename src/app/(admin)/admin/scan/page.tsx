@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import jsQR from "jsqr";
-import { QrCode, User, CheckCircle, Gift, Clock, LogOut, Gamepad2, VideoOff, Camera, MonitorPlay, Tv, Users, ScanLine, Wallet, Monitor, Star } from "lucide-react";
+import { QrCode, User, CheckCircle, Gift, Clock, LogOut, Gamepad2, VideoOff, Camera, MonitorPlay, Tv, Users, ScanLine, Wallet, Monitor, Star, Car } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -473,7 +473,8 @@ function calculatePrice(stationType: Station['type'], durationInMinutes: number,
             }
             break;
         case 'PS5 VIP':
-        case 'VR Simulator':
+        case 'VR':
+        case 'Simulator':
             if (durationInMinutes <= 30) price = 25;
             else if (durationInMinutes <= 60) price = 45;
             else if (durationInMinutes <= 120) price = 75;
@@ -681,8 +682,10 @@ function StationCard({ station, client, isLoadingClients, allClients }: {
             return <Gamepad2 className="h-5 w-5" />;
           case 'PS5 VIP':
             return <Gamepad2 className="h-5 w-5 text-primary" />;
-          case 'VR Simulator':
+          case 'VR':
             return <Tv className="h-5 w-5" />;
+          case 'Simulator':
+            return <Car className="h-5 w-5" />;
           default:
             return <Gamepad2 className="h-5 w-5" />;
         }
@@ -766,7 +769,8 @@ export default function ScanPage() {
     'PC',
     'PS5',
     'PS5 VIP',
-    'VR Simulator',
+    'VR',
+    'Simulator',
   ];
 
   const filteredStations = useMemo(() => stationsWithClients?.filter(

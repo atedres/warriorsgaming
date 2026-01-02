@@ -1,7 +1,7 @@
 
 'use client';
 import Image from 'next/image';
-import { Gamepad2, Headset, Monitor, Instagram, MapPin, Phone, LogIn } from 'lucide-react';
+import { Gamepad2, Headset, Monitor, Instagram, MapPin, Phone, LogIn, Car } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -246,8 +246,10 @@ export default function Home() {
         return <Gamepad2 className="h-6 w-6" />;
       case 'PS5 VIP':
         return <Gamepad2 className="h-6 w-6 text-primary" />;
-      case 'VR Simulator':
+      case 'VR':
         return <Headset className="h-6 w-6" />;
+      case 'Simulator':
+        return <Car className="h-6 w-6" />;
       default:
         return null;
     }
@@ -258,7 +260,8 @@ export default function Home() {
     'PC',
     'PS5',
     'PS5 VIP',
-    'VR Simulator',
+    'VR',
+    'Simulator',
   ];
 
   const filteredStations =

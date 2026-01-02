@@ -67,7 +67,8 @@ function calculatePrice(stationType: Station['type'], durationInMinutes: number,
             }
             break;
         case 'PS5 VIP':
-        case 'VR Simulator':
+        case 'VR':
+        case 'Simulator':
             if (durationInMinutes <= 30) price = 25;
             else if (durationInMinutes <= 60) price = 45;
             else if (durationInMinutes <= 120) price = 75;
@@ -129,7 +130,8 @@ export default function AdminDashboard() {
     pc: { label: 'PC', color: 'hsl(var(--chart-1))' },
     ps5: { label: 'PS5', color: 'hsl(var(--chart-2))' },
     "ps5 vip": { label: 'PS5 VIP', color: 'hsl(var(--accent))' },
-    "vr simulator": { label: 'VR', color: 'hsl(var(--chart-5))' },
+    vr: { label: 'VR', color: 'hsl(var(--chart-5))' },
+    simulator: { label: 'Simulator', color: 'hsl(var(--chart-4))' },
   };
 
   const dashboardData = useMemo(() => {
@@ -143,7 +145,7 @@ export default function AdminDashboard() {
     }
     
     let totalRevenue = 0;
-    const stationUsageCount: Record<string, number> = { 'PC': 0, 'PS5': 0, 'PS5 VIP': 0, 'VR Simulator': 0 };
+    const stationUsageCount: Record<string, number> = { 'PC': 0, 'PS5': 0, 'PS5 VIP': 0, 'VR': 0, 'Simulator': 0 };
     const stationTypesMap = new Map(stations.map(s => [s.id, s.type]));
     
     const revenueByDay: Record<string, number> = {};

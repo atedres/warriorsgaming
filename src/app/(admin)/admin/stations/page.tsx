@@ -29,7 +29,7 @@ import { useMemoFirebase } from '@/firebase/provider';
 import { collection, query, doc } from 'firebase/firestore';
 import type { Station } from '@/app/lib/data';
 import { StationActions } from './station-actions';
-import { Gamepad2, Monitor, Headset } from 'lucide-react';
+import { Gamepad2, Monitor, Headset, Car } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { useToast } from '@/hooks/use-toast';
@@ -91,8 +91,10 @@ export default function StationsPage() {
         return <Gamepad2 className="h-5 w-5" />;
       case 'PS5 VIP':
         return <Gamepad2 className="h-5 w-5 text-primary" />;
-      case 'VR Simulator':
+      case 'VR':
         return <Headset className="h-5 w-5" />;
+      case 'Simulator':
+        return <Car className="h-5 w-5" />;
       default:
         return null;
     }
