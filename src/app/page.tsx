@@ -11,7 +11,7 @@ import { collection, query, doc, addDoc, where } from 'firebase/firestore';
 import { useMemoFirebase } from '@/firebase/provider';
 import type { Station, Client, Reservation } from '@/app/lib/data';
 import { cn } from '@/lib/utils';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useTranslation } from '@/hooks/use-translation';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -20,6 +20,7 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { addHours, format, setHours, setMinutes, startOfToday, getHours } from 'date-fns';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious, type CarouselApi } from '@/components/ui/carousel';
 
 function ReservationDialog({ 
     station, 
@@ -216,6 +217,10 @@ export default function Home() {
   const { user } = useUser();
   const [filter, setFilter] = useState('All');
   const firestore = useFirestore();
+  const [api, setApi] = useState<CarouselApi>()
+  const [current, setCurrent] = useState(0)
+  const [count, setCount] = useState(0)
+
   const stationsQuery = useMemoFirebase(
     () => (firestore ? query(collection(firestore, 'stations')) : null),
     [firestore]
@@ -269,6 +274,19 @@ export default function Home() {
       (station) => filter === 'All' || station.type === filter
     ) || [];
 
+    useEffect(() => {
+        if (!api) {
+          return
+        }
+    
+        setCount(api.scrollSnapList().length)
+        setCurrent(api.selectedScrollSnap() + 1)
+    
+        api.on("select", () => {
+          setCurrent(api.selectedScrollSnap() + 1)
+        })
+      }, [api])
+
   return (
     <div className="flex min-h-screen w-full flex-col">
       <ClientHeader />
@@ -317,60 +335,84 @@ export default function Home() {
                 ))}
               </div>
             </div>
-            <div className="mx-auto grid max-w-5xl grid-cols-1 gap-6 py-12 sm:grid-cols-2 lg:grid-cols-3">
-              {isLoading &&
-                Array.from({ length: 6 }).map((_, i) => (
-                  <Card key={i} className="flex flex-col">
-                    <CardHeader className="flex flex-row items-center justify-between pb-2">
-                      <div className="h-6 w-3/4 animate-pulse rounded-md bg-muted" />
-                    </CardHeader>
-                    <CardContent className="flex-1 flex flex-col justify-between">
-                      <div className="h-4 w-1/2 animate-pulse rounded-md bg-muted" />
-                      <div className="mt-4 h-10 w-full animate-pulse rounded-md bg-muted" />
-                      <div className="mt-4 h-10 w-full animate-pulse rounded-md bg-muted" />
-                    </CardContent>
-                  </Card>
-                ))}
-              {filteredStations.map((station) => (
-                <Card key={station.id} className="flex flex-col">
-                  <CardHeader className="flex flex-row items-center justify-between pb-2">
-                    <CardTitle className="font-headline text-lg font-medium">
-                      {station.id}
-                    </CardTitle>
-                    {getIcon(station.type)}
-                  </CardHeader>
-                  <CardContent className="flex-1 flex flex-col justify-between">
-                    <div className="space-y-2">
-                      <p className="text-sm text-muted-foreground">
-                        {station.type}
-                      </p>
-                      <div className="mt-2">
-                        <h4 className="text-xs font-semibold text-muted-foreground">
-                          {t('availableGames')}
-                        </h4>
-                        <p className="text-sm">
-                          {station.games?.join(', ') || 'N/A'}
-                        </p>
+            <div className="mx-auto max-w-5xl py-12 px-4 sm:px-6 lg:px-8">
+              <Carousel setApi={setApi} className="w-full">
+                <CarouselContent>
+                  {isLoading &&
+                    Array.from({ length: 3 }).map((_, i) => (
+                      <CarouselItem key={i} className="md:basis-1/2 lg:basis-1/3">
+                        <div className="p-1">
+                          <Card className="flex flex-col h-full">
+                              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                                <div className="h-6 w-3/4 animate-pulse rounded-md bg-muted" />
+                              </CardHeader>
+                              <CardContent className="flex-1 flex flex-col justify-between p-6 pt-0">
+                                <div className="space-y-4">
+                                    <div className="h-4 w-1/2 animate-pulse rounded-md bg-muted" />
+                                    <div className="mt-4 h-10 w-full animate-pulse rounded-md bg-muted" />
+                                </div>
+                                <div className="mt-4 h-10 w-full animate-pulse rounded-md bg-muted" />
+                              </CardContent>
+                          </Card>
+                        </div>
+                      </CarouselItem>
+                  ))}
+                  {!isLoading && filteredStations.map((station) => (
+                    <CarouselItem key={station.id} className="md:basis-1/2 lg:basis-1/3">
+                      <div className="p-1 h-full">
+                        <Card className="flex flex-col h-full">
+                          <CardHeader className="flex flex-row items-center justify-between pb-2">
+                            <CardTitle className="font-headline text-lg font-medium">
+                              {station.id}
+                            </CardTitle>
+                            {getIcon(station.type)}
+                          </CardHeader>
+                          <CardContent className="flex-1 flex flex-col justify-between">
+                            <div className="space-y-2">
+                              <p className="text-sm text-muted-foreground">
+                                {station.type}
+                              </p>
+                              <div className="mt-2">
+                                <h4 className="text-xs font-semibold text-muted-foreground">
+                                  {t('availableGames')}
+                                </h4>
+                                <p className="text-sm">
+                                  {station.games?.join(', ') || 'N/A'}
+                                </p>
+                              </div>
+                              <Badge
+                                className={cn(
+                                  'mt-4 text-white w-full justify-center py-2 text-sm',
+                                  {
+                                    'bg-green-500 hover:bg-green-500/80':
+                                      station.status === 'available',
+                                    'bg-red-500 hover:bg-red-500/80':
+                                      station.status === 'in use' ||
+                                      station.status === 'maintenance',
+                                  }
+                                )}
+                              >
+                                {station.status}
+                              </Badge>
+                            </div>
+                            <ReservationDialog station={station} user={user} client={client} clientReservations={reservations} />
+                          </CardContent>
+                        </Card>
                       </div>
-                      <Badge
-                        className={cn(
-                          'mt-4 text-white w-full justify-center py-2 text-sm',
-                          {
-                            'bg-green-500 hover:bg-green-500/80':
-                              station.status === 'available',
-                            'bg-red-500 hover:bg-red-500/80':
-                              station.status === 'in use' ||
-                              station.status === 'maintenance',
-                          }
-                        )}
-                      >
-                        {station.status}
-                      </Badge>
-                    </div>
-                    <ReservationDialog station={station} user={user} client={client} clientReservations={reservations} />
-                  </CardContent>
-                </Card>
-              ))}
+                    </CarouselItem>
+                  ))}
+                  </CarouselContent>
+                  <CarouselPrevious className="hidden sm:flex" />
+                  <CarouselNext className="hidden sm:flex" />
+                </Carousel>
+                <div className="py-2 flex justify-center gap-2">
+                    {Array.from({ length: count }).map((_, i) => (
+                        <button key={i} onClick={() => api?.scrollTo(i)} className={cn(
+                            "h-2 w-2 rounded-full transition-colors",
+                            i === current - 1 ? "bg-primary" : "bg-muted-foreground/30"
+                        )} />
+                    ))}
+                </div>
             </div>
           </div>
         </section>
