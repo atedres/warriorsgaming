@@ -102,6 +102,11 @@ export const translations = {
     history_bonusUsed: "Used {bonusHours} bonus hours.",
     history_bonusAdded: "Added {bonusValue} bonus {bonusUnit} for {stationType}.",
     history_generalBonus: "Added {bonusValue} bonus {bonusUnit} for general use.",
+    
+    // Station Statuses
+    statusAvailable: "Available",
+    statusInUse: "In Use",
+    statusMaintenance: "Maintenance",
   },
   fr: {
     welcome: "Bienvenue chez Warriors Gaming",
@@ -205,6 +210,11 @@ export const translations = {
     history_bonusUsed: "{bonusHours} heures bonus utilisées.",
     history_bonusAdded: "{bonusValue} {bonusUnit} de bonus ajoutées pour {stationType}.",
     history_generalBonus: "{bonusValue} {bonusUnit} de bonus ajoutées pour usage général.",
+    
+    // Station Statuses
+    statusAvailable: "Disponible",
+    statusInUse: "En cours d'utilisation",
+    statusMaintenance: "Maintenance",
   },
   ar: {
     welcome: "مرحباً بكم في ووريورز جيمنج",
@@ -307,6 +317,11 @@ export const translations = {
     history_bonusUsed: "تم استخدام {bonusHours} ساعة إضافية.",
     history_bonusAdded: "تمت إضافة {bonusValue} {bonusUnit} إضافية لـ {stationType}.",
     history_generalBonus: "تمت إضافة {bonusValue} {bonusUnit} إضافية للاستخدام العام.",
+    
+    // Station Statuses
+    statusAvailable: "متاح",
+    statusInUse: "قيد الاستخدام",
+    statusMaintenance: "صيانة",
   },
 };
 

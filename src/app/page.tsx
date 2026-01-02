@@ -399,17 +399,18 @@ export default function Home() {
                               </div>
                               <Badge
                                 className={cn(
-                                  'mt-4 text-white w-full justify-center py-2 text-sm',
+                                  'mt-4 text-white w-full justify-center py-2 text-sm capitalize',
                                   {
                                     'bg-green-500 hover:bg-green-500/80':
                                       station.status === 'available',
+                                    'bg-orange-500 hover:bg-orange-500/80':
+                                      station.status === 'in use',
                                     'bg-red-500 hover:bg-red-500/80':
-                                      station.status === 'in use' ||
                                       station.status === 'maintenance',
                                   }
                                 )}
                               >
-                                {station.status}
+                                {t(`status${station.status.charAt(0).toUpperCase() + station.status.slice(1)}` as any)}
                               </Badge>
                             </div>
                             <ReservationDialog station={station} user={user} client={client} clientReservations={reservations} />
