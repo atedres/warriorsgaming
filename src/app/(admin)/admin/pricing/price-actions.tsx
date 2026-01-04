@@ -66,10 +66,12 @@ function PriceForm({
   item,
   onSubmit,
   isEditing,
+  onClose,
 }: {
   item?: Price;
   onSubmit: (data: PriceFormValues) => void;
   isEditing: boolean;
+  onClose: () => void;
 }) {
   const form = useForm<PriceFormValues>({
     resolver: zodResolver(priceSchema),
@@ -134,9 +136,7 @@ function PriceForm({
           )}
         />
         <DialogFooter>
-          <DialogClose asChild>
-            <Button variant="outline">Annuler</Button>
-          </DialogClose>
+          <Button type="button" variant="outline" onClick={onClose}>Annuler</Button>
           <Button type="submit">Enregistrer</Button>
         </DialogFooter>
       </form>
@@ -191,7 +191,7 @@ export function PriceActions({ mode, item }: PriceActionsProps) {
               Remplissez les informations ci-dessous. Si un tarif pour ce type de poste existe déjà, il sera mis à jour.
             </DialogDescription>
           </DialogHeader>
-          <PriceForm onSubmit={handlePriceSubmit} isEditing={false} />
+          <PriceForm onSubmit={handlePriceSubmit} isEditing={false} onClose={() => setDialogOpen(false)} />
         </DialogContent>
       </Dialog>
     );
@@ -219,7 +219,7 @@ export function PriceActions({ mode, item }: PriceActionsProps) {
         <DialogHeader>
           <DialogTitle>Modifier le tarif</DialogTitle>
         </DialogHeader>
-        <PriceForm item={item as Price} onSubmit={handlePriceSubmit} isEditing={true} />
+        <PriceForm item={item as Price} onSubmit={handlePriceSubmit} isEditing={true} onClose={() => setDialogOpen(false)} />
       </DialogContent>
     </Dialog>
   );
