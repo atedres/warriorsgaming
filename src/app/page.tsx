@@ -18,13 +18,14 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { addHours, format, setHours, setMinutes, startOfToday, getHours, getMinutes } from 'date-fns';
+import { addHours, format, setHours, setMinutes, startOfToday, getHours, getMinutes, differenceInHours } from 'date-fns';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious, type CarouselApi } from '@/components/ui/carousel';
 import { Switch } from '@/components/ui/switch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Input } from '@/components/ui/input';
 
 function ReservationDialog({ 
     station, 
@@ -43,7 +44,8 @@ function ReservationDialog({
     const [isLoginAlertOpen, setIsLoginAlertOpen] = useState(false);
     const [selectedHour, setSelectedHour] = useState<string>('');
     const [selectedMinute, setSelectedMinute] = useState<string>('');
-    const [duration, setDuration] = useState('1'); // Default to 1 hour
+    const [duration, setDuration] = useState('1'); 
+    const [isFreePlay, setIsFreePlay] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const firestore = useFirestore();
     const { toast } = useToast();
@@ -53,6 +55,7 @@ function ReservationDialog({
         setSelectedHour('');
         setSelectedMinute('');
         setDuration('1');
+        setIsFreePlay(false);
         setIsSubmitting(false);
     };
 
@@ -135,8 +138,12 @@ function ReservationDialog({
 
         const start = setMinutes(setHours(startOfToday(), parseInt(selectedHour)), parseInt(selectedMinute));
         
-        // duration '0' means free play. We'll set it to a 4-hour slot as a default max.
-        const durationInHours = duration === '0' ? 4 : parseInt(duration);
+        const durationInHours = isFreePlay ? 4 : parseInt(duration);
+        if (!isFreePlay && (durationInHours <= 0 || isNaN(durationInHours))) {
+            toast({ variant: 'destructive', title: "Durée invalide", description: "Veuillez entrer une durée valide en heures." });
+            return;
+        }
+
         const end = addHours(start, durationInHours);
 
         setIsSubmitting(true);
@@ -289,22 +296,27 @@ function ReservationDialog({
                                 Combien de temps souhaitez-vous jouer ?
                             </DialogDescription>
                         </DialogHeader>
-                        <div className="py-4">
-                            <RadioGroup defaultValue={duration} onValueChange={setDuration}>
-                                <div className="flex items-center space-x-2">
-                                    <RadioGroupItem value="1" id="d1" />
-                                    <Label htmlFor="d1">1 heure</Label>
+                        <div className="grid gap-4 py-4">
+                            <div className="flex items-center space-x-2">
+                                <Switch id="free-play" checked={isFreePlay} onCheckedChange={setIsFreePlay} />
+                                <Label htmlFor="free-play">Jeu libre (sans limite de temps)</Label>
+                            </div>
+                           
+                            {!isFreePlay && (
+                                <div className="space-y-2">
+                                    <Label htmlFor="duration">Durée (en heures)</Label>
+                                    <Input
+                                        id="duration"
+                                        type="number"
+                                        value={duration}
+                                        onChange={(e) => setDuration(e.target.value)}
+                                        placeholder="Ex: 2"
+                                        min="1"
+                                    />
                                 </div>
-                                <div className="flex items-center space-x-2">
-                                    <RadioGroupItem value="2" id="d2" />
-                                    <Label htmlFor="d2">2 heures</Label>
-                                </div>
-                                <div className="flex items-center space-x-2">
-                                    <RadioGroupItem value="0" id="d0" />
-                                    <Label htmlFor="d0">Jeu libre (sans limite de temps)</Label>
-                                </div>
-                            </RadioGroup>
-                            {duration === '0' && (
+                            )}
+                             
+                            {isFreePlay && (
                                 <Alert className="mt-4">
                                      <AlertTriangle className="h-4 w-4" />
                                     <AlertDescription className="text-xs">

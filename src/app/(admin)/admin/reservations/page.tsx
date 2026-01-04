@@ -10,7 +10,7 @@ import { PageHeader } from '@/components/page-header';
 import { useTranslation } from '@/hooks/use-translation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { format } from 'date-fns';
+import { format, differenceInHours } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
@@ -150,6 +150,7 @@ export default function ReservationsPage() {
                 <TableHead>Client</TableHead>
                 <TableHead>Poste</TableHead>
                 <TableHead>Date et Heure</TableHead>
+                <TableHead>Durée</TableHead>
                 <TableHead>Statut</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
@@ -158,45 +159,50 @@ export default function ReservationsPage() {
               {isLoading ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <TableRow key={i}>
-                    <TableCell colSpan={5}>
+                    <TableCell colSpan={6}>
                       <div className="h-8 w-full animate-pulse rounded-md bg-muted" />
                     </TableCell>
                   </TableRow>
                 ))
               ) : reservations.length > 0 ? (
-                reservations.map((reservation) => (
-                  <TableRow key={reservation.reservationId}>
-                    <TableCell>
-                      <div className="font-medium">{reservation.clientName}</div>
-                      <div className="text-sm text-muted-foreground">{reservation.clientPhone}</div>
-                    </TableCell>
-                    <TableCell>{reservation.stationId}</TableCell>
-                    <TableCell>
-                        <div className="flex flex-col">
-                            <span>{format(new Date(reservation.startTime), "d MMM yyyy, HH:mm")}</span>
-                            <span className="text-xs text-muted-foreground">à {format(new Date(reservation.endTime), "HH:mm")}</span>
-                        </div>
-                    </TableCell>
-                     <TableCell>
-                      <Badge className={cn("capitalize", getStatusBadge(reservation.status))}>
-                        {reservation.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                        {reservation.status === 'pending' && (
-                             <Button variant="outline" size="sm" onClick={() => handleUpdateStatus(reservation, 'confirmed')}>
-                                <Check className="mr-2 h-4 w-4" /> Confirmer
-                            </Button>
-                        )}
-                        <Button variant="ghost" size="sm" className="ml-2 text-red-500 hover:text-red-600" onClick={() => handleUpdateStatus(reservation, 'cancelled')}>
-                            <Trash2 className="h-4 w-4" />
-                        </Button>
-                    </TableCell>
-                  </TableRow>
-                ))
+                reservations.map((reservation) => {
+                  const durationInHours = differenceInHours(new Date(reservation.endTime), new Date(reservation.startTime));
+                  const durationText = durationInHours >= 4 ? "Jeu libre" : `${durationInHours}h`;
+                  return (
+                    <TableRow key={reservation.reservationId}>
+                      <TableCell>
+                        <div className="font-medium">{reservation.clientName}</div>
+                        <div className="text-sm text-muted-foreground">{reservation.clientPhone}</div>
+                      </TableCell>
+                      <TableCell>{reservation.stationId}</TableCell>
+                      <TableCell>
+                          <div className="flex flex-col">
+                              <span>{format(new Date(reservation.startTime), "d MMM yyyy, HH:mm")}</span>
+                              <span className="text-xs text-muted-foreground">à {format(new Date(reservation.endTime), "HH:mm")}</span>
+                          </div>
+                      </TableCell>
+                      <TableCell>{durationText}</TableCell>
+                       <TableCell>
+                        <Badge className={cn("capitalize", getStatusBadge(reservation.status))}>
+                          {reservation.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                          {reservation.status === 'pending' && (
+                               <Button variant="outline" size="sm" onClick={() => handleUpdateStatus(reservation, 'confirmed')}>
+                                  <Check className="mr-2 h-4 w-4" /> Confirmer
+                              </Button>
+                          )}
+                          <Button variant="ghost" size="sm" className="ml-2 text-red-500 hover:text-red-600" onClick={() => handleUpdateStatus(reservation, 'cancelled')}>
+                              <Trash2 className="h-4 w-4" />
+                          </Button>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
               ) : (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center h-24">
+                  <TableCell colSpan={6} className="text-center h-24">
                     {t('noReservationsFound')}
                   </TableCell>
                 </TableRow>
