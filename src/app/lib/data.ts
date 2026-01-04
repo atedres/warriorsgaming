@@ -67,8 +67,12 @@ export type Promotion = {
 }
 
 export type Price = {
-    id: string; // The ID is the stationType
+    id: string;
     stationType: 'PC' | 'PS5' | 'PS5 VIP' | 'VR' | 'Simulator';
+    startHour: number; // 0-23
+    endHour: number;   // 1-24
     pricePerHourWeekday: number;
     pricePerHourWeekend: number;
 }
+
+    

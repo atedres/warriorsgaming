@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import ClientHeader from '@/components/client/header';
 import { useCollection, useDoc, useFirestore, useUser } from '@/firebase';
-import { collection, query, doc, addDoc, where } from 'firebase/firestore';
+import { collection, query, doc, addDoc, where, orderBy } from 'firebase/firestore';
 import { useMemoFirebase } from '@/firebase/provider';
 import type { Station, Client, Reservation, Promotion, Price } from '@/app/lib/data';
 import { cn, formatCurrency } from '@/lib/utils';
@@ -237,7 +237,7 @@ export default function Home() {
   const { data: promotions, isLoading: isLoadingPromotions } = useCollection<Promotion>(promotionsQuery);
   
   const pricesQuery = useMemoFirebase(
-    () => (firestore ? query(collection(firestore, 'prices')) : null),
+    () => (firestore ? query(collection(firestore, 'prices'), orderBy('startHour', 'asc')) : null),
     [firestore]
   );
   const { data: prices, isLoading: isLoadingPrices } = useCollection<Price>(pricesQuery);
@@ -317,14 +317,26 @@ export default function Home() {
     }
   }
 
+  const pricesByStationType = useMemo(() => {
+    if (!prices) return {};
+    return prices.reduce((acc, price) => {
+      if (!acc[price.stationType]) {
+        acc[price.stationType] = [];
+      }
+      acc[price.stationType].push(price);
+      return acc;
+    }, {} as Record<string, Price[]>);
+  }, [prices]);
+
+
   return (
     <div className="flex min-h-screen w-full flex-col">
       <ClientHeader />
       <main className="flex-1">
         <section className="relative w-full py-20 md:py-32 lg:py-40">
           <Image
-            src="https://picsum.photos/seed/gaming-setup/1920/1080"
-            data-ai-hint="gaming setup"
+            src="https://picsum.photos/seed/neons/1920/1080"
+            data-ai-hint="neon gaming"
             alt="Hero background"
             fill
             className="object-cover -z-10"
@@ -511,46 +523,47 @@ export default function Home() {
                     <div className="space-y-2">
                         <h2 className="font-headline text-3xl font-bold tracking-tighter sm:text-5xl">Nos Tarifs</h2>
                         <p className="max-w-[900px] text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
-                            Des prix pour tous les gamers. Découvrez nos tarifs par heure.
+                            Des prix pour tous les gamers. Découvrez nos tarifs par heure et par créneau.
                         </p>
                     </div>
                 </div>
-                <div className="mx-auto max-w-5xl py-12">
+                <div className="mx-auto grid max-w-7xl gap-8 py-12 sm:grid-cols-2 lg:grid-cols-3">
                    {isLoadingPrices ? (
-                    <div className="h-64 w-full animate-pulse rounded-md bg-muted" />
+                    Array.from({length: 3}).map((_, i) => <div key={i} className="h-64 w-full animate-pulse rounded-md bg-muted" />)
                    ) : (
-                    <Card>
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead className="w-[200px]">Type de Poste</TableHead>
-                                    <TableHead>Prix / Heure (Semaine)</TableHead>
-                                    <TableHead className="text-right">Prix / Heure (Week-end)</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                             <TableBody>
-                                {prices?.sort((a,b) => a.pricePerHourWeekday - b.pricePerHourWeekday).map(price => (
-                                     <TableRow key={price.id}>
-                                        <TableCell className="font-medium flex items-center gap-2">
-                                            {getIcon(price.stationType)}
-                                            {price.stationType}
-                                        </TableCell>
-                                        <TableCell>
-                                            {formatCurrency(price.pricePerHourWeekday)}
-                                        </TableCell>
-                                        <TableCell className="text-right font-semibold">
-                                            {formatCurrency(price.pricePerHourWeekend)}
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
-                                {!isLoadingPrices && prices?.length === 0 && (
-                                     <TableRow>
-                                        <TableCell colSpan={3} className="text-center text-muted-foreground">Aucun tarif défini pour le moment.</TableCell>
-                                    </TableRow>
-                                )}
-                            </TableBody>
-                        </Table>
-                    </Card>
+                    Object.entries(pricesByStationType).map(([type, typePrices]) => (
+                        <Card key={type}>
+                            <CardHeader>
+                                <CardTitle className="flex items-center gap-2 font-headline">
+                                    {getIcon(type)}
+                                    {type}
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>Créneau</TableHead>
+                                            <TableHead>Semaine</TableHead>
+                                            <TableHead className="text-right">Week-end</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {typePrices.map(price => (
+                                            <TableRow key={price.id}>
+                                                <TableCell className="font-medium text-muted-foreground">{`${String(price.startHour).padStart(2, '0')}:00 - ${String(price.endHour).padStart(2, '0')}:00`}</TableCell>
+                                                <TableCell>{formatCurrency(price.pricePerHourWeekday)}/h</TableCell>
+                                                <TableCell className="text-right font-semibold">{formatCurrency(price.pricePerHourWeekend)}/h</TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </CardContent>
+                        </Card>
+                    ))
+                   )}
+                   {!isLoadingPrices && Object.keys(pricesByStationType).length === 0 && (
+                       <div className="col-span-full text-center py-12 text-muted-foreground">Aucun tarif défini pour le moment.</div>
                    )}
                 </div>
             </div>

@@ -3,7 +3,7 @@
 
 import { useCollection, useFirestore } from '@/firebase';
 import { useMemoFirebase } from '@/firebase/provider';
-import { collection, query } from 'firebase/firestore';
+import { collection, query, orderBy } from 'firebase/firestore';
 import type { Price } from '@/app/lib/data';
 import {
   Card,
@@ -29,7 +29,7 @@ export default function PricingPage() {
   const firestore = useFirestore();
   const { t } = useTranslation();
   const pricesQuery = useMemoFirebase(
-    () => (firestore ? query(collection(firestore, 'prices')) : null),
+    () => (firestore ? query(collection(firestore, 'prices'), orderBy('startHour', 'asc')) : null),
     [firestore]
   );
   const { data: prices, isLoading } = useCollection<Price>(pricesQuery);
@@ -43,9 +43,9 @@ export default function PricingPage() {
       />
       <Card>
         <CardHeader>
-          <CardTitle>Grille Tarifaire par Heure</CardTitle>
+          <CardTitle>Grille Tarifaire</CardTitle>
           <CardDescription>
-            Définissez les tarifs qui seront utilisés pour calculer le coût des sessions.
+            Définissez les tarifs par créneau horaire. Ils seront utilisés pour calculer le coût des sessions.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -53,6 +53,7 @@ export default function PricingPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>Type de Poste</TableHead>
+                <TableHead>Créneau Horaire</TableHead>
                 <TableHead>Prix (Semaine)</TableHead>
                 <TableHead>Prix (Week-end)</TableHead>
                 <TableHead>
@@ -65,12 +66,13 @@ export default function PricingPage() {
             <TableBody>
               {isLoading && Array.from({ length: 4 }).map((_, i) => (
                   <TableRow key={i}>
-                      <TableCell colSpan={4}><div className="h-10 w-full animate-pulse rounded-md bg-muted" /></TableCell>
+                      <TableCell colSpan={5}><div className="h-10 w-full animate-pulse rounded-md bg-muted" /></TableCell>
                   </TableRow>
               ))}
-              {prices?.sort((a,b) => a.pricePerHourWeekday - b.pricePerHourWeekday).map((price) => (
+              {prices?.map((price) => (
                 <TableRow key={price.id}>
                   <TableCell className="font-medium">{price.stationType}</TableCell>
+                  <TableCell>{`${String(price.startHour).padStart(2, '0')}:00 - ${String(price.endHour).padStart(2, '0')}:00`}</TableCell>
                   <TableCell>{formatCurrency(price.pricePerHourWeekday)} / h</TableCell>
                   <TableCell>{formatCurrency(price.pricePerHourWeekend)} / h</TableCell>
                   <TableCell className="text-right">
@@ -80,7 +82,7 @@ export default function PricingPage() {
               ))}
               {!isLoading && prices?.length === 0 && (
                   <TableRow>
-                      <TableCell colSpan={4} className="text-center">Aucun tarif trouvé.</TableCell>
+                      <TableCell colSpan={5} className="text-center">Aucun tarif trouvé.</TableCell>
                   </TableRow>
               )}
             </TableBody>
@@ -90,3 +92,5 @@ export default function PricingPage() {
     </>
   );
 }
+
+    

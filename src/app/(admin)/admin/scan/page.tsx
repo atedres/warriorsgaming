@@ -49,7 +49,7 @@ import { Progress } from "@/components/ui/progress";
 
 import { useTranslation } from "@/hooks/use-translation";
 import { cn, formatCurrency } from "@/lib/utils";
-import { formatDistanceToNowStrict, differenceInMinutes, addMinutes, addHours, formatDuration, intervalToDuration, format, differenceInSeconds, getDay } from 'date-fns';
+import { formatDistanceToNowStrict, differenceInMinutes, addMinutes, addHours, formatDuration, intervalToDuration, format, differenceInSeconds, getDay, getHours } from 'date-fns';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 
@@ -676,13 +676,20 @@ function BonusPointsDialog({ clients, trigger, initialClient, stationType }: { c
 }
 
 function calculatePrice(stationType: Station['type'], durationInMinutes: number, startTime: Date, prices: Price[]): number {
-    if (durationInMinutes <= 0) return 0;
+    if (durationInMinutes <= 0 || !prices || prices.length === 0) return 0;
     
-    const priceInfo = prices.find(p => p.stationType === stationType);
-    if (!priceInfo) return 0; // Default to 0 if no price is set for this station type
-
-    const dayOfWeek = getDay(startTime); // Sunday = 0, Saturday = 6
+    const startHour = getHours(startTime);
+    const dayOfWeek = getDay(startTime);
     const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+
+    // Find the correct price tier for the given time and station type
+    const priceInfo = prices.find(p => 
+        p.stationType === stationType &&
+        startHour >= p.startHour &&
+        startHour < p.endHour
+    );
+
+    if (!priceInfo) return 0; // Default to 0 if no price is set for this time slot and station type
 
     const pricePerHour = isWeekend ? priceInfo.pricePerHourWeekend : priceInfo.pricePerHourWeekday;
     const durationInHours = durationInMinutes / 60;
@@ -1289,3 +1296,5 @@ export default function ScanPage() {
     </>
   );
 }
+
+    

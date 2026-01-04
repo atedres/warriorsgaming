@@ -38,16 +38,23 @@ import { useMemoFirebase } from '@/firebase/provider';
 import { collection, query, onSnapshot } from 'firebase/firestore';
 import { useTranslation } from '@/hooks/use-translation';
 import type { UsageLog, Station, Client, Price } from '@/app/lib/data';
-import { differenceInMinutes, subDays, format, isWithinInterval, startOfToday, endOfToday, startOfWeek, endOfWeek, startOfMonth, endOfMonth, getDay } from 'date-fns';
+import { differenceInMinutes, subDays, format, isWithinInterval, startOfToday, endOfToday, startOfWeek, endOfWeek, startOfMonth, endOfMonth, getDay, getHours } from 'date-fns';
 
 function calculatePrice(stationType: Station['type'], durationInMinutes: number, startTime: Date, prices: Price[]): number {
-    if (durationInMinutes <= 0) return 0;
+    if (durationInMinutes <= 0 || !prices || prices.length === 0) return 0;
     
-    const priceInfo = prices.find(p => p.stationType === stationType);
-    if (!priceInfo) return 0; // Default to 0 if no price is set for this station type
-
-    const dayOfWeek = getDay(startTime); // Sunday = 0, Saturday = 6
+    const startHour = getHours(startTime);
+    const dayOfWeek = getDay(startTime);
     const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+
+    // Find the correct price tier for the given time and station type
+    const priceInfo = prices.find(p => 
+        p.stationType === stationType &&
+        startHour >= p.startHour &&
+        startHour < p.endHour
+    );
+
+    if (!priceInfo) return 0; // Default to 0 if no price is set for this time slot and station type
 
     const pricePerHour = isWeekend ? priceInfo.pricePerHourWeekend : priceInfo.pricePerHourWeekday;
     const durationInHours = durationInMinutes / 60;
@@ -367,3 +374,5 @@ export default function AdminDashboard() {
     </div>
   );
 }
+
+    

@@ -1,16 +1,17 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { MoreHorizontal, PlusCircle } from 'lucide-react';
+import { MoreHorizontal, PlusCircle, Trash2 } from 'lucide-react';
 import { useFirestore } from '@/firebase';
 import { doc, collection } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import {
   setDocumentNonBlocking,
+  deleteDocumentNonBlocking
 } from '@/firebase/non-blocking-updates';
 import type { Price } from '@/app/lib/data';
 
@@ -23,7 +24,6 @@ import {
   DialogTitle,
   DialogTrigger,
   DialogFooter,
-  DialogClose,
 } from '@/components/ui/dialog';
 import {
   DropdownMenu,
@@ -31,6 +31,7 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import {
   Form,
@@ -52,14 +53,22 @@ import {
 const priceSchema = z.object({
   id: z.string().optional(),
   stationType: z.enum(['PC', 'PS5', 'PS5 VIP', 'VR', 'Simulator']),
+  startHour: z.coerce.number().min(0).max(23),
+  endHour: z.coerce.number().min(1).max(24),
   pricePerHourWeekday: z.coerce.number().min(0, 'Le prix doit être positif.'),
   pricePerHourWeekend: z.coerce.number().min(0, 'Le prix doit être positif.'),
+}).refine(data => data.endHour > data.startHour, {
+    message: "L'heure de fin doit être après l'heure de début.",
+    path: ['endHour']
 });
+
 type PriceFormValues = z.infer<typeof priceSchema>;
 
 type PriceActionsProps =
   | { mode: 'add'; item?: never }
   | { mode: 'actions'; item: Price };
+
+const hourOptions = Array.from({ length: 25 }, (_, i) => ({ value: i, label: `${String(i).padStart(2, '0')}:00` }));
 
 
 function PriceForm({
@@ -77,6 +86,11 @@ function PriceForm({
     resolver: zodResolver(priceSchema),
     defaultValues: defaultValues
   });
+  
+  useEffect(() => {
+    form.reset(defaultValues);
+  }, [defaultValues, form]);
+
 
   return (
     <Form {...form}>
@@ -87,7 +101,7 @@ function PriceForm({
           render={({ field }) => (
             <FormItem>
               <FormLabel>Type de Poste</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isEditing}>
+              <Select onValueChange={field.onChange} defaultValue={field.value}>
                 <FormControl>
                   <SelectTrigger>
                     <SelectValue placeholder="Sélectionnez un type" />
@@ -105,6 +119,40 @@ function PriceForm({
             </FormItem>
           )}
         />
+        <div className="grid grid-cols-2 gap-4">
+             <FormField
+                control={form.control}
+                name="startHour"
+                render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>Heure de Début</FormLabel>
+                        <Select onValueChange={(val) => field.onChange(Number(val))} defaultValue={String(field.value)}>
+                            <FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl>
+                            <SelectContent>
+                                {hourOptions.slice(0, 24).map(h => <SelectItem key={`start-${h.value}`} value={String(h.value)}>{h.label}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
+                        <FormMessage />
+                    </FormItem>
+                )}
+            />
+            <FormField
+                control={form.control}
+                name="endHour"
+                render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>Heure de Fin</FormLabel>
+                        <Select onValueChange={(val) => field.onChange(Number(val))} defaultValue={String(field.value)}>
+                            <FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl>
+                            <SelectContent>
+                                {hourOptions.slice(1, 25).map(h => <SelectItem key={`end-${h.value}`} value={String(h.value)}>{h.label}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
+                        <FormMessage />
+                    </FormItem>
+                )}
+            />
+        </div>
         <FormField
           control={form.control}
           name="pricePerHourWeekday"
@@ -140,75 +188,41 @@ function PriceForm({
   );
 }
 
-function EditPriceDialog({ item }: { item: Price }) {
-    const [isOpen, setIsOpen] = useState(false);
-    const firestore = useFirestore();
-    const { toast } = useToast();
-
-    const handlePriceSubmit = (data: PriceFormValues) => {
-        if (!firestore) return;
-        const collectionName = 'prices';
-        const id = data.stationType; // Use stationType as the document ID
-        const ref = doc(firestore, collectionName, id);
-
-        const priceData: Price = {
-            id: id,
-            stationType: data.stationType,
-            pricePerHourWeekday: data.pricePerHourWeekday,
-            pricePerHourWeekend: data.pricePerHourWeekend,
-        }
-
-        setDocumentNonBlocking(ref, priceData, { merge: true });
-
-        toast({
-            title: `Tarif mis à jour`,
-            description: `Le tarif pour ${data.stationType} a été enregistré avec succès.`,
-        });
-        setIsOpen(false);
-    };
-
-    return (
-        <Dialog open={isOpen} onOpenChange={setIsOpen}>
-            <DialogTrigger asChild>
-                <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-                    Modifier
-                </DropdownMenuItem>
-            </DialogTrigger>
-            <DialogContent>
-                <DialogHeader>
-                    <DialogTitle>Modifier le tarif</DialogTitle>
-                </DialogHeader>
-                <PriceForm defaultValues={item} onSubmit={handlePriceSubmit} isEditing={true} onClose={() => setIsOpen(false)} />
-            </DialogContent>
-        </Dialog>
-    );
-}
 
 export function PriceActions({ mode, item }: PriceActionsProps) {
   const [isDialogOpen, setDialogOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const firestore = useFirestore();
   const { toast } = useToast();
 
   const handlePriceSubmit = (data: PriceFormValues) => {
     if (!firestore) return;
-    const collectionName = 'prices';
-    const id = data.stationType; // Use stationType as the document ID
-    const ref = doc(firestore, collectionName, id);
+    
+    setIsSubmitting(true);
+    
+    const id = item?.id || doc(collection(firestore, 'prices')).id;
+    const ref = doc(firestore, 'prices', id);
 
     const priceData: Price = {
+        ...data,
         id: id,
-        stationType: data.stationType,
-        pricePerHourWeekday: data.pricePerHourWeekday,
-        pricePerHourWeekend: data.pricePerHourWeekend,
-    }
+    };
 
     setDocumentNonBlocking(ref, priceData, { merge: true });
 
     toast({
       title: `Tarif ${item ? 'mis à jour' : 'ajouté'}`,
-      description: `Le tarif pour ${data.stationType} a été enregistré avec succès.`,
+      description: `Le créneau tarifaire pour ${data.stationType} a été enregistré.`,
     });
     setDialogOpen(false);
+    setIsSubmitting(false);
+  };
+
+  const handleDelete = () => {
+    if (!firestore || !item) return;
+    const ref = doc(firestore, 'prices', item.id);
+    deleteDocumentNonBlocking(ref);
+    toast({ variant: 'destructive', title: 'Tarif supprimé' });
   };
 
 
@@ -219,19 +233,25 @@ export function PriceActions({ mode, item }: PriceActionsProps) {
           <Button size="sm" className="h-8 gap-1">
             <PlusCircle className="h-3.5 w-3.5" />
             <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-              Ajouter/Modifier un tarif
+              Ajouter un tarif
             </span>
           </Button>
         </DialogTrigger>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Ajouter un tarif</DialogTitle>
+            <DialogTitle>Ajouter un créneau tarifaire</DialogTitle>
             <DialogDescription>
-              Remplissez les informations ci-dessous. Si un tarif pour ce type de poste existe déjà, il sera mis à jour.
+              Définissez un tarif pour un type de poste et un créneau horaire.
             </DialogDescription>
           </DialogHeader>
           <PriceForm 
-            defaultValues={{ stationType: 'PC', pricePerHourWeekday: 0, pricePerHourWeekend: 0 }} 
+            defaultValues={{ 
+                stationType: 'PC', 
+                startHour: 10,
+                endHour: 18,
+                pricePerHourWeekday: 0, 
+                pricePerHourWeekend: 0 
+            }} 
             onSubmit={handlePriceSubmit} 
             isEditing={false} 
             onClose={() => setDialogOpen(false)} 
@@ -243,17 +263,39 @@ export function PriceActions({ mode, item }: PriceActionsProps) {
 
   // mode === 'actions'
   return (
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button aria-haspopup="true" size="icon" variant="ghost">
-            <MoreHorizontal className="h-4 w-4" />
-            <span className="sr-only">Toggle menu</span>
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuLabel>Actions</DropdownMenuLabel>
-          <EditPriceDialog item={item as Price} />
-        </DropdownMenuContent>
-      </DropdownMenu>
+      <Dialog open={isDialogOpen} onOpenChange={setDialogOpen}>
+        <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+            <Button aria-haspopup="true" size="icon" variant="ghost">
+                <MoreHorizontal className="h-4 w-4" />
+                <span className="sr-only">Toggle menu</span>
+            </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+                <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                <DropdownMenuItem onSelect={() => setDialogOpen(true)}>
+                    Modifier
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onSelect={handleDelete} className="text-red-500">
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Supprimer
+                </DropdownMenuItem>
+            </DropdownMenuContent>
+        </DropdownMenu>
+        <DialogContent>
+            <DialogHeader>
+                <DialogTitle>Modifier le créneau tarifaire</DialogTitle>
+            </DialogHeader>
+            <PriceForm 
+                defaultValues={item} 
+                onSubmit={handlePriceSubmit} 
+                isEditing={true} 
+                onClose={() => setDialogOpen(false)} 
+            />
+        </DialogContent>
+      </Dialog>
   );
 }
+
+    
