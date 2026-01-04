@@ -144,6 +144,49 @@ function PriceForm({
   );
 }
 
+function EditPriceDialog({ item }: { item: Price }) {
+    const [isOpen, setIsOpen] = useState(false);
+    const firestore = useFirestore();
+    const { toast } = useToast();
+
+    const handlePriceSubmit = (data: PriceFormValues) => {
+        if (!firestore) return;
+        const collectionName = 'prices';
+        const id = data.stationType; // Use stationType as the document ID
+        const ref = doc(firestore, collectionName, id);
+
+        const priceData: Price = {
+            id: id,
+            stationType: data.stationType,
+            pricePerHourWeekday: data.pricePerHourWeekday,
+            pricePerHourWeekend: data.pricePerHourWeekend,
+        }
+
+        setDocumentNonBlocking(ref, priceData, { merge: true });
+
+        toast({
+            title: `Tarif mis à jour`,
+            description: `Le tarif pour ${data.stationType} a été enregistré avec succès.`,
+        });
+        setIsOpen(false);
+    };
+
+    return (
+        <Dialog open={isOpen} onOpenChange={setIsOpen}>
+            <DialogTrigger asChild>
+                <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                    Modifier
+                </DropdownMenuItem>
+            </DialogTrigger>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Modifier le tarif</DialogTitle>
+                </DialogHeader>
+                <PriceForm item={item} onSubmit={handlePriceSubmit} isEditing={true} onClose={() => setIsOpen(false)} />
+            </DialogContent>
+        </Dialog>
+    );
+}
 
 export function PriceActions({ mode, item }: PriceActionsProps) {
   const [isDialogOpen, setDialogOpen] = useState(false);
@@ -199,7 +242,6 @@ export function PriceActions({ mode, item }: PriceActionsProps) {
 
   // mode === 'actions'
   return (
-    <Dialog open={isDialogOpen} onOpenChange={setDialogOpen}>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button aria-haspopup="true" size="icon" variant="ghost">
@@ -209,18 +251,8 @@ export function PriceActions({ mode, item }: PriceActionsProps) {
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           <DropdownMenuLabel>Actions</DropdownMenuLabel>
-          <DropdownMenuItem onSelect={() => setDialogOpen(true)}>
-            Modifier
-          </DropdownMenuItem>
+          <EditPriceDialog item={item as Price} />
         </DropdownMenuContent>
       </DropdownMenu>
-
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Modifier le tarif</DialogTitle>
-        </DialogHeader>
-        <PriceForm item={item as Price} onSubmit={handlePriceSubmit} isEditing={true} onClose={() => setDialogOpen(false)} />
-      </DialogContent>
-    </Dialog>
   );
 }
