@@ -24,6 +24,7 @@ import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious
 import { Switch } from '@/components/ui/switch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 
 function ReservationDialog({ 
     station, 
@@ -38,12 +39,22 @@ function ReservationDialog({
 }) {
     const { t } = useTranslation();
     const [isOpen, setIsOpen] = useState(false);
+    const [step, setStep] = useState(1);
     const [isLoginAlertOpen, setIsLoginAlertOpen] = useState(false);
     const [selectedHour, setSelectedHour] = useState<string>('');
     const [selectedMinute, setSelectedMinute] = useState<string>('');
+    const [duration, setDuration] = useState('1'); // Default to 1 hour
     const [isSubmitting, setIsSubmitting] = useState(false);
     const firestore = useFirestore();
     const { toast } = useToast();
+
+    const resetState = () => {
+        setStep(1);
+        setSelectedHour('');
+        setSelectedMinute('');
+        setDuration('1');
+        setIsSubmitting(false);
+    };
 
     const timeSlots = useMemo(() => {
         const now = new Date();
@@ -123,7 +134,10 @@ function ReservationDialog({
         }
 
         const start = setMinutes(setHours(startOfToday(), parseInt(selectedHour)), parseInt(selectedMinute));
-        const end = addHours(start, 1);
+        
+        // duration '0' means free play. We'll set it to a 4-hour slot as a default max.
+        const durationInHours = duration === '0' ? 4 : parseInt(duration);
+        const end = addHours(start, durationInHours);
 
         setIsSubmitting(true);
         try {
@@ -141,8 +155,7 @@ function ReservationDialog({
                 description: `Votre réservation pour ${station.id} de ${format(start, 'HH:mm')} à ${format(end, 'HH:mm')} est enregistrée.`,
             });
             setIsOpen(false);
-            setSelectedHour('');
-            setSelectedMinute('');
+            resetState();
         } catch (error) {
             console.error("Error creating reservation: ", error);
             toast({ 
@@ -190,10 +203,7 @@ function ReservationDialog({
     return (
         <Dialog open={isOpen} onOpenChange={(open) => {
             setIsOpen(open);
-            if (!open) {
-                setSelectedHour('');
-                setSelectedMinute('');
-            }
+            if (!open) resetState();
         }}>
             <DialogTrigger asChild>
                 <Button 
@@ -205,69 +215,112 @@ function ReservationDialog({
                 </Button>
             </DialogTrigger>
             <DialogContent>
-                <DialogHeader>
-                    <DialogTitle>Réserver le poste {station.id}</DialogTitle>
-                    <DialogDescription>
-                        Choisissez une heure de début pour aujourd'hui. La réservation dure 1 heure.
-                    </DialogDescription>
-                </DialogHeader>
-                <div className="grid gap-4 py-4">
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="grid gap-2">
-                            <Label htmlFor="start-hour">Heure</Label>
-                            <Select value={selectedHour} onValueChange={(value) => {
-                                setSelectedHour(value);
-                                // Reset minute if the new hour doesn't support the old minute
-                                if (parseInt(value) === timeSlots.startHour && parseInt(selectedMinute) < timeSlots.startMinute) {
-                                    setSelectedMinute('');
-                                }
-                            }}>
-                                <SelectTrigger id="start-hour">
-                                    <SelectValue placeholder="Heure" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {timeSlots.hours.map(hour => (
-                                        <SelectItem key={hour} value={String(hour)}>
-                                            {String(hour).padStart(2, '0')}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                {step === 1 && (
+                    <>
+                        <DialogHeader>
+                            <DialogTitle>Étape 1: Réserver le poste {station.id}</DialogTitle>
+                            <DialogDescription>
+                                Choisissez une heure de début pour aujourd'hui.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <div className="grid gap-4 py-4">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="grid gap-2">
+                                    <Label htmlFor="start-hour">Heure</Label>
+                                    <Select value={selectedHour} onValueChange={(value) => {
+                                        setSelectedHour(value);
+                                        if (parseInt(value) === timeSlots.startHour && parseInt(selectedMinute) < timeSlots.startMinute) {
+                                            setSelectedMinute('');
+                                        }
+                                    }}>
+                                        <SelectTrigger id="start-hour">
+                                            <SelectValue placeholder="Heure" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {timeSlots.hours.map(hour => (
+                                                <SelectItem key={hour} value={String(hour)}>
+                                                    {String(hour).padStart(2, '0')}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="grid gap-2">
+                                    <Label htmlFor="start-minute">Minute</Label>
+                                    <Select value={selectedMinute} onValueChange={setSelectedMinute} disabled={!selectedHour}>
+                                        <SelectTrigger id="start-minute">
+                                            <SelectValue placeholder="Min" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {availableMinutes.map(minute => (
+                                                <SelectItem key={minute} value={String(minute)}>
+                                                    {String(minute).padStart(2, '0')}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            </div>
+                            {timeSlots.hours.length === 0 && (
+                                <div className="p-4 text-center text-sm text-muted-foreground col-span-2">
+                                    Aucun créneau disponible pour aujourd'hui.
+                                </div>
+                            )}
+                            <Alert>
+                                <AlertTriangle className="h-4 w-4" />
+                                <AlertDescription className="text-xs">
+                                    Veuillez vous présenter au moins 5 minutes avant votre heure de réservation. En cas de retard, votre réservation pourra être annulée.
+                                </AlertDescription>
+                            </Alert>
                         </div>
-                         <div className="grid gap-2">
-                            <Label htmlFor="start-minute">Minute</Label>
-                            <Select value={selectedMinute} onValueChange={setSelectedMinute} disabled={!selectedHour}>
-                                <SelectTrigger id="start-minute">
-                                    <SelectValue placeholder="Min" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {availableMinutes.map(minute => (
-                                        <SelectItem key={minute} value={String(minute)}>
-                                            {String(minute).padStart(2, '0')}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                        <DialogFooter>
+                            <Button variant="outline" onClick={() => setIsOpen(false)}>Annuler</Button>
+                            <Button onClick={() => setStep(2)} disabled={!selectedHour || !selectedMinute}>
+                                Suivant
+                            </Button>
+                        </DialogFooter>
+                    </>
+                )}
+                {step === 2 && (
+                     <>
+                        <DialogHeader>
+                            <DialogTitle>Étape 2: Durée de la session</DialogTitle>
+                            <DialogDescription>
+                                Combien de temps souhaitez-vous jouer ?
+                            </DialogDescription>
+                        </DialogHeader>
+                        <div className="py-4">
+                            <RadioGroup defaultValue={duration} onValueChange={setDuration}>
+                                <div className="flex items-center space-x-2">
+                                    <RadioGroupItem value="1" id="d1" />
+                                    <Label htmlFor="d1">1 heure</Label>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                    <RadioGroupItem value="2" id="d2" />
+                                    <Label htmlFor="d2">2 heures</Label>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                    <RadioGroupItem value="0" id="d0" />
+                                    <Label htmlFor="d0">Jeu libre (sans limite de temps)</Label>
+                                </div>
+                            </RadioGroup>
+                            {duration === '0' && (
+                                <Alert className="mt-4">
+                                     <AlertTriangle className="h-4 w-4" />
+                                    <AlertDescription className="text-xs">
+                                        L'option "Jeu libre" bloque un créneau de 4 heures par défaut. Vous pourrez rester plus longtemps si le poste est disponible.
+                                    </AlertDescription>
+                                </Alert>
+                            )}
                         </div>
-                    </div>
-                     {timeSlots.hours.length === 0 && (
-                        <div className="p-4 text-center text-sm text-muted-foreground col-span-2">
-                            Aucun créneau disponible pour aujourd'hui.
-                        </div>
-                    )}
-                    <Alert>
-                        <AlertTriangle className="h-4 w-4" />
-                        <AlertDescription className="text-xs">
-                            Veuillez vous présenter au moins 5 minutes avant votre heure de réservation. En cas de retard, votre réservation pourra être annulée.
-                        </AlertDescription>
-                    </Alert>
-                </div>
-                <DialogFooter>
-                    <Button variant="outline" onClick={() => setIsOpen(false)}>Annuler</Button>
-                    <Button onClick={handleReservation} disabled={isSubmitting || !selectedHour || !selectedMinute}>
-                        {isSubmitting ? "Réservation..." : "Confirmer"}
-                    </Button>
-                </DialogFooter>
+                        <DialogFooter>
+                             <Button variant="outline" onClick={() => setStep(1)}>Retour</Button>
+                            <Button onClick={handleReservation} disabled={isSubmitting}>
+                                {isSubmitting ? "Réservation..." : "Confirmer la réservation"}
+                            </Button>
+                        </DialogFooter>
+                    </>
+                )}
             </DialogContent>
         </Dialog>
     )
@@ -672,3 +725,4 @@ export default function Home() {
     </div>
   );
 }
+
