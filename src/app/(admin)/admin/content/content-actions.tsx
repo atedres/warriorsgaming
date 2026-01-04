@@ -13,7 +13,7 @@ import {
   setDocumentNonBlocking,
   deleteDocumentNonBlocking,
 } from '@/firebase/non-blocking-updates';
-import type { Price, Promotion } from '@/app/lib/data';
+import type { Promotion } from '@/app/lib/data';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 
 import { Button } from '@/components/ui/button';
@@ -51,7 +51,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
 import Image from 'next/image';
 
 // Schemas
@@ -64,18 +63,11 @@ const promoSchema = z.object({
 });
 type PromoFormValues = z.infer<typeof promoSchema>;
 
-const priceSchema = z.object({
-  id: z.string().optional(),
-  stationType: z.enum(['PC', 'PS5', 'PS5 VIP', 'VR', 'Simulator']),
-  pricePerHourWeekday: z.coerce.number().min(0, 'Le prix doit être positif.'),
-  pricePerHourWeekend: z.coerce.number().min(0, 'Le prix doit être positif.'),
-});
-type PriceFormValues = z.infer<typeof priceSchema>;
 
 // Props
 type ContentActionsProps =
-  | { mode: 'add'; type: 'promotion' | 'price'; item?: never }
-  | { mode: 'actions'; type: 'promotion' | 'price'; item: Promotion | Price };
+  | { mode: 'add'; item?: never }
+  | { mode: 'actions'; item: Promotion };
 
 // Forms
 function PromotionForm({
@@ -177,90 +169,9 @@ function PromotionForm({
   );
 }
 
-function PriceForm({
-  item,
-  onSubmit,
-  isEditing,
-}: {
-  item?: Price;
-  onSubmit: (data: PriceFormValues) => void;
-  isEditing: boolean;
-}) {
-  const form = useForm<PriceFormValues>({
-    resolver: zodResolver(priceSchema),
-    defaultValues: item || {
-      stationType: 'PC',
-      pricePerHourWeekday: 0,
-      pricePerHourWeekend: 0,
-    },
-  });
-
-  return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-        <FormField
-          control={form.control}
-          name="stationType"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Type de Poste</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isEditing}>
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Sélectionnez un type" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  <SelectItem value="PC">PC</SelectItem>
-                  <SelectItem value="PS5">PS5</SelectItem>
-                  <SelectItem value="PS5 VIP">PS5 VIP</SelectItem>
-                  <SelectItem value="VR">VR</SelectItem>
-                  <SelectItem value="Simulator">Simulator</SelectItem>
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="pricePerHourWeekday"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Prix par Heure (Semaine)</FormLabel>
-              <FormControl>
-                <Input type="number" placeholder="Ex: 20" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="pricePerHourWeekend"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Prix par Heure (Week-end)</FormLabel>
-              <FormControl>
-                <Input type="number" placeholder="Ex: 25" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <DialogFooter>
-          <DialogClose asChild>
-            <Button variant="outline">Annuler</Button>
-          </DialogClose>
-          <Button type="submit">Enregistrer</Button>
-        </DialogFooter>
-      </form>
-    </Form>
-  );
-}
 
 // Main Component
-export function ContentActions({ mode, type, item }: ContentActionsProps) {
+export function ContentActions({ mode, item }: ContentActionsProps) {
   const [isDialogOpen, setDialogOpen] = useState(false);
   const firestore = useFirestore();
   const { toast } = useToast();
@@ -280,31 +191,10 @@ export function ContentActions({ mode, type, item }: ContentActionsProps) {
     setDialogOpen(false);
   };
   
-  const handlePriceSubmit = (data: PriceFormValues) => {
-    if (!firestore) return;
-    const collectionName = 'prices';
-    const id = data.stationType; // Use stationType as the document ID
-    const ref = doc(firestore, collectionName, id);
-
-    const priceData: Price = {
-        id: id,
-        stationType: data.stationType,
-        pricePerHourWeekday: data.pricePerHourWeekday,
-        pricePerHourWeekend: data.pricePerHourWeekend,
-    }
-
-    setDocumentNonBlocking(ref, priceData, { merge: true });
-
-    toast({
-      title: `Tarif ${item ? 'mis à jour' : 'ajouté'}`,
-      description: `Le tarif pour ${data.stationType} a été enregistré avec succès.`,
-    });
-    setDialogOpen(false);
-  };
 
   const handleDelete = () => {
     if (!firestore || !item) return;
-    const collectionName = type === 'promotion' ? 'promotions' : 'prices';
+    const collectionName = 'promotions';
     const ref = doc(firestore, collectionName, item.id);
     deleteDocumentNonBlocking(ref);
 
@@ -322,24 +212,18 @@ export function ContentActions({ mode, type, item }: ContentActionsProps) {
           <Button size="sm" className="h-8 gap-1">
             <PlusCircle className="h-3.5 w-3.5" />
             <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-              {type === 'price' ? 'Ajouter/Modifier un tarif' : 'Ajouter'}
+              Ajouter une promotion
             </span>
           </Button>
         </DialogTrigger>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>
-              {type === 'promotion' ? 'Ajouter une promotion' : 'Ajouter un tarif'}
-            </DialogTitle>
+            <DialogTitle>Ajouter une promotion</DialogTitle>
             <DialogDescription>
               Remplissez les informations ci-dessous.
             </DialogDescription>
           </DialogHeader>
-          {type === 'promotion' ? (
-            <PromotionForm onSubmit={handlePromotionSubmit} />
-          ) : (
-            <PriceForm onSubmit={handlePriceSubmit} isEditing={false} />
-          )}
+          <PromotionForm onSubmit={handlePromotionSubmit} />
         </DialogContent>
       </Dialog>
     );
@@ -360,28 +244,20 @@ export function ContentActions({ mode, type, item }: ContentActionsProps) {
           <DropdownMenuItem onSelect={() => setDialogOpen(true)}>
             Modifier
           </DropdownMenuItem>
-          {type === 'promotion' && (
-             <DropdownMenuItem onSelect={handleDelete} className="text-red-500">
-                Supprimer
-            </DropdownMenuItem>
-          )}
+          <DropdownMenuItem onSelect={handleDelete} className="text-red-500">
+              Supprimer
+          </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
 
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>
-            {type === 'promotion' ? 'Modifier la promotion' : 'Modifier le tarif'}
-          </DialogTitle>
+          <DialogTitle>Modifier la promotion</DialogTitle>
         </DialogHeader>
-        {type === 'promotion' ? (
-          <PromotionForm
-            item={item as Promotion}
-            onSubmit={handlePromotionSubmit}
-          />
-        ) : (
-          <PriceForm item={item as Price} onSubmit={handlePriceSubmit} isEditing={true} />
-        )}
+        <PromotionForm
+          item={item as Promotion}
+          onSubmit={handlePromotionSubmit}
+        />
       </DialogContent>
     </Dialog>
   );

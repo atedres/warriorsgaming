@@ -20,6 +20,7 @@ export const translations = {
     settings: "Settings",
     logOut: "Log Out",
     history: "History",
+    pricing: "Pricing",
 
     // Admin Pages
     clientManagement: "Client Management",
@@ -28,6 +29,8 @@ export const translations = {
     stationManagementDescription: "View, create, and manage gaming stations.",
     reservationManagement: "Reservation Management",
     reservationManagementDescription: "View and manage all client reservations.",
+    pricingManagement: "Pricing Management",
+    pricingManagementDescription: "Set the base rates used for all session cost calculations.",
     qrCodeScanner: "QR Code Scanner",
     qrCodeScannerDescription: "Scan a client's QR code to check them in or manage their account.",
     dashboardDescription: "Here's a look at your gaming lounge's performance.",
@@ -128,6 +131,7 @@ export const translations = {
     settings: "Paramètres",
     logOut: "Déconnexion",
     history: "Historique",
+    pricing: "Tarifs",
 
     // Admin Pages
     clientManagement: "Gestion des Clients",
@@ -136,6 +140,8 @@ export const translations = {
     stationManagementDescription: "Visualisez, créez et gérez les postes de jeu.",
     reservationManagement: "Gestion des Réservations",
     reservationManagementDescription: "Visualisez et gérez toutes les réservations des clients.",
+    pricingManagement: "Gestion des Tarifs",
+    pricingManagementDescription: "Définissez les tarifs de base utilisés pour tous les calculs de coût de session.",
     qrCodeScanner: "Scanneur de Code QR",
     qrCodeScannerDescription: "Scannez le code QR d'un client pour l'enregistrer ou gérer son compte.",
     dashboardDescription: "Voici un aperçu des performances de votre salle de jeu.",
@@ -213,7 +219,7 @@ export const translations = {
     
     // Station Statuses
     statusAvailable: "Disponible",
-    statusInUse: "En cours d'utilisation",
+    statusInUse: "En cours",
     statusMaintenance: "Maintenance",
   },
   ar: {
@@ -236,6 +242,7 @@ export const translations = {
     settings: "الإعدادات",
     logOut: "تسجيل الخروج",
     history: "السجل",
+    pricing: "الأسعار",
 
     // Admin Pages
     clientManagement: "إدارة العملاء",
@@ -244,6 +251,8 @@ export const translations = {
     stationManagementDescription: "عرض وإنشاء وإدارة محطات الألعاب.",
     reservationManagement: "إدارة الحجوزات",
     reservationManagementDescription: "عرض وإدارة جميع حجوزات العملاء.",
+    pricingManagement: "إدارة الأسعار",
+    pricingManagementDescription: "قم بتعيين الأسعار الأساسية المستخدمة لجميع حسابات تكلفة الجلسة.",
     qrCodeScanner: "ماسح رمز الاستجابة السريعة",
     qrCodeScannerDescription: "امسح رمز الاستجابة السريعة للعميل لتسجيل الوصول أو إدارة حسابه.",
     dashboardDescription: "إليك نظرة على أداء صالة الألعاب الخاصة بك.",
