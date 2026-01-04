@@ -1,7 +1,7 @@
 
 'use client';
 import Image from 'next/image';
-import { Gamepad2, Headset, Monitor, Instagram, MapPin, Phone, LogIn, Car, Tag, Star } from 'lucide-react';
+import { Gamepad2, Headset, Monitor, Instagram, MapPin, Phone, LogIn, Car, Tag, Star, Tv } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -267,7 +267,7 @@ export default function Home() {
       case 'PS5 VIP':
         return <Gamepad2 className="h-6 w-6 text-primary" />;
       case 'VR':
-        return <Headset className="h-6 w-6" />;
+        return <Tv className="h-6 w-6" />;
       case 'Simulator':
         return <Car className="h-6 w-6" />;
       default:
@@ -309,14 +309,22 @@ export default function Home() {
         })
       }, [api, filteredStations]); // Re-run when filteredStations changes
 
+  const getStatusKey = (status: Station['status']) => {
+    switch(status) {
+        case 'available': return 'statusAvailable';
+        case 'in use': return 'statusInUse';
+        case 'maintenance': return 'statusMaintenance';
+    }
+  }
+
   return (
     <div className="flex min-h-screen w-full flex-col">
       <ClientHeader />
       <main className="flex-1">
         <section className="relative w-full py-20 md:py-32 lg:py-40">
           <Image
-            src="https://picsum.photos/seed/gamer-room/1920/1080"
-            data-ai-hint="gamer room"
+            src="https://picsum.photos/seed/neon-gaming/1920/1080"
+            data-ai-hint="neon gaming"
             alt="Hero background"
             fill
             className="object-cover -z-10"
@@ -423,7 +431,7 @@ export default function Home() {
                                   }
                                 )}
                               >
-                                {t(`status${station.status.charAt(0).toUpperCase() + station.status.slice(1)}` as any)}
+                                {t(getStatusKey(station.status))}
                               </Badge>
                             </div>
                             <ReservationDialog station={station} user={user} client={client} clientReservations={reservations} />

@@ -1081,10 +1081,8 @@ function StationCard({ station, client, isLoadingClients, allClients }: {
             checkTime();
             const intervalId = setInterval(checkTime, 10000);
             return () => clearInterval(intervalId);
-        } else {
-            if (timeIsUp) {
-                setTimeIsUp(false);
-            }
+        } else if (timeIsUp) {
+            setTimeIsUp(false);
         }
     }, [station.status, station.sessionStartTime, station.sessionEndTime, timeIsUp]);
 
@@ -1106,6 +1104,14 @@ function StationCard({ station, client, isLoadingClients, allClients }: {
         }
       };
     
+    const getStatusKey = (status: Station['status']) => {
+        switch(status) {
+            case 'available': return 'statusAvailable';
+            case 'in use': return 'statusInUse';
+            case 'maintenance': return 'statusMaintenance';
+        }
+    }
+
     return (
         <Card className={cn(
             "flex flex-col transition-all duration-300",
@@ -1123,7 +1129,7 @@ function StationCard({ station, client, isLoadingClients, allClients }: {
                         station.status === 'available' && "bg-green-500",
                         station.status === 'in use' && "bg-orange-500",
                         station.status === 'maintenance' && "bg-red-500",
-                    )}>{t(`status${station.status.charAt(0).toUpperCase() + station.status.slice(1)}` as any)}</Badge>
+                    )}>{t(getStatusKey(station.status))}</Badge>
                 </div>
             </CardHeader>
             <CardContent className="flex-1 flex flex-col justify-between items-center text-center p-4 space-y-3">
@@ -1290,6 +1296,3 @@ export default function ScanPage() {
     </>
   );
 }
-
-
-    

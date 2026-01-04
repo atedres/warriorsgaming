@@ -208,8 +208,8 @@ export const translations = {
     history_checkIn: "Enregistré au poste {stationId} ({stationType})",
     history_checkOut: "A quitté le poste {stationId}. Session : {duration}. Coût : {cost}. {bonusUsed}",
     history_bonusUsed: "{bonusHours} heures bonus utilisées.",
-    history_bonusAdded: "{bonusValue} {bonusUnit} de bonus ajoutées pour {stationType}.",
-    history_generalBonus: "{bonusValue} {bonusUnit} de bonus ajoutées pour usage général.",
+    history_bonusAdded: "Ajout de {bonusValue} {bonusUnit} de bonus pour {stationType}.",
+    history_generalBonus: "Ajout de {bonusValue} {bonusUnit} de bonus pour usage général.",
     
     // Station Statuses
     statusAvailable: "Disponible",
@@ -349,7 +349,7 @@ export function formatHistoryDescription(t: (key: any) => string, log: any): str
         let translated = t(log.description.key);
         if (log.description.metadata) {
             for (const key in log.description.metadata) {
-                translated = translated.replace(`{${key}}`, log.description.metadata[key]);
+                translated = translated.replace(`{${key}}`, String(log.description.metadata[key]));
             }
         }
         return translated;
