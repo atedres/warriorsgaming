@@ -47,7 +47,7 @@ import {
 
 import { useTranslation } from "@/hooks/use-translation";
 import { cn, formatCurrency } from "@/lib/utils";
-import { formatDistanceToNowStrict, differenceInMinutes } from 'date-fns';
+import { formatDistanceToNowStrict, differenceInMinutes, addMinutes } from 'date-fns';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 
@@ -167,15 +167,17 @@ const handleAssignStation = async (
     scannedClient: Client, 
     station: Station, 
     firestore: any, 
-    toast: (options: any) => void
+    toast: (options: any) => void,
+    durationInMinutes?: number,
 ) => {
     if (!firestore) return;
-    const startTime = new Date().toISOString();
+    const startTime = new Date();
+    const endTime = durationInMinutes ? addMinutes(startTime, durationInMinutes) : null;
 
     const usageLogRef = await addDocumentNonBlocking(collection(firestore, "usageLogs"), {
         clientId: scannedClient.id,
         stationId: station.id,
-        startTime: startTime,
+        startTime: startTime.toISOString(),
         endTime: null,
     });
 
@@ -192,7 +194,8 @@ const handleAssignStation = async (
     updateDocumentNonBlocking(stationRef, {
         status: 'in use',
         currentClientId: scannedClient.id,
-        sessionStartTime: startTime,
+        sessionStartTime: startTime.toISOString(),
+        sessionEndTime: endTime ? endTime.toISOString() : null,
         currentUsageLogId: usageLogRef.id,
     });
 
@@ -201,7 +204,7 @@ const handleAssignStation = async (
     
     const historyRef = collection(firestore, 'clients', scannedClient.id, 'history');
     addDocumentNonBlocking(historyRef, {
-        timestamp: startTime,
+        timestamp: startTime.toISOString(),
         type: 'check-in',
         description: {
             key: 'history_checkIn',
@@ -221,16 +224,18 @@ const handleAssignStation = async (
 const handleAssignAnonymousStation = async (
     station: Station, 
     firestore: any, 
-    toast: (options: any) => void
+    toast: (options: any) => void,
+    durationInMinutes?: number
 ) => {
     if (!firestore) return;
-    const startTime = new Date().toISOString();
+    const startTime = new Date();
+    const endTime = durationInMinutes ? addMinutes(startTime, durationInMinutes) : null;
     const anonymousClientId = `anonymous_${Date.now()}`;
 
     const usageLogRef = await addDocumentNonBlocking(collection(firestore, "usageLogs"), {
         clientId: anonymousClientId,
         stationId: station.id,
-        startTime: startTime,
+        startTime: startTime.toISOString(),
         endTime: null,
     });
 
@@ -247,7 +252,8 @@ const handleAssignAnonymousStation = async (
     updateDocumentNonBlocking(stationRef, {
         status: 'in use',
         currentClientId: anonymousClientId, // Use a unique anonymous ID
-        sessionStartTime: startTime,
+        sessionStartTime: startTime.toISOString(),
+        sessionEndTime: endTime ? endTime.toISOString() : null,
         currentUsageLogId: usageLogRef.id,
     });
 
@@ -260,14 +266,32 @@ const handleAssignAnonymousStation = async (
 
 function AssignClientDialog({ station, clients }: { station: Station; clients: Client[] | null }) {
     const [isOpen, setIsOpen] = useState(false);
+    const [showDuration, setShowDuration] = useState(false);
+    const [duration, setDuration] = useState('');
+    const [scannedData, setScannedData] = useState<string | null>(null);
+
     const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
     const firestore = useFirestore();
     const { toast } = useToast();
+    
+    useEffect(() => {
+        if (!isOpen) {
+            setShowDuration(false);
+            setDuration('');
+            setScannedData(null);
+        }
+    }, [isOpen]);
 
     const onScan = (data: string) => {
+        setScannedData(data);
+        setShowDuration(true);
+    };
+
+    const handleConfirmAssignment = () => {
+        if (!scannedData) return;
         setIsOpen(false);
         try {
-            const parsed = JSON.parse(data);
+            const parsed = JSON.parse(scannedData);
             if (parsed.clientId) {
                 const foundClient = clients?.find(c => c.id === parsed.clientId);
                 if (foundClient) {
@@ -278,7 +302,7 @@ function AssignClientDialog({ station, clients }: { station: Station; clients: C
                             description: `${foundClient.name} joue actuellement sur le poste ${foundClient.currentStationId}.`,
                         });
                     } else {
-                        handleAssignStation(foundClient, station, firestore, toast);
+                        handleAssignStation(foundClient, station, firestore, toast, duration ? parseInt(duration) : undefined);
                     }
                 } else {
                     toast({
@@ -305,27 +329,63 @@ function AssignClientDialog({ station, clients }: { station: Station; clients: C
                 </Button>
             </DialogTrigger>
             <DialogContent>
-                <DialogHeader>
-                    <DialogTitle>Assigner un client à {station.id}</DialogTitle>
-                    <DialogDescription>
-                        Scannez le code QR du client pour commencer sa session sur ce poste.
-                    </DialogDescription>
-                </DialogHeader>
-                {isOpen && (
-                    <QrScanner 
-                        onScan={onScan} 
-                        onPermissionChange={setHasCameraPermission}
-                        onDevices={()=>{}}
-                        onCameraChange={()=>{}}
-                    />
-                )}
-                {hasCameraPermission === false && (
-                    <Alert variant="destructive">
-                        <AlertTitle>Accès Caméra Requis</AlertTitle>
-                        <AlertDescription>
-                            Veuillez autoriser l'accès à la caméra pour utiliser cette fonctionnalité.
-                        </AlertDescription>
-                    </Alert>
+                {!showDuration ? (
+                    <>
+                        <DialogHeader>
+                            <DialogTitle>Assigner un client à {station.id}</DialogTitle>
+                            <DialogDescription>
+                                Scannez le code QR du client pour commencer sa session sur ce poste.
+                            </DialogDescription>
+                        </DialogHeader>
+                        {isOpen && (
+                            <QrScanner 
+                                onScan={onScan} 
+                                onPermissionChange={setHasCameraPermission}
+                                onDevices={()=>{}}
+                                onCameraChange={()=>{}}
+                            />
+                        )}
+                        {hasCameraPermission === false && (
+                            <Alert variant="destructive">
+                                <AlertTitle>Accès Caméra Requis</AlertTitle>
+                                <AlertDescription>
+                                    Veuillez autoriser l'accès à la caméra pour utiliser cette fonctionnalité.
+                                </AlertDescription>
+                            </Alert>
+                        )}
+                    </>
+                ) : (
+                    <>
+                         <DialogHeader>
+                            <DialogTitle>Définir une durée de session</DialogTitle>
+                            <DialogDescription>
+                                Vous pouvez définir une durée limitée pour la session de jeu. Laissez vide pour une durée illimitée.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <div className="grid gap-4 py-4">
+                            <div className="grid grid-cols-4 items-center gap-4">
+                                <Label htmlFor="duration" className="text-right">
+                                    Durée
+                                </Label>
+                                <Input
+                                    id="duration"
+                                    type="number"
+                                    value={duration}
+                                    onChange={(e) => setDuration(e.target.value)}
+                                    className="col-span-2"
+                                    placeholder="Ex: 60"
+                                />
+                                <span className="col-span-1 text-muted-foreground">minutes</span>
+                            </div>
+                        </div>
+                        <DialogFooter>
+                            <Button variant="ghost" onClick={() => setShowDuration(false)}>Retour au scan</Button>
+                            <Button onClick={handleConfirmAssignment}>
+                                <CheckCircle className="mr-2 h-4 w-4" />
+                                Confirmer l'assignation
+                            </Button>
+                        </DialogFooter>
+                    </>
                 )}
             </DialogContent>
         </Dialog>
@@ -333,33 +393,59 @@ function AssignClientDialog({ station, clients }: { station: Station; clients: C
 }
 
 function ManualAssignClientDialog({ station }: { station: Station; }) {
+    const [isOpen, setIsOpen] = useState(false);
+    const [duration, setDuration] = useState('');
     const firestore = useFirestore();
     const { toast } = useToast();
     
+    useEffect(() => {
+        if (!isOpen) {
+            setDuration('');
+        }
+    }, [isOpen]);
+
     const onManualAssign = () => {
-        handleAssignAnonymousStation(station, firestore, toast);
+        handleAssignAnonymousStation(station, firestore, toast, duration ? parseInt(duration) : undefined);
+        setIsOpen(false);
     }
     
     return (
-         <AlertDialog>
-            <AlertDialogTrigger asChild>
+         <Dialog open={isOpen} onOpenChange={setIsOpen}>
+            <DialogTrigger asChild>
                  <Button variant="outline" size="sm" className="flex-1">
                     <UserX className="mr-2 h-4 w-4" /> Manuel
                 </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-                <AlertDialogHeader>
-                    <AlertDialogTitle>Assigner un Client de Passage ?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                       Cette action va démarrer une session pour un client non enregistré sur le poste <strong>{station.id}</strong>. Le temps sera compté et le paiement sera calculé à la fin.
-                    </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                    <AlertDialogCancel>Annuler</AlertDialogCancel>
-                    <AlertDialogAction onClick={onManualAssign}>Confirmer et Assigner</AlertDialogAction>
-                </AlertDialogFooter>
-            </AlertDialogContent>
-        </AlertDialog>
+            </DialogTrigger>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Assigner un Client de Passage</DialogTitle>
+                    <DialogDescription>
+                       Démarrez une session pour un client non enregistré sur le poste <strong>{station.id}</strong>.
+                       Vous pouvez définir une limite de temps.
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                    <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="duration-manual" className="text-right">
+                            Durée
+                        </Label>
+                        <Input
+                            id="duration-manual"
+                            type="number"
+                            value={duration}
+                            onChange={(e) => setDuration(e.target.value)}
+                            className="col-span-2"
+                            placeholder="Ex: 60 (optionnel)"
+                        />
+                        <span className="col-span-1 text-muted-foreground">minutes</span>
+                    </div>
+                </div>
+                <DialogFooter>
+                    <Button variant="outline" onClick={() => setIsOpen(false)}>Annuler</Button>
+                    <Button onClick={onManualAssign}>Confirmer et Assigner</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
     )
 }
 
@@ -621,7 +707,7 @@ function ReleaseStationDialog({ station, client, allClients }: { station: Statio
 
         // 2. Update the Station
         const stationRef = doc(firestore, "stations", station.id);
-        updateDocumentNonBlocking(stationRef, { status: 'available', currentClientId: null, sessionStartTime: null, currentUsageLogId: null });
+        updateDocumentNonBlocking(stationRef, { status: 'available', currentClientId: null, sessionStartTime: null, sessionEndTime: null, currentUsageLogId: null });
 
         // 3. Update the Client (if not anonymous)
         if(station.currentClientId && !isAnonymous && client) {
@@ -758,24 +844,20 @@ function StationCard({ station, client, isLoadingClients, allClients }: {
     useEffect(() => {
         if (station.status === 'in use' && station.sessionStartTime) {
             const updateTimer = () => {
-                const startTime = new Date(station.sessionStartTime!);
                 const now = new Date();
                 
-                // If it's a registered client, check their remaining time
-                if (client) {
-                    const elapsedMinutes = differenceInMinutes(now, startTime);
-                    const totalMinutesAvailable = ((client.subscriptionHours || 0) + (client.bonusHours || 0)) * 60;
-                    
-                    if (elapsedMinutes > totalMinutesAvailable) {
+                if (station.sessionEndTime) {
+                    const endTime = new Date(station.sessionEndTime);
+                    if (now > endTime) {
                         setTimeIsUp(true);
                     } else {
                         setTimeIsUp(false);
                     }
                 } else {
-                    // For anonymous clients, time never runs out
-                    setTimeIsUp(false);
+                     setTimeIsUp(false);
                 }
 
+                const startTime = new Date(station.sessionStartTime!);
                 setTimer(formatDistanceToNowStrict(startTime, { roundingMethod: 'floor' }));
             };
             
@@ -783,7 +865,7 @@ function StationCard({ station, client, isLoadingClients, allClients }: {
             const intervalId = setInterval(updateTimer, 10000); // update every 10s is enough
             return () => clearInterval(intervalId);
         }
-    }, [station.status, station.sessionStartTime, client]);
+    }, [station.status, station.sessionStartTime, station.sessionEndTime]);
 
 
     const getIcon = (type: Station['type']) => {

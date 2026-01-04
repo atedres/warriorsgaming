@@ -6,6 +6,7 @@ export type Station = {
   status: 'available' | 'in use' | 'maintenance';
   currentClientId?: string | null;
   sessionStartTime?: string | null;
+  sessionEndTime?: string | null; // Heure de fin de session (si limitée)
   games?: string[];
   currentUsageLogId?: string | null;
 };
