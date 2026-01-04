@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import jsQR from "jsqr";
-import { QrCode, User, CheckCircle, Gift, Clock, LogOut, Gamepad2, VideoOff, Camera, MonitorPlay, Tv, Users, ScanLine, Wallet, Monitor, Star, Car, UserX } from "lucide-react";
+import { QrCode, User, CheckCircle, Gift, Clock, LogOut, Gamepad2, VideoOff, Camera, MonitorPlay, Tv, Users, ScanLine, Wallet, Monitor, Star, Car, UserX, Edit, Plus, Minus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -44,10 +44,11 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import { Progress } from "@/components/ui/progress";
 
 import { useTranslation } from "@/hooks/use-translation";
 import { cn, formatCurrency } from "@/lib/utils";
-import { formatDistanceToNowStrict, differenceInMinutes, addMinutes, addHours } from 'date-fns';
+import { formatDistanceToNowStrict, differenceInMinutes, addMinutes, addHours, formatDuration, intervalToDuration, format, differenceInSeconds } from 'date-fns';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 
@@ -807,7 +808,7 @@ function ReleaseStationDialog({ station, client, allClients }: { station: Statio
     return (
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
             <DialogTrigger asChild>
-                 <Button variant="destructive" size="sm" className="mt-2 w-full">
+                 <Button variant="destructive" size="sm" className="w-full">
                     <LogOut className="mr-2 h-4 w-4"/> {t('releaseStation')}
                 </Button>
             </DialogTrigger>
@@ -889,6 +890,171 @@ function ReleaseStationDialog({ station, client, allClients }: { station: Statio
     )
 }
 
+function ModifyTimeDialog({ station }: { station: Station }) {
+    const [isOpen, setIsOpen] = useState(false);
+    const [amount, setAmount] = useState<string>('30');
+    const [unit, setUnit] = useState<'minutes' | 'hours'>('minutes');
+    const [operation, setOperation] = useState<'add' | 'remove'>('add');
+    const firestore = useFirestore();
+    const { toast } = useToast();
+
+    if (!station.sessionStartTime || !station.sessionEndTime) {
+        return null;
+    }
+
+    const handleModifyTime = () => {
+        if (!firestore) return;
+
+        const value = parseInt(amount);
+        if (isNaN(value) || value <= 0) {
+            toast({ variant: 'destructive', title: 'Valeur invalide' });
+            return;
+        }
+
+        const currentEndTime = new Date(station.sessionEndTime!);
+        let newEndTime;
+
+        const minutesToAddOrRemove = unit === 'hours' ? value * 60 : value;
+
+        if (operation === 'add') {
+            newEndTime = addMinutes(currentEndTime, minutesToAddOrRemove);
+        } else {
+            newEndTime = addMinutes(currentEndTime, -minutesToAddOrRemove);
+            if (newEndTime < new Date()) {
+                toast({ variant: 'destructive', title: 'Temps invalide', description: 'La nouvelle heure de fin ne peut pas être dans le passé.' });
+                return;
+            }
+        }
+
+        const stationRef = doc(firestore, "stations", station.id);
+        updateDocumentNonBlocking(stationRef, { sessionEndTime: newEndTime.toISOString() });
+
+        toast({
+            title: "Temps modifié",
+            description: `La session se terminera maintenant à ${format(newEndTime, 'HH:mm')}.`
+        });
+        setIsOpen(false);
+    };
+
+    return (
+        <Dialog open={isOpen} onOpenChange={setIsOpen}>
+            <DialogTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground">
+                    <Edit className="h-4 w-4" />
+                </Button>
+            </DialogTrigger>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Modifier la durée de la session</DialogTitle>
+                    <DialogDescription>
+                        Ajoutez ou retirez du temps pour la session sur le poste {station.id}.
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                    <div className="flex items-center justify-center gap-2">
+                        <Button variant={operation === 'add' ? 'default' : 'outline'} onClick={() => setOperation('add')}><Plus className="mr-2"/>Ajouter</Button>
+                        <Button variant={operation === 'remove' ? 'destructive' : 'outline'} onClick={() => setOperation('remove')}><Minus className="mr-2"/>Retirer</Button>
+                    </div>
+                    <div className="grid grid-cols-3 items-center gap-2">
+                        <Label htmlFor="amount" className="text-right">
+                            Valeur
+                        </Label>
+                        <Input
+                            id="amount"
+                            type="number"
+                            value={amount}
+                            onChange={(e) => setAmount(e.target.value)}
+                            className="col-span-2"
+                        />
+                    </div>
+                     <div className="grid grid-cols-3 items-center gap-2">
+                        <Label htmlFor="unit" className="text-right">
+                            Unité
+                        </Label>
+                        <Select value={unit} onValueChange={(value: 'minutes' | 'hours') => setUnit(value)}>
+                            <SelectTrigger className="col-span-2">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="minutes">Minutes</SelectItem>
+                                <SelectItem value="hours">Heures</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+                </div>
+                <DialogFooter>
+                    <Button variant="outline" onClick={() => setIsOpen(false)}>Annuler</Button>
+                    <Button onClick={handleModifyTime}>Confirmer la modification</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+}
+
+function SessionTimer({ station }: { station: Station }) {
+    const [progress, setProgress] = useState({
+        elapsed: "0m",
+        total: "0m",
+        percentage: 0,
+        isTimeUp: false,
+    });
+
+    useEffect(() => {
+        if (station.status !== 'in use' || !station.sessionStartTime) {
+            return;
+        }
+
+        const updateTimer = () => {
+            const now = new Date();
+            const startTime = new Date(station.sessionStartTime!);
+            const elapsed = formatDistanceToNowStrict(startTime, { roundingMethod: 'floor' });
+            
+            if (station.sessionEndTime) {
+                const endTime = new Date(station.sessionEndTime);
+                const totalDuration = intervalToDuration({ start: startTime, end: endTime });
+                const totalFormatted = formatDuration(totalDuration, { format: ['hours', 'minutes'] });
+
+                const totalSeconds = differenceInSeconds(endTime, startTime);
+                const elapsedSeconds = differenceInSeconds(now, startTime);
+                const percentage = totalSeconds > 0 ? (elapsedSeconds / totalSeconds) * 100 : 0;
+                
+                setProgress({
+                    elapsed: elapsed,
+                    total: totalFormatted,
+                    percentage: Math.min(100, percentage),
+                    isTimeUp: now > endTime,
+                });
+
+            } else {
+                setProgress({ elapsed, total: 'Libre', percentage: 0, isTimeUp: false });
+            }
+        };
+
+        updateTimer();
+        const intervalId = setInterval(updateTimer, 10000); // update every 10s
+        return () => clearInterval(intervalId);
+
+    }, [station.status, station.sessionStartTime, station.sessionEndTime]);
+    
+    if (station.status !== 'in use') return null;
+    
+    return (
+        <div className="w-full space-y-2 text-center">
+            {station.sessionEndTime ? (
+                 <>
+                    <div className="flex justify-between items-baseline font-mono font-bold text-sm">
+                        <span>{progress.elapsed}</span>
+                        <span className="text-muted-foreground">/</span>
+                        <span>{progress.total}</span>
+                    </div>
+                    <Progress value={progress.percentage} className="h-2" />
+                 </>
+            ) : (
+                <p className="text-2xl font-mono font-bold text-primary">{progress.elapsed}</p>
+            )}
+        </div>
+    )
+}
 
 function StationCard({ station, client, isLoadingClients, allClients }: { 
     station: Station, 
@@ -896,35 +1062,25 @@ function StationCard({ station, client, isLoadingClients, allClients }: {
     isLoadingClients: boolean,
     allClients: Client[] | null
 }) {
-    const [timer, setTimer] = useState("0m");
     const [timeIsUp, setTimeIsUp] = useState(false);
     const isAnonymous = station.currentClientId?.startsWith('anonymous_');
 
     useEffect(() => {
-        if (station.status === 'in use' && station.sessionStartTime) {
-            const updateTimer = () => {
+        if (station.status === 'in use' && station.sessionStartTime && station.sessionEndTime) {
+            const checkTime = () => {
                 const now = new Date();
-                
-                if (station.sessionEndTime) {
-                    const endTime = new Date(station.sessionEndTime);
-                    if (now > endTime) {
-                        setTimeIsUp(true);
-                    } else {
-                        setTimeIsUp(false);
-                    }
+                const endTime = new Date(station.sessionEndTime!);
+                if (now > endTime) {
+                    setTimeIsUp(true);
                 } else {
-                     setTimeIsUp(false);
+                    setTimeIsUp(false);
                 }
-
-                const startTime = new Date(station.sessionStartTime!);
-                setTimer(formatDistanceToNowStrict(startTime, { roundingMethod: 'floor' }));
             };
             
-            updateTimer();
-            const intervalId = setInterval(updateTimer, 10000); // update every 10s is enough
+            checkTime();
+            const intervalId = setInterval(checkTime, 10000);
             return () => clearInterval(intervalId);
         } else {
-            // If station is not in use, ensure timeIsUp is false.
             if (timeIsUp) {
                 setTimeIsUp(false);
             }
@@ -952,42 +1108,49 @@ function StationCard({ station, client, isLoadingClients, allClients }: {
     return (
         <Card className={cn(
             "flex flex-col transition-all duration-300",
-            timeIsUp && station.status === 'in use' && "animate-pulse border-red-500 border-2"
+            timeIsUp && "animate-pulse border-red-500 border-2"
         )}>
              <CardHeader className="flex flex-row items-start justify-between pb-2">
                 <CardTitle className="font-headline text-lg font-medium flex items-center gap-2">
                     {getIcon(station.type)}
                     <span className="break-all">{station.id}</span>
                 </CardTitle>
-                <Badge variant='outline' className={cn(
-                    "flex-shrink-0 capitalize border-none text-white",
-                    station.status === 'available' && "bg-green-500",
-                    station.status === 'in use' && "bg-orange-500",
-                    station.status === 'maintenance' && "bg-red-500",
-                )}>{station.status}</Badge>
+                <div className="flex items-center gap-2">
+                    {station.status === 'in use' && station.sessionEndTime && <ModifyTimeDialog station={station} />}
+                    <Badge variant='outline' className={cn(
+                        "flex-shrink-0 capitalize border-none text-white",
+                        station.status === 'available' && "bg-green-500",
+                        station.status === 'in use' && "bg-orange-500",
+                        station.status === 'maintenance' && "bg-red-500",
+                    )}>{station.status}</Badge>
+                </div>
             </CardHeader>
-            <CardContent className="flex-1 flex flex-col justify-center items-center text-center p-4 space-y-3">
+            <CardContent className="flex-1 flex flex-col justify-between items-center text-center p-4 space-y-3">
                 {station.status === 'in use' ? (
                     <>
-                        {isAnonymous ? <UserX className="h-8 w-8 mx-auto text-muted-foreground" /> : <User className="h-8 w-8 mx-auto text-muted-foreground" />}
-                        <p className="font-semibold">{isAnonymous ? "Client de Passage" : (client ? client.name : "Chargement...")}</p>
-                        <p className="text-2xl font-mono font-bold text-primary">{timer}</p>
+                        <div className="flex flex-col items-center justify-center space-y-2 flex-1">
+                            {isAnonymous ? <UserX className="h-8 w-8 text-muted-foreground" /> : <User className="h-8 w-8 text-muted-foreground" />}
+                            <p className="font-semibold">{isAnonymous ? "Client de Passage" : (client ? client.name : "Chargement...")}</p>
+                            <SessionTimer station={station} />
+                        </div>
                         <ReleaseStationDialog station={station} client={client} allClients={allClients}/>
                     </>
                 ) : station.status === 'available' ? (
                     <>
-                        <MonitorPlay className="h-10 w-10 mx-auto text-muted-foreground"/>
-                        <p className="mt-2 text-muted-foreground">Disponible</p>
+                        <div className="flex flex-1 flex-col items-center justify-center text-muted-foreground">
+                            <MonitorPlay className="h-10 w-10"/>
+                            <p className="mt-2">Disponible</p>
+                        </div>
                         <div className="w-full flex gap-2 pt-2">
                            <AssignClientDialog station={station} clients={allClients} />
                            <ManualAssignClientDialog station={station} />
                         </div>
                     </>
                 ) : (
-                     <>
-                        <VideoOff className="h-10 w-10 mx-auto text-muted-foreground"/>
-                        <p className="mt-2 text-muted-foreground">Maintenance</p>
-                     </>
+                     <div className="flex flex-1 flex-col items-center justify-center text-muted-foreground">
+                        <VideoOff className="h-10 w-10"/>
+                        <p className="mt-2">Maintenance</p>
+                     </div>
                 )}
             </CardContent>
         </Card>
@@ -1103,5 +1266,3 @@ export default function ScanPage() {
     </>
   );
 }
-
-    
