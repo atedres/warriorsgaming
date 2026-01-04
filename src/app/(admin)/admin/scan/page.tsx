@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import jsQR from "jsqr";
-import { QrCode, User, CheckCircle, Gift, Clock, LogOut, Gamepad2, VideoOff, Camera, MonitorPlay, Tv, Users, ScanLine, Wallet, Monitor, Star, Car } from "lucide-react";
+import { QrCode, User, CheckCircle, Gift, Clock, LogOut, Gamepad2, VideoOff, Camera, MonitorPlay, Tv, Users, ScanLine, Wallet, Monitor, Star, Car, UserX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -33,6 +33,18 @@ import {
   DialogTrigger,
   DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+
 import { useTranslation } from "@/hooks/use-translation";
 import { cn, formatCurrency } from "@/lib/utils";
 import { formatDistanceToNowStrict, differenceInMinutes } from 'date-fns';
@@ -154,13 +166,12 @@ function QrScanner({ onScan, onPermissionChange, onDevices, onCameraChange, curr
 const handleAssignStation = async (
     scannedClient: Client, 
     station: Station, 
-    firestore: any, // You should use the actual Firestore type
+    firestore: any, 
     toast: (options: any) => void
 ) => {
     if (!firestore) return;
     const startTime = new Date().toISOString();
 
-    // 1. Create the UsageLog first
     const usageLogRef = await addDocumentNonBlocking(collection(firestore, "usageLogs"), {
         clientId: scannedClient.id,
         stationId: station.id,
@@ -177,20 +188,17 @@ const handleAssignStation = async (
         return;
     }
 
-    // 2. Update Station with client and usage log info
     const stationRef = doc(firestore, "stations", station.id);
     updateDocumentNonBlocking(stationRef, {
         status: 'in use',
         currentClientId: scannedClient.id,
         sessionStartTime: startTime,
-        currentUsageLogId: usageLogRef.id, // Store the new usage log ID
+        currentUsageLogId: usageLogRef.id,
     });
 
-    // 3. Update Client
     const clientRef = doc(firestore, "clients", scannedClient.id);
     updateDocumentNonBlocking(clientRef, { currentStationId: station.id });
     
-    // 4. Update Client History
     const historyRef = collection(firestore, 'clients', scannedClient.id, 'history');
     addDocumentNonBlocking(historyRef, {
         timestamp: startTime,
@@ -207,6 +215,45 @@ const handleAssignStation = async (
     toast({
         title: "Poste Assigné",
         description: `${scannedClient.name} a été assigné au poste ${station.id}.`
+    });
+};
+
+const handleAssignAnonymousStation = async (
+    station: Station, 
+    firestore: any, 
+    toast: (options: any) => void
+) => {
+    if (!firestore) return;
+    const startTime = new Date().toISOString();
+    const anonymousClientId = `anonymous_${Date.now()}`;
+
+    const usageLogRef = await addDocumentNonBlocking(collection(firestore, "usageLogs"), {
+        clientId: anonymousClientId,
+        stationId: station.id,
+        startTime: startTime,
+        endTime: null,
+    });
+
+    if (!usageLogRef) {
+         toast({
+            title: "Erreur",
+            description: "Impossible de créer le journal de session.",
+            variant: "destructive"
+        });
+        return;
+    }
+
+    const stationRef = doc(firestore, "stations", station.id);
+    updateDocumentNonBlocking(stationRef, {
+        status: 'in use',
+        currentClientId: anonymousClientId, // Use a unique anonymous ID
+        sessionStartTime: startTime,
+        currentUsageLogId: usageLogRef.id,
+    });
+
+    toast({
+        title: "Poste Assigné",
+        description: `Un client de passage a été assigné au poste ${station.id}.`
     });
 };
 
@@ -285,64 +332,34 @@ function AssignClientDialog({ station, clients }: { station: Station; clients: C
     )
 }
 
-function ManualAssignClientDialog({ station, clients }: { station: Station; clients: Client[] | null }) {
-    const [isOpen, setIsOpen] = useState(false);
-    const [selectedClientId, setSelectedClientId] = useState<string>('');
+function ManualAssignClientDialog({ station }: { station: Station; }) {
     const firestore = useFirestore();
     const { toast } = useToast();
-
-    const availableClients = useMemo(() => {
-        return clients?.filter(c => !c.currentStationId);
-    }, [clients]);
     
     const onManualAssign = () => {
-        if (!selectedClientId) {
-            toast({ variant: 'destructive', title: 'Aucun client sélectionné' });
-            return;
-        }
-        const clientToAssign = clients?.find(c => c.id === selectedClientId);
-        if (clientToAssign) {
-            handleAssignStation(clientToAssign, station, firestore, toast);
-            setIsOpen(false);
-            setSelectedClientId('');
-        }
+        handleAssignAnonymousStation(station, firestore, toast);
     }
     
     return (
-        <Dialog open={isOpen} onOpenChange={setIsOpen}>
-            <DialogTrigger asChild>
+         <AlertDialog>
+            <AlertDialogTrigger asChild>
                  <Button variant="outline" size="sm" className="flex-1">
-                    <Users className="mr-2 h-4 w-4" /> Manuel
+                    <UserX className="mr-2 h-4 w-4" /> Manuel
                 </Button>
-            </DialogTrigger>
-            <DialogContent>
-                <DialogHeader>
-                    <DialogTitle>Assigner manuellement à {station.id}</DialogTitle>
-                    <DialogDescription>
-                        Sélectionnez un client disponible dans la liste.
-                    </DialogDescription>
-                </DialogHeader>
-                 <div className="py-4">
-                    <Label htmlFor="client-select">Client</Label>
-                    <Select value={selectedClientId} onValueChange={setSelectedClientId}>
-                        <SelectTrigger id="client-select">
-                            <SelectValue placeholder="Sélectionnez un client..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {availableClients?.map(client => (
-                                <SelectItem key={client.id} value={client.id}>{client.name}</SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                 </div>
-                 <DialogFooter>
-                    <Button variant="outline" onClick={() => setIsOpen(false)}>Annuler</Button>
-                    <Button onClick={onManualAssign} disabled={!selectedClientId}>
-                        Assigner le poste
-                    </Button>
-                 </DialogFooter>
-            </DialogContent>
-        </Dialog>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle>Assigner un Client de Passage ?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                       Cette action va démarrer une session pour un client non enregistré sur le poste <strong>{station.id}</strong>. Le temps sera compté et le paiement sera calculé à la fin.
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogCancel>Annuler</AlertDialogCancel>
+                    <AlertDialogAction onClick={onManualAssign}>Confirmer et Assigner</AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
     )
 }
 
@@ -551,20 +568,24 @@ function calculatePrice(stationType: Station['type'], durationInMinutes: number,
 }
 
 
-function ReleaseStationDialog({ station, client, allClients }: { station: Station, client?: Client, allClients: Client[] | null }) {
+function ReleaseStationDialog({ station, client, allClients }: { station: Station, client?: Client | null, allClients: Client[] | null }) {
     const [isOpen, setIsOpen] = useState(false);
     const [useBonus, setUseBonus] = useState(false);
     const firestore = useFirestore();
     const { toast } = useToast();
     const { t } = useTranslation();
 
-    if (!station.sessionStartTime || !client) {
+    if (!station.sessionStartTime) {
         return (
              <Button variant="destructive" size="sm" className="mt-2 w-full" disabled>
                 <LogOut className="mr-2 h-4 w-4"/> {t('releaseStation')}
             </Button>
         )
     }
+
+    const isAnonymous = station.currentClientId?.startsWith('anonymous_');
+    const clientName = isAnonymous ? "Client de Passage" : client?.name;
+    const clientSubscription = isAnonymous ? "Aucun" : client?.subscriptionTier;
 
     const startTime = new Date(station.sessionStartTime);
     const durationInMinutes = differenceInMinutes(new Date(), startTime);
@@ -574,13 +595,13 @@ function ReleaseStationDialog({ station, client, allClients }: { station: Statio
     const durationString = `${hours}h ${minutes}m`;
     const totalCost = calculatePrice(station.type, durationInMinutes, startTime);
 
-    const clientBonusHours = client.bonusHours || 0;
+    const clientBonusHours = client?.bonusHours || 0;
     
     let bonusHoursToUse = 0;
     let remainingCost = totalCost;
     let remainingBonusHours = clientBonusHours;
 
-    if (useBonus) {
+    if (useBonus && !isAnonymous) {
         bonusHoursToUse = Math.min(clientBonusHours, durationInHours);
         const costCoveredByBonus = calculatePrice(station.type, bonusHoursToUse * 60, startTime);
         remainingCost = Math.max(0, totalCost - costCoveredByBonus);
@@ -602,8 +623,8 @@ function ReleaseStationDialog({ station, client, allClients }: { station: Statio
         const stationRef = doc(firestore, "stations", station.id);
         updateDocumentNonBlocking(stationRef, { status: 'available', currentClientId: null, sessionStartTime: null, currentUsageLogId: null });
 
-        // 3. Update the Client
-        if(station.currentClientId) {
+        // 3. Update the Client (if not anonymous)
+        if(station.currentClientId && !isAnonymous && client) {
             const clientRef = doc(firestore, "clients", station.currentClientId);
             updateDocumentNonBlocking(clientRef, { 
                 currentStationId: null,
@@ -634,7 +655,7 @@ function ReleaseStationDialog({ station, client, allClients }: { station: Statio
         setIsOpen(false);
     }
     
-    const bonusHours = client.bonusHours || 0;
+    const bonusHours = client?.bonusHours || 0;
     const bonusHoursDisplay = Math.floor(bonusHours);
     const bonusMinutesDisplay = Math.round((bonusHours - bonusHoursDisplay) * 60);
 
@@ -647,22 +668,24 @@ function ReleaseStationDialog({ station, client, allClients }: { station: Statio
             </DialogTrigger>
             <DialogContent>
                 <DialogHeader>
-                    <DialogTitle>Finaliser la session de {client.name}</DialogTitle>
+                    <DialogTitle>Finaliser la session de {clientName}</DialogTitle>
                     <DialogDescription>
                         Vérifiez les détails de la session et confirmez le paiement.
                     </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4 py-4">
                      <div className="flex items-center gap-4 p-3 rounded-lg bg-muted/50 border">
-                        <User className="h-10 w-10 text-muted-foreground" />
+                        {isAnonymous ? <UserX className="h-10 w-10 text-muted-foreground" /> : <User className="h-10 w-10 text-muted-foreground" />}
                         <div>
-                            <p className="font-semibold">{client.name}</p>
+                            <p className="font-semibold">{clientName}</p>
                             <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                                <span>{client.subscriptionTier}</span>
-                                <div className="flex items-center gap-1">
-                                    <Star className="h-4 w-4 text-yellow-400" />
-                                    <span>{bonusHoursDisplay}h {bonusMinutesDisplay}m bonus</span>
-                                </div>
+                                <span>{clientSubscription}</span>
+                                {!isAnonymous && (
+                                    <div className="flex items-center gap-1">
+                                        <Star className="h-4 w-4 text-yellow-400" />
+                                        <span>{bonusHoursDisplay}h {bonusMinutesDisplay}m bonus</span>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -677,36 +700,40 @@ function ReleaseStationDialog({ station, client, allClients }: { station: Statio
                         </div>
                     </div>
                     
-                    <Separator />
+                    {!isAnonymous && <Separator />}
 
-                    <div className="space-y-4">
-                        <div className="flex items-center justify-between p-3 rounded-lg border">
-                           <div>
-                             <Label htmlFor="use-bonus" className="font-medium">Utiliser le solde bonus</Label>
-                             <p className="text-xs text-muted-foreground">Appliquer les heures bonus pour réduire le coût.</p>
-                           </div>
-                           <Switch id="use-bonus" checked={useBonus} onCheckedChange={setUseBonus} disabled={clientBonusHours <= 0} />
-                        </div>
-
-                         {useBonus && (
-                            <div className="text-sm text-center text-muted-foreground">
-                                <p>{bonusHoursToUse.toFixed(2)}h de bonus seront utilisées.</p>
-                                <p>Nouveau solde bonus : {remainingBonusHours.toFixed(2)}h</p>
+                    {!isAnonymous && (
+                        <div className="space-y-4">
+                            <div className="flex items-center justify-between p-3 rounded-lg border">
+                            <div>
+                                <Label htmlFor="use-bonus" className="font-medium">Utiliser le solde bonus</Label>
+                                <p className="text-xs text-muted-foreground">Appliquer les heures bonus pour réduire le coût.</p>
                             </div>
-                        )}
+                            <Switch id="use-bonus" checked={useBonus} onCheckedChange={setUseBonus} disabled={clientBonusHours <= 0} />
+                            </div>
 
-                        <div className="p-4 bg-primary/10 rounded-lg text-center">
-                            <p className="text-sm text-primary">Montant final à payer</p>
-                            <p className="text-3xl font-bold text-primary">{formatCurrency(remainingCost, 'MAD')}</p>
+                            {useBonus && (
+                                <div className="text-sm text-center text-muted-foreground">
+                                    <p>{bonusHoursToUse.toFixed(2)}h de bonus seront utilisées.</p>
+                                    <p>Nouveau solde bonus : {remainingBonusHours.toFixed(2)}h</p>
+                                </div>
+                            )}
                         </div>
+                    )}
+
+                    <div className="p-4 bg-primary/10 rounded-lg text-center">
+                        <p className="text-sm text-primary">Montant final à payer</p>
+                        <p className="text-3xl font-bold text-primary">{formatCurrency(remainingCost, 'MAD')}</p>
                     </div>
                      <div className="flex flex-col gap-2 pt-4">
-                        <BonusPointsDialog
-                            clients={allClients}
-                            initialClient={client}
-                            stationType={station.type}
-                            trigger={<Button variant="outline" className="w-full"><Gift className="mr-2 h-4 w-4"/> Attribuer un bonus</Button>}
-                        />
+                        {!isAnonymous && client && (
+                            <BonusPointsDialog
+                                clients={allClients}
+                                initialClient={client}
+                                stationType={station.type}
+                                trigger={<Button variant="outline" className="w-full"><Gift className="mr-2 h-4 w-4"/> Attribuer un bonus</Button>}
+                            />
+                        )}
                          <Button onClick={handleConfirmRelease} className="w-full">
                             <CheckCircle className="mr-2 h-4 w-4"/> Confirmer et Libérer
                         </Button>
@@ -720,25 +747,32 @@ function ReleaseStationDialog({ station, client, allClients }: { station: Statio
 
 function StationCard({ station, client, isLoadingClients, allClients }: { 
     station: Station, 
-    client?: Client, 
+    client?: Client | null, 
     isLoadingClients: boolean,
     allClients: Client[] | null
 }) {
     const [timer, setTimer] = useState("0m");
     const [timeIsUp, setTimeIsUp] = useState(false);
+    const isAnonymous = station.currentClientId?.startsWith('anonymous_');
 
     useEffect(() => {
-        if (station.status === 'in use' && station.sessionStartTime && client) {
+        if (station.status === 'in use' && station.sessionStartTime) {
             const updateTimer = () => {
                 const startTime = new Date(station.sessionStartTime!);
                 const now = new Date();
-                const elapsedMinutes = differenceInMinutes(now, startTime);
-
-                const totalMinutesAvailable = ((client.subscriptionHours || 0) + (client.bonusHours || 0)) * 60;
                 
-                if (elapsedMinutes > totalMinutesAvailable) {
-                    setTimeIsUp(true);
+                // If it's a registered client, check their remaining time
+                if (client) {
+                    const elapsedMinutes = differenceInMinutes(now, startTime);
+                    const totalMinutesAvailable = ((client.subscriptionHours || 0) + (client.bonusHours || 0)) * 60;
+                    
+                    if (elapsedMinutes > totalMinutesAvailable) {
+                        setTimeIsUp(true);
+                    } else {
+                        setTimeIsUp(false);
+                    }
                 } else {
+                    // For anonymous clients, time never runs out
                     setTimeIsUp(false);
                 }
 
@@ -768,8 +802,6 @@ function StationCard({ station, client, isLoadingClients, allClients }: {
             return <Gamepad2 className="h-5 w-5" />;
         }
       };
-
-    const clientName = isLoadingClients ? "Chargement..." : (client?.name || "Client inconnu");
     
     return (
         <Card className={cn(
@@ -791,8 +823,8 @@ function StationCard({ station, client, isLoadingClients, allClients }: {
             <CardContent className="flex-1 flex flex-col justify-center items-center text-center p-4 space-y-3">
                 {station.status === 'in use' ? (
                     <>
-                        <User className="h-8 w-8 mx-auto text-muted-foreground" />
-                        <p className="font-semibold">{client ? client.name : (isLoadingClients ? "Chargement..." : "Client inconnu")}</p>
+                        {isAnonymous ? <UserX className="h-8 w-8 mx-auto text-muted-foreground" /> : <User className="h-8 w-8 mx-auto text-muted-foreground" />}
+                        <p className="font-semibold">{isAnonymous ? "Client de Passage" : (client ? client.name : "Chargement...")}</p>
                         <p className="text-2xl font-mono font-bold text-primary">{timer}</p>
                         <ReleaseStationDialog station={station} client={client} allClients={allClients}/>
                     </>
@@ -802,7 +834,7 @@ function StationCard({ station, client, isLoadingClients, allClients }: {
                         <p className="mt-2 text-muted-foreground">Disponible</p>
                         <div className="w-full flex gap-2 pt-2">
                            <AssignClientDialog station={station} clients={allClients} />
-                           <ManualAssignClientDialog station={station} clients={allClients} />
+                           <ManualAssignClientDialog station={station} />
                         </div>
                     </>
                 ) : (
@@ -844,7 +876,10 @@ export default function ScanPage() {
 
   
   const stationsWithClients = useMemo(() => stations?.map(station => {
-      const client = clients?.find(c => c.id === station.currentClientId);
+      // Find a client only if the ID is not an anonymous one
+      const client = !station.currentClientId?.startsWith('anonymous_')
+        ? clients?.find(c => c.id === station.currentClientId)
+        : null;
       return { station, client };
   }), [stations, clients]);
 
