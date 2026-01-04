@@ -63,23 +63,19 @@ type PriceActionsProps =
 
 
 function PriceForm({
-  item,
+  defaultValues,
   onSubmit,
   isEditing,
   onClose,
 }: {
-  item?: Price;
+  defaultValues: Partial<PriceFormValues>;
   onSubmit: (data: PriceFormValues) => void;
   isEditing: boolean;
   onClose: () => void;
 }) {
   const form = useForm<PriceFormValues>({
     resolver: zodResolver(priceSchema),
-    defaultValues: item || {
-      stationType: 'PC',
-      pricePerHourWeekday: 0,
-      pricePerHourWeekend: 0,
-    },
+    defaultValues: defaultValues
   });
 
   return (
@@ -182,7 +178,7 @@ function EditPriceDialog({ item }: { item: Price }) {
                 <DialogHeader>
                     <DialogTitle>Modifier le tarif</DialogTitle>
                 </DialogHeader>
-                <PriceForm item={item} onSubmit={handlePriceSubmit} isEditing={true} onClose={() => setIsOpen(false)} />
+                <PriceForm defaultValues={item} onSubmit={handlePriceSubmit} isEditing={true} onClose={() => setIsOpen(false)} />
             </DialogContent>
         </Dialog>
     );
@@ -234,7 +230,12 @@ export function PriceActions({ mode, item }: PriceActionsProps) {
               Remplissez les informations ci-dessous. Si un tarif pour ce type de poste existe déjà, il sera mis à jour.
             </DialogDescription>
           </DialogHeader>
-          <PriceForm onSubmit={handlePriceSubmit} isEditing={false} onClose={() => setDialogOpen(false)} />
+          <PriceForm 
+            defaultValues={{ stationType: 'PC', pricePerHourWeekday: 0, pricePerHourWeekend: 0 }} 
+            onSubmit={handlePriceSubmit} 
+            isEditing={false} 
+            onClose={() => setDialogOpen(false)} 
+          />
         </DialogContent>
       </Dialog>
     );
