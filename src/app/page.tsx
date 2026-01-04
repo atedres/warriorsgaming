@@ -315,8 +315,8 @@ export default function Home() {
       <main className="flex-1">
         <section className="relative w-full py-20 md:py-32 lg:py-40">
           <Image
-            src="https://picsum.photos/seed/gaming-setup/1920/1080"
-            data-ai-hint="gaming setup"
+            src="https://picsum.photos/seed/gamer-room/1920/1080"
+            data-ai-hint="gamer room"
             alt="Hero background"
             fill
             className="object-cover -z-10"
