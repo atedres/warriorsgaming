@@ -1062,6 +1062,7 @@ function StationCard({ station, client, isLoadingClients, allClients }: {
     isLoadingClients: boolean,
     allClients: Client[] | null
 }) {
+    const { t } = useTranslation();
     const [timeIsUp, setTimeIsUp] = useState(false);
     const isAnonymous = station.currentClientId?.startsWith('anonymous_');
 
@@ -1122,7 +1123,7 @@ function StationCard({ station, client, isLoadingClients, allClients }: {
                         station.status === 'available' && "bg-green-500",
                         station.status === 'in use' && "bg-orange-500",
                         station.status === 'maintenance' && "bg-red-500",
-                    )}>{station.status}</Badge>
+                    )}>{t(`status${station.status.charAt(0).toUpperCase() + station.status.slice(1)}` as any)}</Badge>
                 </div>
             </CardHeader>
             <CardContent className="flex-1 flex flex-col justify-between items-center text-center p-4 space-y-3">
@@ -1139,7 +1140,7 @@ function StationCard({ station, client, isLoadingClients, allClients }: {
                     <>
                         <div className="flex flex-1 flex-col items-center justify-center text-muted-foreground">
                             <MonitorPlay className="h-10 w-10"/>
-                            <p className="mt-2">Disponible</p>
+                            <p className="mt-2">{t('statusAvailable')}</p>
                         </div>
                         <div className="w-full flex gap-2 pt-2">
                            <AssignClientDialog station={station} clients={allClients} />
@@ -1149,7 +1150,7 @@ function StationCard({ station, client, isLoadingClients, allClients }: {
                 ) : (
                      <div className="flex flex-1 flex-col items-center justify-center text-muted-foreground">
                         <VideoOff className="h-10 w-10"/>
-                        <p className="mt-2">Maintenance</p>
+                        <p className="mt-2">{t('statusMaintenance')}</p>
                      </div>
                 )}
             </CardContent>
@@ -1161,6 +1162,7 @@ function StationCard({ station, client, isLoadingClients, allClients }: {
 export default function ScanPage() {
   const { t } = useTranslation();
   const [filter, setFilter] = useState('All');
+  const [showOnlyAvailable, setShowOnlyAvailable] = useState(false);
   
   const firestore = useFirestore();
 
@@ -1201,9 +1203,16 @@ export default function ScanPage() {
     'Simulator',
   ];
 
-  const filteredStations = useMemo(() => stationsWithClients?.filter(
-      ({ station }) => filter === 'All' || station.type === filter
-    ), [stationsWithClients, filter]);
+  const filteredStations = useMemo(() => {
+    let results = stationsWithClients;
+    if (showOnlyAvailable) {
+      results = results?.filter(({ station }) => station.status === 'available');
+    }
+    if (filter !== 'All') {
+      results = results?.filter(({ station }) => station.type === filter);
+    }
+    return results;
+  }, [stationsWithClients, filter, showOnlyAvailable]);
 
 
   return (
@@ -1230,17 +1239,27 @@ export default function ScanPage() {
           <CardHeader>
               <CardTitle className="font-headline">Vue d'ensemble des Postes</CardTitle>
               <CardDescription>Suivi en temps réel de l'état de toutes les stations.</CardDescription>
-              <div className="flex flex-wrap items-center justify-start gap-2 pt-4">
-                {stationTypes.map((type) => (
-                  <Button
-                    key={type}
-                    variant={filter === type ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => setFilter(type)}
-                  >
-                    {type}
-                  </Button>
-                ))}
+              <div className="flex flex-wrap items-center justify-start gap-4 pt-4">
+                <div className="flex items-center gap-2 flex-wrap">
+                    {stationTypes.map((type) => (
+                      <Button
+                        key={type}
+                        variant={filter === type ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setFilter(type)}
+                      >
+                        {type}
+                      </Button>
+                    ))}
+                </div>
+                 <div className="flex items-center space-x-2 border rounded-md p-2">
+                    <Switch 
+                        id="available-only" 
+                        checked={showOnlyAvailable}
+                        onCheckedChange={setShowOnlyAvailable}
+                    />
+                    <Label htmlFor="available-only">{t('availableOnly')}</Label>
+                </div>
               </div>
           </CardHeader>
           <CardContent className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
@@ -1261,8 +1280,16 @@ export default function ScanPage() {
                     allClients={clients}
                   />
               ))}
+               {!isLoadingStations && filteredStations?.length === 0 && (
+                 <div className="col-span-full text-center py-12 text-muted-foreground">
+                    <p>{t('noStationsFound')}</p>
+                 </div>
+                )}
           </CardContent>
       </Card>
     </>
   );
 }
+
+
+    
