@@ -1,7 +1,7 @@
 
 'use client';
 import Image from 'next/image';
-import { Gamepad2, Headset, Monitor, Instagram, MapPin, Phone, LogIn, Car, Tag, Star, Tv } from 'lucide-react';
+import { Gamepad2, Headset, Monitor, Instagram, MapPin, Phone, LogIn, Car, Tag, Star, Tv, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -23,6 +23,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious, type CarouselApi } from '@/components/ui/carousel';
 import { Switch } from '@/components/ui/switch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 function ReservationDialog({ 
     station, 
@@ -254,6 +255,12 @@ function ReservationDialog({
                             Aucun créneau disponible pour aujourd'hui.
                         </div>
                     )}
+                    <Alert>
+                        <AlertTriangle className="h-4 w-4" />
+                        <AlertDescription className="text-xs">
+                            Veuillez vous présenter au moins 5 minutes avant votre heure de réservation. En cas de retard, votre réservation pourra être annulée.
+                        </AlertDescription>
+                    </Alert>
                 </div>
                 <DialogFooter>
                     <Button variant="outline" onClick={() => setIsOpen(false)}>Annuler</Button>

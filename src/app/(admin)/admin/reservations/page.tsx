@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -19,6 +20,7 @@ import type { Reservation as ReservationType } from '@/app/lib/data';
 
 type EnrichedReservation = ReservationType & {
   clientName?: string;
+  clientPhone?: string;
   clientDocId: string; // The parent document ID (client UID)
   reservationId: string;
 };
@@ -58,17 +60,19 @@ export default function ReservationsPage() {
     
     // Set up the real-time listener
     const unsubscribe = onSnapshot(reservationsQuery, (querySnapshot) => {
-        const clientsMap = new Map(clients?.map(c => [c.id, c.name]));
+        const clientsMap = new Map(clients?.map(c => [c.id, c]));
 
         const allReservations: EnrichedReservation[] = querySnapshot.docs.map(doc => {
             const data = doc.data() as ReservationType;
             const parentClientId = doc.ref.parent.parent!.id; 
+            const clientData = clientsMap.get(parentClientId);
             
             return {
               ...data,
               reservationId: doc.id,
               clientDocId: parentClientId,
-              clientName: clientsMap.get(parentClientId) || 'Unknown Client',
+              clientName: clientData?.name || 'Unknown Client',
+              clientPhone: clientData?.phone || 'N/A'
             };
         });
         
@@ -162,7 +166,10 @@ export default function ReservationsPage() {
               ) : reservations.length > 0 ? (
                 reservations.map((reservation) => (
                   <TableRow key={reservation.reservationId}>
-                    <TableCell className="font-medium">{reservation.clientName}</TableCell>
+                    <TableCell>
+                      <div className="font-medium">{reservation.clientName}</div>
+                      <div className="text-sm text-muted-foreground">{reservation.clientPhone}</div>
+                    </TableCell>
                     <TableCell>{reservation.stationId}</TableCell>
                     <TableCell>
                         <div className="flex flex-col">
