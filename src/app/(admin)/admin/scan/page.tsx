@@ -47,7 +47,7 @@ import {
 
 import { useTranslation } from "@/hooks/use-translation";
 import { cn, formatCurrency } from "@/lib/utils";
-import { formatDistanceToNowStrict, differenceInMinutes, addMinutes } from 'date-fns';
+import { formatDistanceToNowStrict, differenceInMinutes, addMinutes, addHours } from 'date-fns';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 
@@ -168,11 +168,15 @@ const handleAssignStation = async (
     station: Station, 
     firestore: any, 
     toast: (options: any) => void,
-    durationInMinutes?: number,
+    duration?: number,
+    durationUnit?: 'minutes' | 'hours'
 ) => {
     if (!firestore) return;
     const startTime = new Date();
-    const endTime = durationInMinutes ? addMinutes(startTime, durationInMinutes) : null;
+    let endTime = null;
+    if (duration && durationUnit) {
+        endTime = durationUnit === 'minutes' ? addMinutes(startTime, duration) : addHours(startTime, duration);
+    }
 
     const usageLogRef = await addDocumentNonBlocking(collection(firestore, "usageLogs"), {
         clientId: scannedClient.id,
@@ -225,11 +229,15 @@ const handleAssignAnonymousStation = async (
     station: Station, 
     firestore: any, 
     toast: (options: any) => void,
-    durationInMinutes?: number
+    duration?: number,
+    durationUnit?: 'minutes' | 'hours'
 ) => {
     if (!firestore) return;
     const startTime = new Date();
-    const endTime = durationInMinutes ? addMinutes(startTime, durationInMinutes) : null;
+    let endTime = null;
+    if (duration && durationUnit) {
+        endTime = durationUnit === 'minutes' ? addMinutes(startTime, duration) : addHours(startTime, duration);
+    }
     const anonymousClientId = `anonymous_${Date.now()}`;
 
     const usageLogRef = await addDocumentNonBlocking(collection(firestore, "usageLogs"), {
@@ -267,7 +275,9 @@ const handleAssignAnonymousStation = async (
 function AssignClientDialog({ station, clients }: { station: Station; clients: Client[] | null }) {
     const [isOpen, setIsOpen] = useState(false);
     const [showDuration, setShowDuration] = useState(false);
-    const [duration, setDuration] = useState('');
+    const [duration, setDuration] = useState<number | string>('');
+    const [durationUnit, setDurationUnit] = useState<'minutes' | 'hours'>('minutes');
+    const [isFree, setIsFree] = useState(true);
     const [scannedData, setScannedData] = useState<string | null>(null);
 
     const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
@@ -278,6 +288,8 @@ function AssignClientDialog({ station, clients }: { station: Station; clients: C
         if (!isOpen) {
             setShowDuration(false);
             setDuration('');
+            setDurationUnit('minutes');
+            setIsFree(true);
             setScannedData(null);
         }
     }, [isOpen]);
@@ -302,7 +314,14 @@ function AssignClientDialog({ station, clients }: { station: Station; clients: C
                             description: `${foundClient.name} joue actuellement sur le poste ${foundClient.currentStationId}.`,
                         });
                     } else {
-                        handleAssignStation(foundClient, station, firestore, toast, duration ? parseInt(duration) : undefined);
+                        handleAssignStation(
+                            foundClient, 
+                            station, 
+                            firestore, 
+                            toast, 
+                            isFree ? undefined : Number(duration),
+                            isFree ? undefined : durationUnit
+                        );
                     }
                 } else {
                     toast({
@@ -359,11 +378,17 @@ function AssignClientDialog({ station, clients }: { station: Station; clients: C
                          <DialogHeader>
                             <DialogTitle>Définir une durée de session</DialogTitle>
                             <DialogDescription>
-                                Vous pouvez définir une durée limitée pour la session de jeu. Laissez vide pour une durée illimitée.
+                                Vous pouvez définir une durée limitée pour la session de jeu. Choisissez "libre" pour une durée illimitée.
                             </DialogDescription>
                         </DialogHeader>
                         <div className="grid gap-4 py-4">
-                            <div className="grid grid-cols-4 items-center gap-4">
+                           <div className="flex items-center space-x-2">
+                                <Switch id="is-free-session" checked={isFree} onCheckedChange={setIsFree} />
+                                <Label htmlFor="is-free-session">Session libre (illimitée)</Label>
+                            </div>
+
+                           {!isFree && (
+                             <div className="grid grid-cols-4 items-center gap-4">
                                 <Label htmlFor="duration" className="text-right">
                                     Durée
                                 </Label>
@@ -373,10 +398,19 @@ function AssignClientDialog({ station, clients }: { station: Station; clients: C
                                     value={duration}
                                     onChange={(e) => setDuration(e.target.value)}
                                     className="col-span-2"
-                                    placeholder="Ex: 60"
+                                    placeholder="Ex: 1"
                                 />
-                                <span className="col-span-1 text-muted-foreground">minutes</span>
+                                <Select value={durationUnit} onValueChange={(value: 'minutes' | 'hours') => setDurationUnit(value)}>
+                                    <SelectTrigger className="col-span-1">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="minutes">Minutes</SelectItem>
+                                        <SelectItem value="hours">Heures</SelectItem>
+                                    </SelectContent>
+                                </Select>
                             </div>
+                           )}
                         </div>
                         <DialogFooter>
                             <Button variant="ghost" onClick={() => setShowDuration(false)}>Retour au scan</Button>
@@ -394,18 +428,28 @@ function AssignClientDialog({ station, clients }: { station: Station; clients: C
 
 function ManualAssignClientDialog({ station }: { station: Station; }) {
     const [isOpen, setIsOpen] = useState(false);
-    const [duration, setDuration] = useState('');
+    const [duration, setDuration] = useState<number | string>('');
+    const [durationUnit, setDurationUnit] = useState<'minutes' | 'hours'>('minutes');
+    const [isFree, setIsFree] = useState(true);
     const firestore = useFirestore();
     const { toast } = useToast();
     
     useEffect(() => {
         if (!isOpen) {
             setDuration('');
+            setDurationUnit('minutes');
+            setIsFree(true);
         }
     }, [isOpen]);
 
     const onManualAssign = () => {
-        handleAssignAnonymousStation(station, firestore, toast, duration ? parseInt(duration) : undefined);
+        handleAssignAnonymousStation(
+            station, 
+            firestore, 
+            toast, 
+            isFree ? undefined : Number(duration),
+            isFree ? undefined : durationUnit
+        );
         setIsOpen(false);
     }
     
@@ -421,24 +465,39 @@ function ManualAssignClientDialog({ station }: { station: Station; }) {
                     <DialogTitle>Assigner un Client de Passage</DialogTitle>
                     <DialogDescription>
                        Démarrez une session pour un client non enregistré sur le poste <strong>{station.id}</strong>.
-                       Vous pouvez définir une limite de temps.
+                       Vous pouvez définir une limite de temps ou laisser la session libre.
                     </DialogDescription>
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
-                    <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="duration-manual" className="text-right">
-                            Durée
-                        </Label>
-                        <Input
-                            id="duration-manual"
-                            type="number"
-                            value={duration}
-                            onChange={(e) => setDuration(e.target.value)}
-                            className="col-span-2"
-                            placeholder="Ex: 60 (optionnel)"
-                        />
-                        <span className="col-span-1 text-muted-foreground">minutes</span>
+                    <div className="flex items-center space-x-2">
+                        <Switch id="is-free-session-manual" checked={isFree} onCheckedChange={setIsFree} />
+                        <Label htmlFor="is-free-session-manual">Session libre (illimitée)</Label>
                     </div>
+
+                    {!isFree && (
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="duration-manual" className="text-right">
+                                Durée
+                            </Label>
+                            <Input
+                                id="duration-manual"
+                                type="number"
+                                value={duration}
+                                onChange={(e) => setDuration(e.target.value)}
+                                className="col-span-2"
+                                placeholder="Ex: 1"
+                            />
+                            <Select value={durationUnit} onValueChange={(value: 'minutes' | 'hours') => setDurationUnit(value)}>
+                                <SelectTrigger className="col-span-1">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="minutes">Minutes</SelectItem>
+                                    <SelectItem value="hours">Heures</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    )}
                 </div>
                 <DialogFooter>
                     <Button variant="outline" onClick={() => setIsOpen(false)}>Annuler</Button>
@@ -453,7 +512,7 @@ function BonusPointsDialog({ clients, trigger, initialClient, stationType }: { c
     const [isOpen, setIsOpen] = useState(false);
     const [selectedClient, setSelectedClient] = useState<Client | null>(null);
     const [bonusValue, setBonusValue] = useState<number | string>("");
-    const [bonusUnit, setBonusUnit] = useState<'hours' | 'minutes'>('minutes');
+    const [bonusUnit, setBonusUnit] = useState<'minutes' | 'hours'>('minutes');
     const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
     const firestore = useFirestore();
     const { toast } = useToast();
@@ -864,8 +923,13 @@ function StationCard({ station, client, isLoadingClients, allClients }: {
             updateTimer();
             const intervalId = setInterval(updateTimer, 10000); // update every 10s is enough
             return () => clearInterval(intervalId);
+        } else {
+            // If station is not in use, ensure timeIsUp is false.
+            if (timeIsUp) {
+                setTimeIsUp(false);
+            }
         }
-    }, [station.status, station.sessionStartTime, station.sessionEndTime]);
+    }, [station.status, station.sessionStartTime, station.sessionEndTime, timeIsUp]);
 
 
     const getIcon = (type: Station['type']) => {
@@ -888,7 +952,7 @@ function StationCard({ station, client, isLoadingClients, allClients }: {
     return (
         <Card className={cn(
             "flex flex-col transition-all duration-300",
-            timeIsUp && "animate-pulse border-red-500 border-2"
+            timeIsUp && station.status === 'in use' && "animate-pulse border-red-500 border-2"
         )}>
              <CardHeader className="flex flex-row items-start justify-between pb-2">
                 <CardTitle className="font-headline text-lg font-medium flex items-center gap-2">
@@ -1039,3 +1103,5 @@ export default function ScanPage() {
     </>
   );
 }
+
+    
