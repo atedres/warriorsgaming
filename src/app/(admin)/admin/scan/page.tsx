@@ -151,6 +151,65 @@ function QrScanner({ onScan, onPermissionChange, onDevices, onCameraChange, curr
     );
 }
 
+const handleAssignStation = async (
+    scannedClient: Client, 
+    station: Station, 
+    firestore: any, // You should use the actual Firestore type
+    toast: (options: any) => void
+) => {
+    if (!firestore) return;
+    const startTime = new Date().toISOString();
+
+    // 1. Create the UsageLog first
+    const usageLogRef = await addDocumentNonBlocking(collection(firestore, "usageLogs"), {
+        clientId: scannedClient.id,
+        stationId: station.id,
+        startTime: startTime,
+        endTime: null,
+    });
+
+    if (!usageLogRef) {
+         toast({
+            title: "Erreur",
+            description: "Impossible de créer le journal de session.",
+            variant: "destructive"
+        });
+        return;
+    }
+
+    // 2. Update Station with client and usage log info
+    const stationRef = doc(firestore, "stations", station.id);
+    updateDocumentNonBlocking(stationRef, {
+        status: 'in use',
+        currentClientId: scannedClient.id,
+        sessionStartTime: startTime,
+        currentUsageLogId: usageLogRef.id, // Store the new usage log ID
+    });
+
+    // 3. Update Client
+    const clientRef = doc(firestore, "clients", scannedClient.id);
+    updateDocumentNonBlocking(clientRef, { currentStationId: station.id });
+    
+    // 4. Update Client History
+    const historyRef = collection(firestore, 'clients', scannedClient.id, 'history');
+    addDocumentNonBlocking(historyRef, {
+        timestamp: startTime,
+        type: 'check-in',
+        description: {
+            key: 'history_checkIn',
+            metadata: {
+                stationId: station.id,
+                stationType: station.type,
+            }
+        },
+    });
+
+    toast({
+        title: "Poste Assigné",
+        description: `${scannedClient.name} a été assigné au poste ${station.id}.`
+    });
+};
+
 
 function AssignClientDialog({ station, clients }: { station: Station; clients: Client[] | null }) {
     const [isOpen, setIsOpen] = useState(false);
@@ -158,62 +217,8 @@ function AssignClientDialog({ station, clients }: { station: Station; clients: C
     const firestore = useFirestore();
     const { toast } = useToast();
 
-    const handleAssignStation = async (scannedClient: Client) => {
-        if (!firestore) return;
-        const startTime = new Date().toISOString();
-
-        // 1. Create the UsageLog first
-        const usageLogRef = await addDocumentNonBlocking(collection(firestore, "usageLogs"), {
-            clientId: scannedClient.id,
-            stationId: station.id,
-            startTime: startTime,
-            endTime: null,
-        });
-
-        if (!usageLogRef) {
-             toast({
-                title: "Erreur",
-                description: "Impossible de créer le journal de session.",
-                variant: "destructive"
-            });
-            return;
-        }
-
-        // 2. Update Station with client and usage log info
-        const stationRef = doc(firestore, "stations", station.id);
-        updateDocumentNonBlocking(stationRef, {
-            status: 'in use',
-            currentClientId: scannedClient.id,
-            sessionStartTime: startTime,
-            currentUsageLogId: usageLogRef.id, // Store the new usage log ID
-        });
-
-        // 3. Update Client
-        const clientRef = doc(firestore, "clients", scannedClient.id);
-        updateDocumentNonBlocking(clientRef, { currentStationId: station.id });
-        
-        // 4. Update Client History
-        const historyRef = collection(firestore, 'clients', scannedClient.id, 'history');
-        addDocumentNonBlocking(historyRef, {
-            timestamp: startTime,
-            type: 'check-in',
-            description: {
-                key: 'history_checkIn',
-                metadata: {
-                    stationId: station.id,
-                    stationType: station.type,
-                }
-            },
-        });
-
-        toast({
-            title: "Poste Assigné",
-            description: `${scannedClient.name} a été assigné au poste ${station.id}.`
-        });
-        setIsOpen(false);
-    }
-
     const onScan = (data: string) => {
+        setIsOpen(false);
         try {
             const parsed = JSON.parse(data);
             if (parsed.clientId) {
@@ -225,9 +230,8 @@ function AssignClientDialog({ station, clients }: { station: Station; clients: C
                             title: "Client déjà en session",
                             description: `${foundClient.name} joue actuellement sur le poste ${foundClient.currentStationId}.`,
                         });
-                        setIsOpen(false);
                     } else {
-                        handleAssignStation(foundClient);
+                        handleAssignStation(foundClient, station, firestore, toast);
                     }
                 } else {
                     toast({
@@ -249,8 +253,8 @@ function AssignClientDialog({ station, clients }: { station: Station; clients: C
     return (
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
             <DialogTrigger asChild>
-                <Button variant="outline" size="sm" className="w-full">
-                    <QrCode className="mr-2 h-4 w-4" /> Assigner un client
+                <Button variant="outline" size="sm" className="flex-1">
+                    <QrCode className="mr-2 h-4 w-4" /> Scanner
                 </Button>
             </DialogTrigger>
             <DialogContent>
@@ -276,6 +280,67 @@ function AssignClientDialog({ station, clients }: { station: Station; clients: C
                         </AlertDescription>
                     </Alert>
                 )}
+            </DialogContent>
+        </Dialog>
+    )
+}
+
+function ManualAssignClientDialog({ station, clients }: { station: Station; clients: Client[] | null }) {
+    const [isOpen, setIsOpen] = useState(false);
+    const [selectedClientId, setSelectedClientId] = useState<string>('');
+    const firestore = useFirestore();
+    const { toast } = useToast();
+
+    const availableClients = useMemo(() => {
+        return clients?.filter(c => !c.currentStationId);
+    }, [clients]);
+    
+    const onManualAssign = () => {
+        if (!selectedClientId) {
+            toast({ variant: 'destructive', title: 'Aucun client sélectionné' });
+            return;
+        }
+        const clientToAssign = clients?.find(c => c.id === selectedClientId);
+        if (clientToAssign) {
+            handleAssignStation(clientToAssign, station, firestore, toast);
+            setIsOpen(false);
+            setSelectedClientId('');
+        }
+    }
+    
+    return (
+        <Dialog open={isOpen} onOpenChange={setIsOpen}>
+            <DialogTrigger asChild>
+                 <Button variant="outline" size="sm" className="flex-1">
+                    <Users className="mr-2 h-4 w-4" /> Manuel
+                </Button>
+            </DialogTrigger>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Assigner manuellement à {station.id}</DialogTitle>
+                    <DialogDescription>
+                        Sélectionnez un client disponible dans la liste.
+                    </DialogDescription>
+                </DialogHeader>
+                 <div className="py-4">
+                    <Label htmlFor="client-select">Client</Label>
+                    <Select value={selectedClientId} onValueChange={setSelectedClientId}>
+                        <SelectTrigger id="client-select">
+                            <SelectValue placeholder="Sélectionnez un client..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {availableClients?.map(client => (
+                                <SelectItem key={client.id} value={client.id}>{client.name}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                 </div>
+                 <DialogFooter>
+                    <Button variant="outline" onClick={() => setIsOpen(false)}>Annuler</Button>
+                    <Button onClick={onManualAssign} disabled={!selectedClientId}>
+                        Assigner le poste
+                    </Button>
+                 </DialogFooter>
             </DialogContent>
         </Dialog>
     )
@@ -660,18 +725,31 @@ function StationCard({ station, client, isLoadingClients, allClients }: {
     allClients: Client[] | null
 }) {
     const [timer, setTimer] = useState("0m");
+    const [timeIsUp, setTimeIsUp] = useState(false);
 
     useEffect(() => {
-        if (station.status === 'in use' && station.sessionStartTime) {
+        if (station.status === 'in use' && station.sessionStartTime && client) {
             const updateTimer = () => {
                 const startTime = new Date(station.sessionStartTime!);
+                const now = new Date();
+                const elapsedMinutes = differenceInMinutes(now, startTime);
+
+                const totalMinutesAvailable = ((client.subscriptionHours || 0) + (client.bonusHours || 0)) * 60;
+                
+                if (elapsedMinutes > totalMinutesAvailable) {
+                    setTimeIsUp(true);
+                } else {
+                    setTimeIsUp(false);
+                }
+
                 setTimer(formatDistanceToNowStrict(startTime, { roundingMethod: 'floor' }));
             };
+            
             updateTimer();
             const intervalId = setInterval(updateTimer, 10000); // update every 10s is enough
             return () => clearInterval(intervalId);
         }
-    }, [station.status, station.sessionStartTime]);
+    }, [station.status, station.sessionStartTime, client]);
 
 
     const getIcon = (type: Station['type']) => {
@@ -694,7 +772,10 @@ function StationCard({ station, client, isLoadingClients, allClients }: {
     const clientName = isLoadingClients ? "Chargement..." : (client?.name || "Client inconnu");
     
     return (
-        <Card className="flex flex-col transition-all duration-300">
+        <Card className={cn(
+            "flex flex-col transition-all duration-300",
+            timeIsUp && "animate-pulse border-red-500 border-2"
+        )}>
              <CardHeader className="flex flex-row items-start justify-between pb-2">
                 <CardTitle className="font-headline text-lg font-medium flex items-center gap-2">
                     {getIcon(station.type)}
@@ -719,7 +800,10 @@ function StationCard({ station, client, isLoadingClients, allClients }: {
                     <>
                         <MonitorPlay className="h-10 w-10 mx-auto text-muted-foreground"/>
                         <p className="mt-2 text-muted-foreground">Disponible</p>
-                        <AssignClientDialog station={station} clients={allClients} />
+                        <div className="w-full flex gap-2 pt-2">
+                           <AssignClientDialog station={station} clients={allClients} />
+                           <ManualAssignClientDialog station={station} clients={allClients} />
+                        </div>
                     </>
                 ) : (
                      <>
