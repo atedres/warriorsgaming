@@ -323,8 +323,8 @@ export default function Home() {
       <main className="flex-1">
         <section className="relative w-full py-20 md:py-32 lg:py-40">
           <Image
-            src="https://picsum.photos/seed/neon-gaming/1920/1080"
-            data-ai-hint="neon gaming"
+            src="https://picsum.photos/seed/gaming-setup/1920/1080"
+            data-ai-hint="gaming setup"
             alt="Hero background"
             fill
             className="object-cover -z-10"
@@ -511,7 +511,7 @@ export default function Home() {
                     <div className="space-y-2">
                         <h2 className="font-headline text-3xl font-bold tracking-tighter sm:text-5xl">Nos Tarifs</h2>
                         <p className="max-w-[900px] text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
-                            Des prix pour tous les gamers. Découvrez nos tarifs de jour et de soirée.
+                            Des prix pour tous les gamers. Découvrez nos tarifs par heure.
                         </p>
                     </div>
                 </div>
@@ -524,22 +524,23 @@ export default function Home() {
                             <TableHeader>
                                 <TableRow>
                                     <TableHead className="w-[200px]">Type de Poste</TableHead>
-                                    <TableHead>Durée</TableHead>
-                                    <TableHead className="text-right">Prix</TableHead>
+                                    <TableHead>Prix / Heure (Semaine)</TableHead>
+                                    <TableHead className="text-right">Prix / Heure (Week-end)</TableHead>
                                 </TableRow>
                             </TableHeader>
                              <TableBody>
-                                {prices?.sort((a,b) => a.price - b.price).map(price => (
+                                {prices?.sort((a,b) => a.pricePerHourWeekday - b.pricePerHourWeekday).map(price => (
                                      <TableRow key={price.id}>
                                         <TableCell className="font-medium flex items-center gap-2">
                                             {getIcon(price.stationType)}
                                             {price.stationType}
                                         </TableCell>
                                         <TableCell>
-                                            {price.duration}
-                                            {price.isEveningRate && <Badge variant="secondary" className="ml-2">Tarif Soir</Badge>}
+                                            {formatCurrency(price.pricePerHourWeekday)}
                                         </TableCell>
-                                        <TableCell className="text-right font-semibold">{formatCurrency(price.price)}</TableCell>
+                                        <TableCell className="text-right font-semibold">
+                                            {formatCurrency(price.pricePerHourWeekend)}
+                                        </TableCell>
                                     </TableRow>
                                 ))}
                                 {!isLoadingPrices && prices?.length === 0 && (

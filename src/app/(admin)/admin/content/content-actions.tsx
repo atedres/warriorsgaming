@@ -7,7 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { MoreHorizontal, PlusCircle } from 'lucide-react';
 import { useFirestore } from '@/firebase';
-import { doc } from 'firebase/firestore';
+import { doc, collection } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import {
   setDocumentNonBlocking,
@@ -67,9 +67,8 @@ type PromoFormValues = z.infer<typeof promoSchema>;
 const priceSchema = z.object({
   id: z.string().optional(),
   stationType: z.enum(['PC', 'PS5', 'PS5 VIP', 'VR', 'Simulator']),
-  duration: z.string().min(1, 'La durée est requise.'),
-  price: z.coerce.number().min(0, 'Le prix doit être positif.'),
-  isEveningRate: z.boolean(),
+  pricePerHourWeekday: z.coerce.number().min(0, 'Le prix doit être positif.'),
+  pricePerHourWeekend: z.coerce.number().min(0, 'Le prix doit être positif.'),
 });
 type PriceFormValues = z.infer<typeof priceSchema>;
 
@@ -181,17 +180,18 @@ function PromotionForm({
 function PriceForm({
   item,
   onSubmit,
+  isEditing,
 }: {
   item?: Price;
   onSubmit: (data: PriceFormValues) => void;
+  isEditing: boolean;
 }) {
   const form = useForm<PriceFormValues>({
     resolver: zodResolver(priceSchema),
     defaultValues: item || {
       stationType: 'PC',
-      duration: '',
-      price: 0,
-      isEveningRate: false,
+      pricePerHourWeekday: 0,
+      pricePerHourWeekend: 0,
     },
   });
 
@@ -204,7 +204,7 @@ function PriceForm({
           render={({ field }) => (
             <FormItem>
               <FormLabel>Type de Poste</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
+              <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isEditing}>
                 <FormControl>
                   <SelectTrigger>
                     <SelectValue placeholder="Sélectionnez un type" />
@@ -224,23 +224,10 @@ function PriceForm({
         />
         <FormField
           control={form.control}
-          name="duration"
+          name="pricePerHourWeekday"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Durée</FormLabel>
-              <FormControl>
-                <Input placeholder="Ex: 1 heure, 30 min..." {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="price"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Prix (MAD)</FormLabel>
+              <FormLabel>Prix par Heure (Semaine)</FormLabel>
               <FormControl>
                 <Input type="number" placeholder="Ex: 20" {...field} />
               </FormControl>
@@ -250,21 +237,14 @@ function PriceForm({
         />
         <FormField
           control={form.control}
-          name="isEveningRate"
+          name="pricePerHourWeekend"
           render={({ field }) => (
-            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
-              <div className="space-y-0.5">
-                <FormLabel>Tarif Soir</FormLabel>
-                <p className="text-xs text-muted-foreground">
-                  Cochez si ce tarif ne s'applique que le soir.
-                </p>
-              </div>
+            <FormItem>
+              <FormLabel>Prix par Heure (Week-end)</FormLabel>
               <FormControl>
-                <Switch
-                  checked={field.value}
-                  onCheckedChange={field.onChange}
-                />
+                <Input type="number" placeholder="Ex: 25" {...field} />
               </FormControl>
+              <FormMessage />
             </FormItem>
           )}
         />
@@ -285,17 +265,39 @@ export function ContentActions({ mode, type, item }: ContentActionsProps) {
   const firestore = useFirestore();
   const { toast } = useToast();
 
-  const handleSubmit = (data: PromoFormValues | PriceFormValues) => {
-    if (!firestore) return;
-    const collectionName = type === 'promotion' ? 'promotions' : 'prices';
+  const handlePromotionSubmit = (data: PromoFormValues) => {
+     if (!firestore) return;
+    const collectionName = 'promotions';
     const id = item?.id || doc(collection(firestore, collectionName)).id;
     const ref = doc(firestore, collectionName, id);
 
     setDocumentNonBlocking(ref, { ...data, id }, { merge: true });
 
     toast({
-      title: `${type === 'promotion' ? 'Promotion' : 'Tarif'} ${item ? 'mis à jour' : 'ajouté'}`,
+      title: `Promotion ${item ? 'mise à jour' : 'ajoutée'}`,
       description: `L'élément a été enregistré avec succès.`,
+    });
+    setDialogOpen(false);
+  };
+  
+  const handlePriceSubmit = (data: PriceFormValues) => {
+    if (!firestore) return;
+    const collectionName = 'prices';
+    const id = data.stationType; // Use stationType as the document ID
+    const ref = doc(firestore, collectionName, id);
+
+    const priceData: Price = {
+        id: id,
+        stationType: data.stationType,
+        pricePerHourWeekday: data.pricePerHourWeekday,
+        pricePerHourWeekend: data.pricePerHourWeekend,
+    }
+
+    setDocumentNonBlocking(ref, priceData, { merge: true });
+
+    toast({
+      title: `Tarif ${item ? 'mis à jour' : 'ajouté'}`,
+      description: `Le tarif pour ${data.stationType} a été enregistré avec succès.`,
     });
     setDialogOpen(false);
   };
@@ -320,7 +322,7 @@ export function ContentActions({ mode, type, item }: ContentActionsProps) {
           <Button size="sm" className="h-8 gap-1">
             <PlusCircle className="h-3.5 w-3.5" />
             <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-              Ajouter
+              {type === 'price' ? 'Ajouter/Modifier un tarif' : 'Ajouter'}
             </span>
           </Button>
         </DialogTrigger>
@@ -334,9 +336,9 @@ export function ContentActions({ mode, type, item }: ContentActionsProps) {
             </DialogDescription>
           </DialogHeader>
           {type === 'promotion' ? (
-            <PromotionForm onSubmit={handleSubmit} />
+            <PromotionForm onSubmit={handlePromotionSubmit} />
           ) : (
-            <PriceForm onSubmit={handleSubmit} />
+            <PriceForm onSubmit={handlePriceSubmit} isEditing={false} />
           )}
         </DialogContent>
       </Dialog>
@@ -358,9 +360,11 @@ export function ContentActions({ mode, type, item }: ContentActionsProps) {
           <DropdownMenuItem onSelect={() => setDialogOpen(true)}>
             Modifier
           </DropdownMenuItem>
-          <DropdownMenuItem onSelect={handleDelete} className="text-red-500">
-            Supprimer
-          </DropdownMenuItem>
+          {type === 'promotion' && (
+             <DropdownMenuItem onSelect={handleDelete} className="text-red-500">
+                Supprimer
+            </DropdownMenuItem>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
 
@@ -373,10 +377,10 @@ export function ContentActions({ mode, type, item }: ContentActionsProps) {
         {type === 'promotion' ? (
           <PromotionForm
             item={item as Promotion}
-            onSubmit={handleSubmit}
+            onSubmit={handlePromotionSubmit}
           />
         ) : (
-          <PriceForm item={item as Price} onSubmit={handleSubmit} />
+          <PriceForm item={item as Price} onSubmit={handlePriceSubmit} isEditing={true} />
         )}
       </DialogContent>
     </Dialog>

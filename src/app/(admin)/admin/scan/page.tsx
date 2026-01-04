@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
@@ -12,7 +13,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import type { Client, Station, UsageLog } from "@/app/lib/data";
+import type { Client, Station, UsageLog, Price } from "@/app/lib/data";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
@@ -48,7 +49,7 @@ import { Progress } from "@/components/ui/progress";
 
 import { useTranslation } from "@/hooks/use-translation";
 import { cn, formatCurrency } from "@/lib/utils";
-import { formatDistanceToNowStrict, differenceInMinutes, addMinutes, addHours, formatDuration, intervalToDuration, format, differenceInSeconds } from 'date-fns';
+import { formatDistanceToNowStrict, differenceInMinutes, addMinutes, addHours, formatDuration, intervalToDuration, format, differenceInSeconds, getDay } from 'date-fns';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 
@@ -674,54 +675,30 @@ function BonusPointsDialog({ clients, trigger, initialClient, stationType }: { c
     )
 }
 
-function calculatePrice(stationType: Station['type'], durationInMinutes: number, startTime: Date): number {
-    const startHour = startTime.getHours();
-    const isEvening = startHour >= 20;
+function calculatePrice(stationType: Station['type'], durationInMinutes: number, startTime: Date, prices: Price[]): number {
     if (durationInMinutes <= 0) return 0;
     
-    let price = 0;
-    const hours = Math.ceil(durationInMinutes / 60);
+    const priceInfo = prices.find(p => p.stationType === stationType);
+    if (!priceInfo) return 0; // Default to 0 if no price is set for this station type
 
-    switch(stationType) {
-        case 'PC':
-            price = hours * 20; // 20 DH per hour, rounded up.
-            break;
-        case 'PS5':
-            if (isEvening) { // Evening rates
-                if (durationInMinutes <= 30) price = 20;
-                else if (durationInMinutes <= 60) price = 30;
-                else if (durationInMinutes <= 120) price = 50;
-                else price = Math.ceil(durationInMinutes / 60 / 2) * 50;
-            } else { // Day rates
-                if (durationInMinutes <= 30) {
-                    price = 10;
-                } else {
-                    price = hours * 20;
-                }
-            }
-            break;
-        case 'PS5 VIP':
-        case 'VR':
-        case 'Simulator':
-            if (durationInMinutes <= 30) price = 25;
-            else if (durationInMinutes <= 60) price = 45;
-            else if (durationInMinutes <= 120) price = 75;
-            else price = Math.ceil(durationInMinutes / 60 / 2) * 75;
-            break;
-    }
+    const dayOfWeek = getDay(startTime); // Sunday = 0, Saturday = 6
+    const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+
+    const pricePerHour = isWeekend ? priceInfo.pricePerHourWeekend : priceInfo.pricePerHourWeekday;
+    const durationInHours = durationInMinutes / 60;
     
-    return price;
+    return durationInHours * pricePerHour;
 }
 
 
-function ReleaseStationDialog({ station, client, allClients }: { station: Station, client?: Client | null, allClients: Client[] | null }) {
+function ReleaseStationDialog({ station, client, allClients, prices }: { station: Station, client?: Client | null, allClients: Client[] | null, prices: Price[] | null }) {
     const [isOpen, setIsOpen] = useState(false);
     const [useBonus, setUseBonus] = useState(false);
     const firestore = useFirestore();
     const { toast } = useToast();
     const { t } = useTranslation();
 
-    if (!station.sessionStartTime) {
+    if (!station.sessionStartTime || !prices) {
         return (
              <Button variant="destructive" size="sm" className="mt-2 w-full" disabled>
                 <LogOut className="mr-2 h-4 w-4"/> {t('releaseStation')}
@@ -739,7 +716,7 @@ function ReleaseStationDialog({ station, client, allClients }: { station: Statio
     const hours = Math.floor(durationInMinutes / 60);
     const minutes = durationInMinutes % 60;
     const durationString = `${hours}h ${minutes}m`;
-    const totalCost = calculatePrice(station.type, durationInMinutes, startTime);
+    const totalCost = calculatePrice(station.type, durationInMinutes, startTime, prices);
 
     const clientBonusHours = client?.bonusHours || 0;
     
@@ -748,10 +725,11 @@ function ReleaseStationDialog({ station, client, allClients }: { station: Statio
     let remainingBonusHours = clientBonusHours;
 
     if (useBonus && !isAnonymous) {
-        bonusHoursToUse = Math.min(clientBonusHours, durationInHours);
-        const costCoveredByBonus = calculatePrice(station.type, bonusHoursToUse * 60, startTime);
+        const bonusInMinutes = clientBonusHours * 60;
+        const usedBonusInMinutes = Math.min(bonusInMinutes, durationInMinutes);
+        const costCoveredByBonus = calculatePrice(station.type, usedBonusInMinutes, startTime, prices);
         remainingCost = Math.max(0, totalCost - costCoveredByBonus);
-        remainingBonusHours = clientBonusHours - bonusHoursToUse;
+        remainingBonusHours = (bonusInMinutes - usedBonusInMinutes) / 60;
     }
 
     const handleConfirmRelease = () => {
@@ -778,7 +756,7 @@ function ReleaseStationDialog({ station, client, allClients }: { station: Statio
              });
 
             const historyRef = collection(firestore, 'clients', station.currentClientId, 'history');
-            const bonusUsedString = useBonus ? t('history_bonusUsed').replace('{bonusHours}', bonusHoursToUse.toFixed(2)) : '';
+            const bonusUsedString = useBonus ? t('history_bonusUsed').replace('{bonusHours}', (clientBonusHours - remainingBonusHours).toFixed(2)) : '';
             addDocumentNonBlocking(historyRef, {
                 timestamp: endTime,
                 type: 'check-out',
@@ -860,7 +838,7 @@ function ReleaseStationDialog({ station, client, allClients }: { station: Statio
 
                             {useBonus && (
                                 <div className="text-sm text-center text-muted-foreground">
-                                    <p>{bonusHoursToUse.toFixed(2)}h de bonus seront utilisées.</p>
+                                    <p>{(clientBonusHours - remainingBonusHours).toFixed(2)}h de bonus seront utilisées.</p>
                                     <p>Nouveau solde bonus : {remainingBonusHours.toFixed(2)}h</p>
                                 </div>
                             )}
@@ -1056,18 +1034,24 @@ function SessionTimer({ station }: { station: Station }) {
     )
 }
 
-function StationCard({ station, client, isLoadingClients, allClients }: { 
+function StationCard({ station, client, isLoadingClients, allClients, prices }: { 
     station: Station, 
     client?: Client | null, 
     isLoadingClients: boolean,
-    allClients: Client[] | null
+    allClients: Client[] | null,
+    prices: Price[] | null,
 }) {
     const { t } = useTranslation();
     const [timeIsUp, setTimeIsUp] = useState(false);
     const isAnonymous = station.currentClientId?.startsWith('anonymous_');
 
     useEffect(() => {
-        if (station.status === 'in use' && station.sessionStartTime && station.sessionEndTime) {
+        if (station.status !== 'in use') {
+            if (timeIsUp) setTimeIsUp(false);
+            return;
+        }
+
+        if (station.sessionStartTime && station.sessionEndTime) {
             const checkTime = () => {
                 const now = new Date();
                 const endTime = new Date(station.sessionEndTime!);
@@ -1081,8 +1065,8 @@ function StationCard({ station, client, isLoadingClients, allClients }: {
             checkTime();
             const intervalId = setInterval(checkTime, 10000);
             return () => clearInterval(intervalId);
-        } else if (timeIsUp) {
-            setTimeIsUp(false);
+        } else {
+            if (timeIsUp) setTimeIsUp(false);
         }
     }, [station.status, station.sessionStartTime, station.sessionEndTime, timeIsUp]);
 
@@ -1140,7 +1124,7 @@ function StationCard({ station, client, isLoadingClients, allClients }: {
                             <p className="font-semibold">{isAnonymous ? "Client de Passage" : (client ? client.name : "Chargement...")}</p>
                             <SessionTimer station={station} />
                         </div>
-                        <ReleaseStationDialog station={station} client={client} allClients={allClients}/>
+                        <ReleaseStationDialog station={station} client={client} allClients={allClients} prices={prices} />
                     </>
                 ) : station.status === 'available' ? (
                     <>
@@ -1178,6 +1162,12 @@ export default function ScanPage() {
   );
   const { data: clients, isLoading: isLoadingClients } = useCollection<Client>(clientsQuery);
   
+  const pricesQuery = useMemoFirebase(
+    () => (firestore ? query(collection(firestore, 'prices')) : null),
+    [firestore]
+  );
+  const { data: prices, isLoading: isLoadingPrices } = useCollection<Price>(pricesQuery);
+
   const stationsQuery = useMemoFirebase(
     () => (firestore ? query(collection(firestore, 'stations').withConverter({
         fromFirestore: (snapshot) => {
@@ -1219,6 +1209,8 @@ export default function ScanPage() {
     }
     return results;
   }, [stationsWithClients, filter, showOnlyAvailable]);
+
+  const isLoading = isLoadingClients || isLoadingStations || isLoadingPrices;
 
 
   return (
@@ -1269,7 +1261,7 @@ export default function ScanPage() {
               </div>
           </CardHeader>
           <CardContent className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {isLoadingStations && Array.from({length: 8}).map((_, i) => (
+              {isLoading && Array.from({length: 8}).map((_, i) => (
                   <Card key={i}>
                       <CardHeader><div className="h-5 w-3/4 bg-muted animate-pulse rounded-md"></div></CardHeader>
                       <CardContent className="flex items-center justify-center h-32">
@@ -1284,9 +1276,10 @@ export default function ScanPage() {
                     client={client} 
                     isLoadingClients={isLoadingClients}
                     allClients={clients}
+                    prices={prices}
                   />
               ))}
-               {!isLoadingStations && filteredStations?.length === 0 && (
+               {!isLoading && filteredStations?.length === 0 && (
                  <div className="col-span-full text-center py-12 text-muted-foreground">
                     <p>{t('noStationsFound')}</p>
                  </div>

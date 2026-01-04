@@ -35,9 +35,9 @@ export function PricesTable() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Grille Tarifaire</CardTitle>
+        <CardTitle>Grille Tarifaire par Heure</CardTitle>
         <CardDescription>
-          Les tarifs affichés sur la page d'accueil.
+          Les tarifs à l'heure affichés sur la page d'accueil.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -45,9 +45,8 @@ export function PricesTable() {
           <TableHeader>
             <TableRow>
               <TableHead>Type de Poste</TableHead>
-              <TableHead>Durée</TableHead>
-              <TableHead>Type de Tarif</TableHead>
-              <TableHead>Prix</TableHead>
+              <TableHead>Prix (Semaine)</TableHead>
+              <TableHead>Prix (Week-end)</TableHead>
               <TableHead>
                 <div className="text-right">
                     <ContentActions mode="add" type="price" />
@@ -58,19 +57,14 @@ export function PricesTable() {
           <TableBody>
              {isLoading && Array.from({ length: 4 }).map((_, i) => (
                 <TableRow key={i}>
-                    <TableCell colSpan={5}><div className="h-10 w-full animate-pulse rounded-md bg-muted" /></TableCell>
+                    <TableCell colSpan={4}><div className="h-10 w-full animate-pulse rounded-md bg-muted" /></TableCell>
                 </TableRow>
             ))}
-            {prices?.sort((a,b) => a.price - b.price).map((price) => (
+            {prices?.sort((a,b) => a.pricePerHourWeekday - b.pricePerHourWeekday).map((price) => (
               <TableRow key={price.id}>
                 <TableCell className="font-medium">{price.stationType}</TableCell>
-                <TableCell>{price.duration}</TableCell>
-                <TableCell>
-                  <Badge variant={price.isEveningRate ? 'default' : 'secondary'}>
-                    {price.isEveningRate ? 'Soir' : 'Jour'}
-                  </Badge>
-                </TableCell>
-                <TableCell>{formatCurrency(price.price)}</TableCell>
+                <TableCell>{formatCurrency(price.pricePerHourWeekday)} / h</TableCell>
+                <TableCell>{formatCurrency(price.pricePerHourWeekend)} / h</TableCell>
                 <TableCell className="text-right">
                   <ContentActions mode="actions" type="price" item={price} />
                 </TableCell>
@@ -78,7 +72,7 @@ export function PricesTable() {
             ))}
              {!isLoading && prices?.length === 0 && (
                 <TableRow>
-                    <TableCell colSpan={5} className="text-center">Aucun tarif trouvé.</TableCell>
+                    <TableCell colSpan={4} className="text-center">Aucun tarif trouvé.</TableCell>
                 </TableRow>
             )}
           </TableBody>
