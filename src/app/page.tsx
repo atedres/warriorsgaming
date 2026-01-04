@@ -18,7 +18,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { addHours, format, setHours, setMinutes, startOfToday, getHours } from 'date-fns';
+import { addHours, format, setHours, setMinutes, startOfToday, getHours, getMinutes } from 'date-fns';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious, type CarouselApi } from '@/components/ui/carousel';
 import { Switch } from '@/components/ui/switch';
@@ -39,26 +39,49 @@ function ReservationDialog({
     const [isOpen, setIsOpen] = useState(false);
     const [isLoginAlertOpen, setIsLoginAlertOpen] = useState(false);
     const [selectedHour, setSelectedHour] = useState<string>('');
+    const [selectedMinute, setSelectedMinute] = useState<string>('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const firestore = useFirestore();
     const { toast } = useToast();
 
-    const availableHours = useMemo(() => {
-        const hours = [];
+    const timeSlots = useMemo(() => {
         const now = new Date();
         const openingHour = 11;
-        const closingHour = 23; // Last booking can start at 23:00
+        const closingHour = 23;
+        
+        let startHour = getHours(now);
+        let startMinute = Math.ceil(getMinutes(now) / 5) * 5; // Round up to next 5 mins
 
-        let startHour = getHours(now) + 1;
-        if (startHour < openingHour) {
-            startHour = openingHour;
+        if (startMinute >= 60) {
+            startHour += 1;
+            startMinute = 0;
         }
 
+        if (startHour < openingHour) {
+            startHour = openingHour;
+            startMinute = 0;
+        }
+        
+        const hours = [];
         for (let i = startHour; i <= closingHour; i++) {
             hours.push(i);
         }
-        return hours;
+
+        const minutes = [];
+        for (let i = 0; i < 60; i += 5) {
+            minutes.push(i);
+        }
+
+        return { hours, minutes, startHour, startMinute };
     }, []);
+
+    const availableMinutes = useMemo(() => {
+        if (!selectedHour || parseInt(selectedHour) > timeSlots.startHour) {
+            return timeSlots.minutes;
+        }
+        return timeSlots.minutes.filter(m => m >= timeSlots.startMinute);
+    }, [selectedHour, timeSlots]);
+
 
     const handleReservation = async () => {
         if (!firestore || !user || !user.uid) {
@@ -89,16 +112,16 @@ function ReservationDialog({
             return;
         }
 
-        if (!selectedHour) {
+        if (!selectedHour || !selectedMinute) {
             toast({
                 variant: 'destructive',
                 title: 'Heure non sélectionnée',
-                description: "Veuillez choisir une heure de début."
+                description: "Veuillez choisir une heure et des minutes."
             });
             return;
         }
 
-        const start = setMinutes(setHours(startOfToday(), parseInt(selectedHour)), 0);
+        const start = setMinutes(setHours(startOfToday(), parseInt(selectedHour)), parseInt(selectedMinute));
         const end = addHours(start, 1);
 
         setIsSubmitting(true);
@@ -118,6 +141,7 @@ function ReservationDialog({
             });
             setIsOpen(false);
             setSelectedHour('');
+            setSelectedMinute('');
         } catch (error) {
             console.error("Error creating reservation: ", error);
             toast({ 
@@ -163,7 +187,13 @@ function ReservationDialog({
     }
     
     return (
-        <Dialog open={isOpen} onOpenChange={setIsOpen}>
+        <Dialog open={isOpen} onOpenChange={(open) => {
+            setIsOpen(open);
+            if (!open) {
+                setSelectedHour('');
+                setSelectedMinute('');
+            }
+        }}>
             <DialogTrigger asChild>
                 <Button 
                     variant="outline" 
@@ -181,30 +211,53 @@ function ReservationDialog({
                     </DialogDescription>
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
-                    <div className="grid gap-2">
-                        <Label htmlFor="start-time">Heure de début</Label>
-                        <Select value={selectedHour} onValueChange={setSelectedHour}>
-                            <SelectTrigger id="start-time">
-                                <SelectValue placeholder="Choisissez une heure" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {availableHours.map(hour => (
-                                    <SelectItem key={hour} value={String(hour)}>
-                                        {`${hour}:00`}
-                                    </SelectItem>
-                                ))}
-                                {availableHours.length === 0 && (
-                                    <div className="p-4 text-center text-sm text-muted-foreground">
-                                        Aucun créneau disponible pour aujourd'hui.
-                                    </div>
-                                )}
-                            </SelectContent>
-                        </Select>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="grid gap-2">
+                            <Label htmlFor="start-hour">Heure</Label>
+                            <Select value={selectedHour} onValueChange={(value) => {
+                                setSelectedHour(value);
+                                // Reset minute if the new hour doesn't support the old minute
+                                if (parseInt(value) === timeSlots.startHour && parseInt(selectedMinute) < timeSlots.startMinute) {
+                                    setSelectedMinute('');
+                                }
+                            }}>
+                                <SelectTrigger id="start-hour">
+                                    <SelectValue placeholder="Heure" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {timeSlots.hours.map(hour => (
+                                        <SelectItem key={hour} value={String(hour)}>
+                                            {String(hour).padStart(2, '0')}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                         <div className="grid gap-2">
+                            <Label htmlFor="start-minute">Minute</Label>
+                            <Select value={selectedMinute} onValueChange={setSelectedMinute} disabled={!selectedHour}>
+                                <SelectTrigger id="start-minute">
+                                    <SelectValue placeholder="Min" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {availableMinutes.map(minute => (
+                                        <SelectItem key={minute} value={String(minute)}>
+                                            {String(minute).padStart(2, '0')}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
                     </div>
+                     {timeSlots.hours.length === 0 && (
+                        <div className="p-4 text-center text-sm text-muted-foreground col-span-2">
+                            Aucun créneau disponible pour aujourd'hui.
+                        </div>
+                    )}
                 </div>
                 <DialogFooter>
                     <Button variant="outline" onClick={() => setIsOpen(false)}>Annuler</Button>
-                    <Button onClick={handleReservation} disabled={isSubmitting}>
+                    <Button onClick={handleReservation} disabled={isSubmitting || !selectedHour || !selectedMinute}>
                         {isSubmitting ? "Réservation..." : "Confirmer"}
                     </Button>
                 </DialogFooter>
