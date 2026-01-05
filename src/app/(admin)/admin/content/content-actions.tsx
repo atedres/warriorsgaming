@@ -72,15 +72,16 @@ function CloudinaryUploadButton({ onUpload }: { onUpload: (url: string) => void 
     setIsUploading(true);
 
     const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
+    const apiKey = process.env.NEXT_PUBLIC_CLOUDINary_API_KEY;
     const uploadPreset = 'warriors_gaming';
     const folder = 'warriors_gaming';
     
-    if (!cloudName) {
+    if (!cloudName || !apiKey) {
       console.error("Cloudinary config is not set.");
       toast({
         variant: 'destructive',
         title: 'Erreur de configuration',
-        description: 'Le nom du cloud Cloudinary (cloud name) n\'est pas configuré.'
+        description: 'La configuration Cloudinary (cloud name, api key) est incomplète.'
       });
       setIsUploading(false);
       return;
@@ -108,6 +109,7 @@ function CloudinaryUploadButton({ onUpload }: { onUpload: (url: string) => void 
 
         const formData = new FormData();
         formData.append('file', file);
+        formData.append('api_key', apiKey);
         formData.append('timestamp', String(timestamp));
         formData.append('signature', signature);
         formData.append('upload_preset', uploadPreset);
@@ -339,5 +341,3 @@ export function ContentActions({ mode, item }: ContentActionsProps) {
     </Dialog>
   );
 }
-
-    
