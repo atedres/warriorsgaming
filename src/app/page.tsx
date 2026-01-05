@@ -660,10 +660,10 @@ export default function Home() {
                         <CarouselItem key={promo.id} className="md:basis-1/2 lg:basis-1/1">
                             <Card className="flex flex-col overflow-hidden shadow-lg h-full">
                                 <Image src={promo.image} alt={promo.title} width={600} height={400} data-ai-hint={promo.imageHint} className="aspect-[3/2] w-full object-cover"/>
-                                <CardHeader>
+                                <CardHeader className="text-center">
                                     <CardTitle className='font-headline'>{promo.title}</CardTitle>
                                 </CardHeader>
-                                <CardContent className="flex-1">
+                                <CardContent className="flex-1 text-center">
                                     <p className="text-sm text-muted-foreground">{promo.description}</p>
                                 </CardContent>
                             </Card>
