@@ -49,7 +49,7 @@ import { Progress } from "@/components/ui/progress";
 
 import { useTranslation } from "@/hooks/use-translation";
 import { cn, formatCurrency } from "@/lib/utils";
-import { formatDistanceToNowStrict, differenceInMinutes, addMinutes, addHours, formatDuration, intervalToDuration, format, differenceInSeconds } from 'date-fns';
+import { formatDistanceToNowStrict, differenceInMinutes, addMinutes, addHours, formatDuration, intervalToDuration, format, differenceInSeconds, getDay, getHours } from 'date-fns';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 
@@ -677,31 +677,39 @@ function BonusPointsDialog({ clients, trigger, initialClient, stationType }: { c
 
 function calculatePrice(stationType: Station['type'], durationInMinutes: number): number {
     if (durationInMinutes <= 0) return 0;
-    
     let price = 0;
-    const hours = Math.ceil(durationInMinutes / 60);
+    const now = new Date();
+    const day = getDay(now); // Sunday = 0, Monday = 1, etc.
+    const hour = getHours(now);
+    const isWeekend = day === 0 || day === 6;
 
-    switch(stationType) {
+    switch (stationType) {
         case 'PC':
-            price = hours * 20; // 20 DH per hour, rounded up.
+            price = Math.ceil(durationInMinutes / 60) * 15;
             break;
         case 'PS5':
-            if (durationInMinutes <= 30) {
-                price = 10;
+            if (isWeekend || hour >= 20) {
+                // Weekend prices
+                if (durationInMinutes <= 30) price = 20;
+                else if (durationInMinutes <= 60) price = 30;
+                else if (durationInMinutes <= 120) price = 50;
+                else price = Math.ceil(durationInMinutes / 60) * 25; // 50DH for 2h -> 25DH/h
             } else {
-                price = hours * 20;
+                // Weekday prices (11:00 - 20:00)
+                price = Math.ceil(durationInMinutes / 60) * 20;
             }
             break;
         case 'PS5 VIP':
+            if (durationInMinutes <= 60) price = 45;
+            else if (durationInMinutes <= 120) price = 75;
+            else price = Math.ceil(durationInMinutes / 120) * 75; // 75DH per 2h block
+            break;
         case 'VR':
         case 'Simulator':
-            if (durationInMinutes <= 30) price = 25;
-            else if (durationInMinutes <= 60) price = 45;
-            else if (durationInMinutes <= 120) price = 75;
-            else price = Math.ceil(durationInMinutes / 60 / 2) * 75;
+            if (durationInMinutes <= 30) price = 30;
+            else price = Math.ceil(durationInMinutes / 30) * 30; // 50 DH for 1 hour means 25DH per 30min, but rule says 30dh/30min
             break;
     }
-    
     return price;
 }
 
