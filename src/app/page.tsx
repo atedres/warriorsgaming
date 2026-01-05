@@ -9,7 +9,7 @@ import ClientHeader from '@/components/client/header';
 import { useCollection, useDoc, useFirestore, useUser } from '@/firebase';
 import { collection, query, doc, addDoc, where, orderBy } from 'firebase/firestore';
 import { useMemoFirebase } from '@/firebase/provider';
-import type { Station, Client, Reservation, Promotion, Price } from '@/app/lib/data';
+import type { Station, Client, Reservation, Promotion } from '@/app/lib/data';
 import { cn, formatCurrency } from '@/lib/utils';
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
@@ -377,11 +377,6 @@ export default function Home() {
   );
   const { data: promotions, isLoading: isLoadingPromotions } = useCollection<Promotion>(promotionsQuery);
   
-  const pricesQuery = useMemoFirebase(
-    () => (firestore ? query(collection(firestore, 'prices'), orderBy('startHour', 'asc')) : null),
-    [firestore]
-  );
-  const { data: prices, isLoading: isLoadingPrices } = useCollection<Price>(pricesQuery);
 
   const clientRef = useMemoFirebase(
     () => (user ? doc(firestore!, 'clients', user.uid) : null),
@@ -476,18 +471,6 @@ export default function Home() {
         case 'maintenance': return 'statusMaintenance';
     }
   }
-
-  const pricesByStationType = useMemo(() => {
-    if (!prices) return {};
-    return prices.reduce((acc, price) => {
-      if (!acc[price.stationType]) {
-        acc[price.stationType] = [];
-      }
-      acc[price.stationType].push(price);
-      return acc;
-    }, {} as Record<string, Price[]>);
-  }, [prices]);
-
 
   return (
     <div className="flex min-h-screen w-full flex-col">
@@ -704,58 +687,6 @@ export default function Home() {
                )}
             </div>
           </div>
-        </section>
-
-        <section id="prices" className="w-full py-12 md:py-24 lg:py-32">
-            <div className="container mx-auto px-4 md:px-6">
-                <div className="flex flex-col items-center justify-center space-y-4 text-center">
-                    <div className="space-y-2">
-                        <h2 className="font-headline text-3xl font-bold tracking-tighter sm:text-5xl">Nos Tarifs</h2>
-                        <p className="max-w-[900px] text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
-                            Des prix pour tous les gamers. Découvrez nos tarifs par heure et par créneau.
-                        </p>
-                    </div>
-                </div>
-                <div className="mx-auto grid max-w-7xl gap-8 py-12 sm:grid-cols-2 lg:grid-cols-3">
-                   {isLoadingPrices ? (
-                    Array.from({length: 3}).map((_, i) => <div key={i} className="h-64 w-full animate-pulse rounded-md bg-muted" />)
-                   ) : (
-                    Object.entries(pricesByStationType).map(([type, typePrices]) => (
-                        <Card key={type}>
-                            <CardHeader>
-                                <CardTitle className="flex items-center gap-2 font-headline">
-                                    {getIcon(type)}
-                                    {type}
-                                </CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHead>Créneau</TableHead>
-                                            <TableHead>Semaine</TableHead>
-                                            <TableHead className="text-right">Week-end</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {typePrices.map(price => (
-                                            <TableRow key={price.id}>
-                                                <TableCell className="font-medium text-muted-foreground">{`${String(price.startHour).padStart(2, '0')}:00 - ${String(price.endHour).padStart(2, '0')}:00`}</TableCell>
-                                                <TableCell>{formatCurrency(price.pricePerHourWeekday)}/h</TableCell>
-                                                <TableCell className="text-right font-semibold">{formatCurrency(price.pricePerHourWeekend)}/h</TableCell>
-                                            </TableRow>
-                                        ))}
-                                    </TableBody>
-                                </Table>
-                            </CardContent>
-                        </Card>
-                    ))
-                   )}
-                   {!isLoadingPrices && Object.keys(pricesByStationType).length === 0 && (
-                       <div className="col-span-full text-center py-12 text-muted-foreground">Aucun tarif défini pour le moment.</div>
-                   )}
-                </div>
-            </div>
         </section>
 
         <section id="location" className="relative w-full h-[400px] md:h-[500px] bg-muted">

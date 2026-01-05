@@ -37,29 +37,37 @@ import { useCollection, useFirestore } from '@/firebase';
 import { useMemoFirebase } from '@/firebase/provider';
 import { collection, query, onSnapshot } from 'firebase/firestore';
 import { useTranslation } from '@/hooks/use-translation';
-import type { UsageLog, Station, Client, Price } from '@/app/lib/data';
+import type { UsageLog, Station, Client } from '@/app/lib/data';
 import { differenceInMinutes, subDays, format, isWithinInterval, startOfToday, endOfToday, startOfWeek, endOfWeek, startOfMonth, endOfMonth, getDay, getHours } from 'date-fns';
 
-function calculatePrice(stationType: Station['type'], durationInMinutes: number, startTime: Date, prices: Price[]): number {
-    if (durationInMinutes <= 0 || !prices || prices.length === 0) return 0;
+function calculatePrice(stationType: Station['type'], durationInMinutes: number): number {
+    if (durationInMinutes <= 0) return 0;
     
-    const startHour = getHours(startTime);
-    const dayOfWeek = getDay(startTime);
-    const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+    let price = 0;
+    const hours = Math.ceil(durationInMinutes / 60);
 
-    // Find the correct price tier for the given time and station type
-    const priceInfo = prices.find(p => 
-        p.stationType === stationType &&
-        startHour >= p.startHour &&
-        startHour < p.endHour
-    );
-
-    if (!priceInfo) return 0; // Default to 0 if no price is set for this time slot and station type
-
-    const pricePerHour = isWeekend ? priceInfo.pricePerHourWeekend : priceInfo.pricePerHourWeekday;
-    const durationInHours = durationInMinutes / 60;
+    switch(stationType) {
+        case 'PC':
+            price = hours * 20; // 20 DH per hour, rounded up.
+            break;
+        case 'PS5':
+            if (durationInMinutes <= 30) {
+                price = 10;
+            } else {
+                price = hours * 20;
+            }
+            break;
+        case 'PS5 VIP':
+        case 'VR':
+        case 'Simulator':
+            if (durationInMinutes <= 30) price = 25;
+            else if (durationInMinutes <= 60) price = 45;
+            else if (durationInMinutes <= 120) price = 75;
+            else price = Math.ceil(durationInMinutes / 60 / 2) * 75;
+            break;
+    }
     
-    return durationInHours * pricePerHour;
+    return price;
 }
 
 export default function AdminDashboard() {
@@ -79,11 +87,6 @@ export default function AdminDashboard() {
   );
   const { data: clients, isLoading: isLoadingClients } = useCollection<Client>(clientsQuery);
   
-  const pricesQuery = useMemoFirebase(
-    () => (firestore ? query(collection(firestore, 'prices')) : null),
-    [firestore]
-  );
-  const { data: prices, isLoading: isLoadingPrices } = useCollection<Price>(pricesQuery);
 
   const [usageLogs, setUsageLogs] = useState<UsageLog[] | null>(null);
   const [isLoadingUsageLogs, setIsLoadingUsageLogs] = useState(true);
@@ -124,7 +127,7 @@ export default function AdminDashboard() {
   };
 
   const dashboardData = useMemo(() => {
-    if (!usageLogs || !stations || !prices) {
+    if (!usageLogs || !stations) {
       return {
         totalRevenue: 0,
         dailyRevenue: [],
@@ -159,7 +162,7 @@ export default function AdminDashboard() {
         const stationType = stationTypesMap.get(log.stationId);
 
         if (stationType) {
-          const cost = calculatePrice(stationType, duration, startTime, prices);
+          const cost = calculatePrice(stationType, duration);
           
           if (isWithinInterval(startTime, revenueInterval)) {
             totalRevenue += cost;
@@ -192,11 +195,11 @@ export default function AdminDashboard() {
 
     return { totalRevenue, dailyRevenue, popularStations, mostPopularType };
 
-  }, [usageLogs, stations, prices, revenuePeriod]);
+  }, [usageLogs, stations, revenuePeriod]);
 
 
   const stationsInUse = stations?.filter((s) => s.status === 'in use').length || 0;
-  const isLoading = isLoadingClients || isLoadingStations || isLoadingUsageLogs || isLoadingPrices;
+  const isLoading = isLoadingClients || isLoadingStations || isLoadingUsageLogs;
 
   const revenuePeriodLabels = {
     today: "Aujourd'hui",
@@ -374,5 +377,3 @@ export default function AdminDashboard() {
     </div>
   );
 }
-
-    

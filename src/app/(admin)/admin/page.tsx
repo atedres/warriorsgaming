@@ -40,9 +40,7 @@ import { useTranslation } from '@/hooks/use-translation';
 import type { UsageLog, Station, Client } from '@/app/lib/data';
 import { differenceInMinutes, subDays, format, isWithinInterval, startOfToday, endOfToday, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from 'date-fns';
 
-function calculatePrice(stationType: Station['type'], durationInMinutes: number, startTime: Date): number {
-    const startHour = startTime.getHours();
-    const isEvening = startHour >= 20;
+function calculatePrice(stationType: Station['type'], durationInMinutes: number): number {
     if (durationInMinutes <= 0) return 0;
     
     let price = 0;
@@ -53,17 +51,10 @@ function calculatePrice(stationType: Station['type'], durationInMinutes: number,
             price = hours * 20; // 20 DH per hour, rounded up.
             break;
         case 'PS5':
-            if (isEvening) { // Evening rates
-                if (durationInMinutes <= 30) price = 20;
-                else if (durationInMinutes <= 60) price = 30;
-                else if (durationInMinutes <= 120) price = 50;
-                else price = Math.ceil(durationInMinutes / 60 / 2) * 50;
-            } else { // Day rates
-                if (durationInMinutes <= 30) {
-                    price = 10;
-                } else {
-                    price = hours * 20;
-                }
+            if (durationInMinutes <= 30) {
+                price = 10;
+            } else {
+                price = hours * 20;
             }
             break;
         case 'PS5 VIP':
@@ -170,7 +161,7 @@ export default function AdminDashboard() {
         const stationType = stationTypesMap.get(log.stationId);
 
         if (stationType) {
-          const cost = calculatePrice(stationType, duration, startTime);
+          const cost = calculatePrice(stationType, duration);
           
           if (isWithinInterval(startTime, revenueInterval)) {
             totalRevenue += cost;
