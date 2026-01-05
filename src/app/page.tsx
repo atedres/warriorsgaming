@@ -611,7 +611,7 @@ export default function Home() {
                 </p>
               </div>
             </div>
-            <div className="mx-auto grid max-w-5xl items-start gap-8 py-12 sm:grid-cols-2 md:grid-cols-3">
+            <div className="mx-auto grid max-w-5xl items-stretch gap-8 py-12 sm:grid-cols-2 md:grid-cols-3">
               {isLoadingPromotions && Array.from({length: 3}).map((_, i) => (
                  <Card key={i} className="overflow-hidden">
                     <div className="h-40 w-full animate-pulse rounded-md bg-background" />
@@ -625,12 +625,12 @@ export default function Home() {
                   </Card>
               ))}
               {!isLoadingPromotions && promotions?.map(promo => (
-                <Card key={promo.id} className="overflow-hidden shadow-lg transition-transform hover:scale-105">
+                <Card key={promo.id} className="flex flex-col overflow-hidden shadow-lg transition-transform hover:scale-105">
                   <Image src={promo.image} alt={promo.title} width={600} height={400} data-ai-hint={promo.imageHint} className="aspect-[3/2] w-full object-cover"/>
                   <CardHeader>
                     <CardTitle className='font-headline'>{promo.title}</CardTitle>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="flex-1">
                     <p className="text-sm text-muted-foreground">{promo.description}</p>
                   </CardContent>
                 </Card>
@@ -737,4 +737,3 @@ export default function Home() {
     </div>
   );
 }
-
