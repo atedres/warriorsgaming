@@ -11,7 +11,7 @@ import { collection, query, doc, addDoc, where, orderBy } from 'firebase/firesto
 import { useMemoFirebase } from '@/firebase/provider';
 import type { Station, Client, Reservation, Promotion, Price } from '@/app/lib/data';
 import { cn, formatCurrency } from '@/lib/utils';
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { useTranslation } from '@/hooks/use-translation';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -21,6 +21,7 @@ import { useToast } from '@/hooks/use-toast';
 import { addHours, format, setHours, setMinutes, startOfToday, getHours, getMinutes, differenceInHours } from 'date-fns';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious, type CarouselApi } from '@/components/ui/carousel';
+import Autoplay from "embla-carousel-autoplay"
 import { Switch } from '@/components/ui/switch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -356,6 +357,9 @@ export default function Home() {
   const [api, setApi] = useState<CarouselApi>()
   const [current, setCurrent] = useState(0)
   const [count, setCount] = useState(0)
+  const autoplayPlugin = useRef(
+    Autoplay({ delay: 2000, stopOnInteraction: true })
+  );
 
   const stationsQuery = useMemoFirebase(
     () => (firestore ? query(collection(firestore, 'stations')) : null),
@@ -630,30 +634,45 @@ export default function Home() {
                 </p>
               </div>
             </div>
-            <div className="mx-auto grid max-w-5xl items-stretch gap-8 py-12 sm:grid-cols-2 md:grid-cols-3">
-              {isLoadingPromotions && Array.from({length: 3}).map((_, i) => (
-                 <Card key={i} className="overflow-hidden">
-                    <div className="h-40 w-full animate-pulse rounded-md bg-background" />
-                    <CardHeader>
-                      <div className="h-6 w-3/4 animate-pulse rounded-md bg-background" />
-                    </CardHeader>
-                    <CardContent>
-                      <div className="h-4 w-full animate-pulse rounded-md bg-background" />
-                       <div className="mt-2 h-4 w-5/6 animate-pulse rounded-md bg-background" />
-                    </CardContent>
-                  </Card>
-              ))}
-              {!isLoadingPromotions && promotions?.map(promo => (
-                <Card key={promo.id} className="flex flex-col overflow-hidden shadow-lg transition-transform hover:scale-105">
-                  <Image src={promo.image} alt={promo.title} width={600} height={400} data-ai-hint={promo.imageHint} className="aspect-[3/2] w-full object-cover"/>
-                  <CardHeader>
-                    <CardTitle className='font-headline'>{promo.title}</CardTitle>
-                  </CardHeader>
-                  <CardContent className="flex-1">
-                    <p className="text-sm text-muted-foreground">{promo.description}</p>
-                  </CardContent>
-                </Card>
-              ))}
+            <div className="mx-auto max-w-5xl items-stretch gap-8 py-12">
+               <Carousel
+                plugins={[autoplayPlugin.current]}
+                className="w-full"
+                onMouseEnter={autoplayPlugin.current.stop}
+                onMouseLeave={autoplayPlugin.current.reset}
+                >
+                <CarouselContent>
+                    {isLoadingPromotions && Array.from({length: 3}).map((_, i) => (
+                        <CarouselItem key={i}>
+                            <Card className="overflow-hidden">
+                                <Skeleton className="aspect-[3/2] w-full" />
+                                <CardHeader>
+                                    <Skeleton className="h-6 w-3/4" />
+                                </CardHeader>
+                                <CardContent>
+                                    <Skeleton className="h-4 w-full" />
+                                    <Skeleton className="mt-2 h-4 w-5/6" />
+                                </CardContent>
+                            </Card>
+                        </CarouselItem>
+                    ))}
+                    {!isLoadingPromotions && promotions?.map(promo => (
+                        <CarouselItem key={promo.id} className="md:basis-1/2 lg:basis-1/1">
+                            <Card className="flex flex-col overflow-hidden shadow-lg h-full">
+                                <Image src={promo.image} alt={promo.title} width={600} height={400} data-ai-hint={promo.imageHint} className="aspect-[3/2] w-full object-cover"/>
+                                <CardHeader>
+                                    <CardTitle className='font-headline'>{promo.title}</CardTitle>
+                                </CardHeader>
+                                <CardContent className="flex-1">
+                                    <p className="text-sm text-muted-foreground">{promo.description}</p>
+                                </CardContent>
+                            </Card>
+                        </CarouselItem>
+                    ))}
+                </CarouselContent>
+                <CarouselPrevious />
+                <CarouselNext />
+                </Carousel>
                {!isLoadingPromotions && promotions?.length === 0 && (
                 <p className="col-span-full text-center text-muted-foreground">Aucune promotion pour le moment.</p>
                )}
