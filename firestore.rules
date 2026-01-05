@@ -12,10 +12,10 @@ service cloud.firestore {
       allow create: if request.auth.uid == clientId;
       
       // Un utilisateur peut lire son propre profil. Les admins peuvent tout lire.
-      allow read: if request.auth.uid == clientId || get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.role in ['manager', 'superadmin'];
+      allow read, update: if request.auth.uid == clientId || get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.role in ['manager', 'superadmin'];
 
       // Seuls les admins peuvent mettre à jour, supprimer ou lister tous les clients.
-      allow list, update, delete: if get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.role in ['manager', 'superadmin'];
+      allow list, delete: if get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.role in ['manager', 'superadmin'];
 
       // Gestion des sous-collections
       match /reservations/{reservationId} {
@@ -58,6 +58,12 @@ service cloud.firestore {
     // Les admins ont un accès en lecture/écriture à leurs propres documents admin
     match /admins/{adminId} {
       allow read, write: if request.auth.uid == adminId || get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.role == 'superadmin';
+    }
+    
+    // Les admins peuvent lire/écrire les paramètres du site
+    match /site_settings/{settingId} {
+      allow read: if true; // Publicly readable
+      allow write: if get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.role in ['manager', 'superadmin'];
     }
 
     // Règle pour la collection de groupe 'reservations' (permet aux admins de lister toutes les réservations)

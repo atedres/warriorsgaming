@@ -221,6 +221,28 @@
         }
       },
       "required": ["id", "timestamp", "type", "description"]
+    },
+    "SiteSetting": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "SiteSetting",
+      "type": "object",
+      "description": "Stores general site-wide settings.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The unique identifier for the setting document."
+        },
+        "imageUrl": {
+          "type": "string",
+          "description": "URL for the image setting.",
+          "format": "uri"
+        },
+        "imageHint": {
+          "type": "string",
+          "description": "A hint for AI image generation tools."
+        }
+      },
+      "required": ["id", "imageUrl"]
     }
   },
   "auth": {
@@ -330,6 +352,22 @@
             {
               "name": "usageLogId",
               "description": "The unique identifier of the usage log entry."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/site_settings/{settingId}",
+        "definition": {
+          "entityName": "SiteSetting",
+          "schema": {
+            "$ref": "#/entities/SiteSetting"
+          },
+          "description": "Stores site-wide settings like the hero image. Writable only by admins.",
+          "params": [
+            {
+              "name": "settingId",
+              "description": "The unique ID for the setting, e.g., 'hero_image'."
             }
           ]
         }

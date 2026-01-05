@@ -26,6 +26,14 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Input } from '@/components/ui/input';
+import { Skeleton } from '@/components/ui/skeleton';
+
+type HeroImageSetting = {
+  id: string;
+  imageUrl: string;
+  imageHint: string;
+};
+
 
 function ReservationDialog({ 
     station, 
@@ -381,6 +389,12 @@ export default function Home() {
       [user, firestore]
   );
   const { data: reservations } = useCollection<Reservation>(reservationsQuery);
+  
+  const heroImageRef = useMemoFirebase(
+    () => firestore ? doc(firestore, 'site_settings', 'hero_image') : null,
+    [firestore]
+  );
+  const { data: heroImage, isLoading: isLoadingHeroImage } = useDoc<HeroImageSetting>(heroImageRef);
 
 
   const getIcon = (type: string) => {
@@ -459,13 +473,18 @@ export default function Home() {
       <ClientHeader />
       <main className="flex-1">
         <section className="relative w-full py-20 md:py-32 lg:py-40">
-          <Image
-            src="https://picsum.photos/seed/neons/1920/1080"
-            data-ai-hint="neon gaming"
-            alt="Hero background"
-            fill
-            className="object-cover -z-10"
-          />
+           {isLoadingHeroImage ? (
+                <Skeleton className="absolute inset-0 -z-10" />
+            ) : (
+                <Image
+                    src={heroImage?.imageUrl || "https://picsum.photos/seed/neons/1920/1080"}
+                    data-ai-hint="neon gaming"
+                    alt="Hero background"
+                    fill
+                    className="object-cover -z-10"
+                    priority
+                />
+           )}
           <div className="absolute inset-0 bg-background/80 -z-10" />
           <div className="container mx-auto px-4 md:px-6">
             <div className="flex flex-col items-center space-y-4 text-center">
