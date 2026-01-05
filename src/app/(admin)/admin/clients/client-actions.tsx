@@ -72,6 +72,7 @@ type ClientActionsProps =
 
 
 function ClientForm({ client, onFormSubmit, isSubmitting }: { client?: Client, onFormSubmit: (data: ClientFormValues) => void, isSubmitting: boolean }) {
+  const { t } = useTranslation();
   const form = useForm<ClientFormValues>({
     resolver: zodResolver(clientFormSchema),
     defaultValues: client
@@ -101,7 +102,7 @@ function ClientForm({ client, onFormSubmit, isSubmitting }: { client?: Client, o
           name="name"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Name</FormLabel>
+              <FormLabel>{t('clientName')}</FormLabel>
               <FormControl>
                 <Input placeholder="John Doe" {...field} />
               </FormControl>
@@ -127,7 +128,7 @@ function ClientForm({ client, onFormSubmit, isSubmitting }: { client?: Client, o
           name="phone"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Phone</FormLabel>
+              <FormLabel>Téléphone</FormLabel>
               <FormControl>
                 <Input placeholder="123-456-7890" {...field} />
               </FormControl>
@@ -140,7 +141,7 @@ function ClientForm({ client, onFormSubmit, isSubmitting }: { client?: Client, o
           name="subscriptionTier"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Subscription Tier</FormLabel>
+              <FormLabel>{t('subscription')}</FormLabel>
                <Select onValueChange={field.onChange} defaultValue={field.value}>
                 <FormControl>
                   <SelectTrigger>
@@ -163,7 +164,7 @@ function ClientForm({ client, onFormSubmit, isSubmitting }: { client?: Client, o
             name="subscriptionHours"
             render={({ field }) => (
                 <FormItem>
-                <FormLabel>Subscription Hours</FormLabel>
+                <FormLabel>{t('subscriptionHours')}</FormLabel>
                 <FormControl>
                     <Input type="number" placeholder="0" {...field} />
                 </FormControl>
@@ -176,7 +177,7 @@ function ClientForm({ client, onFormSubmit, isSubmitting }: { client?: Client, o
             name="bonusHours"
             render={({ field }) => (
                 <FormItem>
-                <FormLabel>Bonus Hours</FormLabel>
+                <FormLabel>{t('bonusHours')}</FormLabel>
                 <FormControl>
                     <Input type="number" placeholder="0" {...field} />
                 </FormControl>
@@ -187,10 +188,10 @@ function ClientForm({ client, onFormSubmit, isSubmitting }: { client?: Client, o
         </div>
         <DialogFooter>
           <DialogClose asChild>
-              <Button variant="outline">Cancel</Button>
+              <Button variant="outline">{t('cancel')}</Button>
           </DialogClose>
           <Button type="submit" disabled={isSubmitting}>
-            {isSubmitting ? "Saving..." : "Save Changes"}
+            {isSubmitting ? t('loading') : t('save')}
           </Button>
         </DialogFooter>
       </form>
@@ -199,6 +200,7 @@ function ClientForm({ client, onFormSubmit, isSubmitting }: { client?: Client, o
 }
 
 function ClientInfoDialog({ client }: { client: Client }) {
+  const { t } = useTranslation();
   const bonusHours = client.bonusHours || 0;
   const hours = Math.floor(bonusHours);
   const minutes = Math.round((bonusHours - hours) * 60);
@@ -217,7 +219,7 @@ function ClientInfoDialog({ client }: { client: Client }) {
         </DialogHeader>
         <div className="space-y-3 py-4 text-sm">
             <div className="flex justify-between items-center">
-                <span className="text-muted-foreground">Nom:</span>
+                <span className="text-muted-foreground">{t('clientName')}:</span>
                 <span className="font-medium">{client.name}</span>
             </div>
             <div className="flex justify-between items-center">
@@ -229,25 +231,25 @@ function ClientInfoDialog({ client }: { client: Client }) {
                 <span className="font-medium">{client.phone}</span>
             </div>
             <div className="flex justify-between items-center">
-                <span className="text-muted-foreground">Abonnement:</span>
+                <span className="text-muted-foreground">{t('subscription')}:</span>
                 <span className="font-medium">{client.subscriptionTier}</span>
             </div>
             <div className="flex justify-between items-center">
-                <span className="text-muted-foreground">Heures d'abonnement:</span>
+                <span className="text-muted-foreground">{t('subscriptionHours')}:</span>
                 <span className="font-medium">{client.subscriptionHours ?? 0}h</span>
             </div>
             <div className="flex justify-between items-center">
-                <span className="text-muted-foreground">Heures bonus:</span>
+                <span className="text-muted-foreground">{t('bonusHours')}:</span>
                 <span className="font-medium">{`${hours}h ${minutes}m`}</span>
             </div>
              <div className="flex justify-between items-center">
-                <span className="text-muted-foreground">Membre depuis:</span>
+                <span className="text-muted-foreground">{t('memberSince')}:</span>
                 <span className="font-medium">{format(new Date(client.memberSince), "d MMM yyyy")}</span>
             </div>
         </div>
         <DialogFooter>
           <DialogClose asChild>
-            <Button>Fermer</Button>
+            <Button>{t('close')}</Button>
           </DialogClose>
         </DialogFooter>
       </DialogContent>
@@ -261,6 +263,7 @@ export function ClientActions({ mode, client }: ClientActionsProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const firestore = useFirestore();
   const { toast } = useToast();
+  const { t } = useTranslation();
 
   const handleFormSubmit = async (data: ClientFormValues) => {
     if (!firestore) return;
@@ -270,12 +273,12 @@ export function ClientActions({ mode, client }: ClientActionsProps) {
       if (mode === "edit" && client) {
         const clientRef = doc(firestore, "clients", client.id);
         updateDocumentNonBlocking(clientRef, data);
-        toast({ title: "Client updated", description: `${data.name}'s profile has been updated.` });
+        toast({ title: t('clientUpdated'), description: `${data.name}'s profile has been updated.` });
       }
       setEditDialogOpen(false);
     } catch (error) {
       console.error("Error submitting form:", error);
-      toast({ variant: "destructive", title: "Error", description: "Something went wrong." });
+      toast({ variant: "destructive", title: t('error'), description: "Something went wrong." });
     } finally {
       setIsSubmitting(false);
     }
@@ -286,7 +289,7 @@ export function ClientActions({ mode, client }: ClientActionsProps) {
     const clientRef = doc(firestore, 'clients', client.id);
     deleteDocumentNonBlocking(clientRef);
     toast({
-        title: 'Client Deleted',
+        title: t('clientDeleted'),
         description: `${client.name} has been removed from the database.`,
         variant: 'destructive'
     })
@@ -298,14 +301,14 @@ export function ClientActions({ mode, client }: ClientActionsProps) {
         <DialogTrigger asChild>
           <Button aria-haspopup="true" size="icon" variant="ghost">
             <FilePenLine className="h-4 w-4" />
-            <span className="sr-only">Edit client</span>
+            <span className="sr-only">{t('edit')} {t('client')}</span>
           </Button>
         </DialogTrigger>
         <DialogContent>
             <DialogHeader>
-              <DialogTitle>Edit Client</DialogTitle>
+              <DialogTitle>{t('edit')} {t('client')}</DialogTitle>
               <DialogDescription>
-                {`Editing profile for ${client.name}.`}
+                Modification du profil pour {client.name}.
               </DialogDescription>
             </DialogHeader>
             <ClientForm client={client} onFormSubmit={handleFormSubmit} isSubmitting={isSubmitting} />
@@ -324,10 +327,10 @@ export function ClientActions({ mode, client }: ClientActionsProps) {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          <DropdownMenuLabel>Actions</DropdownMenuLabel>
+          <DropdownMenuLabel>{t('actions')}</DropdownMenuLabel>
           <ClientInfoDialog client={client} />
           <DropdownMenuSeparator />
-          <DropdownMenuItem className="text-red-500" onSelect={handleDelete}>Delete</DropdownMenuItem>
+          <DropdownMenuItem className="text-red-500" onSelect={handleDelete}>{t('delete')}</DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
     );
@@ -411,15 +414,15 @@ export function ClientHistoryDialog({ client }: { client: Client }) {
             </DialogTrigger>
             <DialogContent className="max-w-2xl">
                 <DialogHeader>
-                    <DialogTitle>History for {client.name}</DialogTitle>
+                    <DialogTitle>{t('history')} for {client.name}</DialogTitle>
                     <DialogDescription>
                         A log of all activities and changes related to this client.
                     </DialogDescription>
                 </DialogHeader>
                 <ScrollArea className="h-96">
                     <div className="p-4 space-y-4">
-                        {isLoading && <p>Loading history...</p>}
-                        {!isLoading && history?.length === 0 && <p className="text-muted-foreground text-center">No history found.</p>}
+                        {isLoading && <p>{t('loading')}...</p>}
+                        {!isLoading && history?.length === 0 && <p className="text-muted-foreground text-center">{t('noHistoryFound')}</p>}
                         {history?.map(log => (
                              <div key={log.id} className="flex items-start gap-4">
                                 <div className="bg-muted p-2 rounded-full">
@@ -436,9 +439,11 @@ export function ClientHistoryDialog({ client }: { client: Client }) {
                     </div>
                 </ScrollArea>
                  <DialogFooter>
-                    <Button variant="outline" onClick={() => setIsOpen(false)}>Close</Button>
+                    <Button variant="outline" onClick={() => setIsOpen(false)}>{t('close')}</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
     )
 }
+
+    

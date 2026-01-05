@@ -47,6 +47,8 @@ export const translations = {
     loading: "Loading...",
     error: "Error",
     releaseStation: "Release",
+    clientUpdated: "Client Updated",
+    clientDeleted: "Client Deleted",
 
     // Client Page
     addClient: "Add Client",
@@ -159,6 +161,8 @@ export const translations = {
     loading: "Chargement...",
     error: "Erreur",
     releaseStation: "Libérer",
+    clientUpdated: "Client Mis à Jour",
+    clientDeleted: "Client Supprimé",
 
     // Client Page
     addClient: "Ajouter un client",
@@ -269,6 +273,8 @@ export const translations = {
     loading: "جار التحميل...",
     error: "خطأ",
     releaseStation: "تحرير",
+    clientUpdated: "تم تحديث العميل",
+    clientDeleted: "تم حذف العميل",
     
     // Client Page
     addClient: "إضافة عميل",
@@ -365,3 +371,5 @@ export function formatHistoryDescription(t: (key: any) => string, log: any): str
     }
     return t('noHistoryFound'); // Or some default/error text
 }
+
+    
