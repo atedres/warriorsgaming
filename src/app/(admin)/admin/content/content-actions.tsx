@@ -71,16 +71,22 @@ function CloudinaryUploadButton({ onUpload }: { onUpload: (url: string) => void 
     setIsUploading(true);
 
     const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
-    const apiKey = process.env.NEXT_PUBLIC_CLOUDINARY_API_KEY;
-    if (!cloudName || !apiKey) {
-      console.error("Cloudinary environment variables are not set.");
+    const uploadPreset = 'warriors_gaming'; // Assurez-vous que cet upload preset existe
+
+    if (!cloudName) {
+      console.error("Cloudinary CLOUD_NAME is not set.");
+      toast({
+        variant: 'destructive',
+        title: 'Erreur de configuration',
+        description: 'Le nom du cloud Cloudinary n\'est pas configuré.'
+      });
       setIsUploading(false);
       return;
     }
 
     const formData = new FormData();
     formData.append('file', file);
-    formData.append('upload_preset', 'warriors_gaming'); // Assurez-vous que cet upload preset existe
+    formData.append('upload_preset', uploadPreset);
     
     try {
         const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
@@ -89,14 +95,21 @@ function CloudinaryUploadButton({ onUpload }: { onUpload: (url: string) => void 
         });
 
         if (!response.ok) {
-            throw new Error('Upload failed');
+            const errorData = await response.json();
+            console.error('Cloudinary upload failed:', errorData);
+            throw new Error(errorData.error.message || 'Upload failed');
         }
 
         const data = await response.json();
         onUpload(data.secure_url);
 
-    } catch (error) {
+    } catch (error: any) {
         console.error('Upload error:', error);
+        toast({
+          variant: 'destructive',
+          title: 'Erreur d\'upload',
+          description: error.message || 'Une erreur est survenue lors du chargement de l\'image.'
+        });
     } finally {
         setIsUploading(false);
     }
