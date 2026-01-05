@@ -354,9 +354,13 @@ export default function Home() {
   const [filter, setFilter] = useState('All');
   const [showOnlyAvailable, setShowOnlyAvailable] = useState(false);
   const firestore = useFirestore();
-  const [api, setApi] = useState<CarouselApi>()
-  const [current, setCurrent] = useState(0)
-  const [count, setCount] = useState(0)
+  const [stationsApi, setStationsApi] = useState<CarouselApi>()
+  const [promosApi, setPromosApi] = useState<CarouselApi>()
+  const [stationsCurrent, setStationsCurrent] = useState(0)
+  const [promosCurrent, setPromosCurrent] = useState(0)
+  const [stationsCount, setStationsCount] = useState(0)
+  const [promosCount, setPromosCount] = useState(0)
+  
   const autoplayPlugin = useRef(
     Autoplay({ delay: 2000, stopOnInteraction: true })
   );
@@ -440,17 +444,30 @@ export default function Home() {
   }, [stations, filter, showOnlyAvailable]);
 
     useEffect(() => {
-        if (!api) {
+        if (!stationsApi) {
           return
         }
     
-        setCount(api.scrollSnapList().length)
-        setCurrent(api.selectedScrollSnap() + 1)
+        setStationsCount(stationsApi.scrollSnapList().length)
+        setStationsCurrent(stationsApi.selectedScrollSnap() + 1)
     
-        api.on("select", () => {
-          setCurrent(api.selectedScrollSnap() + 1)
+        stationsApi.on("select", () => {
+          setStationsCurrent(stationsApi.selectedScrollSnap() + 1)
         })
-      }, [api, filteredStations]); // Re-run when filteredStations changes
+      }, [stationsApi, filteredStations]); 
+      
+    useEffect(() => {
+        if (!promosApi) {
+          return
+        }
+    
+        setPromosCount(promosApi.scrollSnapList().length)
+        setPromosCurrent(promosApi.selectedScrollSnap() + 1)
+    
+        promosApi.on("select", () => {
+          setPromosCurrent(promosApi.selectedScrollSnap() + 1)
+        })
+      }, [promosApi]); 
 
   const getStatusKey = (status: Station['status']) => {
     switch(status) {
@@ -534,7 +551,7 @@ export default function Home() {
               </div>
             </div>
             <div className="mx-auto max-w-5xl py-12 px-4 sm:px-6 lg:px-8">
-              <Carousel setApi={setApi} className="w-full">
+              <Carousel setApi={setStationsApi} className="w-full">
                 <CarouselContent>
                   {isLoadingStations &&
                     Array.from({ length: 3 }).map((_, i) => (
@@ -611,10 +628,10 @@ export default function Home() {
                   <CarouselNext className="hidden sm:flex" />
                 </Carousel>
                 <div className="py-2 flex justify-center gap-2">
-                    {Array.from({ length: count }).map((_, i) => (
-                        <button key={i} onClick={() => api?.scrollTo(i)} className={cn(
+                    {Array.from({ length: stationsCount }).map((_, i) => (
+                        <button key={i} onClick={() => stationsApi?.scrollTo(i)} className={cn(
                             "h-2 w-2 rounded-full transition-colors",
-                            i === current - 1 ? "bg-primary" : "bg-muted-foreground/30"
+                            i === stationsCurrent - 1 ? "bg-primary" : "bg-muted-foreground/30"
                         )} />
                     ))}
                 </div>
@@ -636,6 +653,7 @@ export default function Home() {
             </div>
             <div className="mx-auto max-w-5xl items-stretch gap-8 py-12">
                <Carousel
+                setApi={setPromosApi}
                 plugins={[autoplayPlugin.current]}
                 className="w-full"
                 onMouseEnter={autoplayPlugin.current.stop}
@@ -670,9 +688,17 @@ export default function Home() {
                         </CarouselItem>
                     ))}
                 </CarouselContent>
-                <CarouselPrevious />
-                <CarouselNext />
+                <CarouselPrevious className="hidden sm:flex" />
+                <CarouselNext className="hidden sm:flex" />
                 </Carousel>
+                <div className="py-2 flex justify-center gap-2">
+                    {Array.from({ length: promosCount }).map((_, i) => (
+                        <button key={i} onClick={() => promosApi?.scrollTo(i)} className={cn(
+                            "h-2 w-2 rounded-full transition-colors",
+                            i === promosCurrent - 1 ? "bg-primary" : "bg-muted-foreground/30"
+                        )} />
+                    ))}
+                </div>
                {!isLoadingPromotions && promotions?.length === 0 && (
                 <p className="col-span-full text-center text-muted-foreground">Aucune promotion pour le moment.</p>
                )}
