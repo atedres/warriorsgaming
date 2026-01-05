@@ -72,7 +72,7 @@ function CloudinaryUploadButton({ onUpload }: { onUpload: (url: string) => void 
     setIsUploading(true);
 
     const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
-    const apiKey = process.env.NEXT_PUBLIC_CLOUDINary_API_KEY;
+    const apiKey = process.env.NEXT_PUBLIC_CLOUDINARY_API_KEY;
     const uploadPreset = 'warriors_gaming';
     const folder = 'warriors_gaming';
     
@@ -93,6 +93,7 @@ function CloudinaryUploadButton({ onUpload }: { onUpload: (url: string) => void 
           timestamp: timestamp,
           upload_preset: uploadPreset,
           folder: folder,
+          api_key: apiKey
         };
         
         const signResponse = await fetch('/api/sign-cloudinary-params', {
