@@ -73,6 +73,8 @@ function CloudinaryUploadButton({ onUpload }: { onUpload: (url: string) => void 
 
     const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
     const apiKey = process.env.NEXT_PUBLIC_CLOUDINARY_API_KEY;
+    const uploadPreset = 'warriors_gaming';
+    const folder = 'warriors_gaming';
     
     if (!cloudName || !apiKey) {
       console.error("Cloudinary config is not set.");
@@ -86,11 +88,11 @@ function CloudinaryUploadButton({ onUpload }: { onUpload: (url: string) => void 
     }
     
     try {
-        // 1. Get signature from the server
         const timestamp = Math.round((new Date).getTime()/1000);
         const paramsToSign = {
           timestamp: timestamp,
-          upload_preset: 'warriors_gaming'
+          upload_preset: uploadPreset,
+          folder: folder,
         };
         
         const signResponse = await fetch('/api/sign-cloudinary-params', {
@@ -99,18 +101,19 @@ function CloudinaryUploadButton({ onUpload }: { onUpload: (url: string) => void 
         });
         
         if (!signResponse.ok) {
-            throw new Error('Failed to get signature from server.');
+            const errorText = await signResponse.text();
+            throw new Error(`Failed to get signature from server: ${errorText}`);
         }
 
         const { signature } = await signResponse.json();
 
-        // 2. Upload file to Cloudinary
         const formData = new FormData();
         formData.append('file', file);
         formData.append('api_key', apiKey);
         formData.append('timestamp', String(timestamp));
         formData.append('signature', signature);
-        formData.append('upload_preset', 'warriors_gaming');
+        formData.append('upload_preset', uploadPreset);
+        formData.append('folder', folder);
         
         const uploadResponse = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
             method: 'POST',
@@ -124,7 +127,6 @@ function CloudinaryUploadButton({ onUpload }: { onUpload: (url: string) => void 
               console.error('Cloudinary upload failed with JSON:', errorData);
               errorText = errorData.error.message || JSON.stringify(errorData);
             } catch (e) {
-              // If parsing as JSON fails, read the response as text.
               errorText = await uploadResponse.text();
               console.error('Cloudinary upload failed with text response:', errorText);
             }

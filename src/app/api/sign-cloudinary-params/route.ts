@@ -1,8 +1,6 @@
+
 import { v2 as cloudinary } from 'cloudinary';
 import { NextResponse } from 'next/server';
-
-// This is your server-side API route.
-// It securely generates a signature for uploads.
 
 export async function POST(request: Request) {
   const body = await request.json();
