@@ -54,6 +54,8 @@ const clientFormSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email." }),
   phone: z.string().min(10, { message: "Phone number must be at least 10 digits." }),
   subscriptionTier: z.enum(["Basic", "Premium", "VIP"]),
+  subscriptionHours: z.coerce.number().min(0, "Subscription hours cannot be negative."),
+  bonusHours: z.coerce.number().min(0, "Bonus hours cannot be negative."),
 });
 
 type ClientFormValues = z.infer<typeof clientFormSchema>;
@@ -78,12 +80,16 @@ function ClientForm({ client, onFormSubmit, isSubmitting }: { client?: Client, o
           email: client.email,
           phone: client.phone,
           subscriptionTier: client.subscriptionTier,
+          subscriptionHours: client.subscriptionHours ?? 0,
+          bonusHours: client.bonusHours ?? 0,
         }
       : {
           name: "",
           email: "",
           phone: "",
           subscriptionTier: "Basic",
+          subscriptionHours: 0,
+          bonusHours: 0,
         },
   });
 
@@ -151,6 +157,34 @@ function ClientForm({ client, onFormSubmit, isSubmitting }: { client?: Client, o
             </FormItem>
           )}
         />
+        <div className="grid grid-cols-2 gap-4">
+            <FormField
+            control={form.control}
+            name="subscriptionHours"
+            render={({ field }) => (
+                <FormItem>
+                <FormLabel>Subscription Hours</FormLabel>
+                <FormControl>
+                    <Input type="number" placeholder="0" {...field} />
+                </FormControl>
+                <FormMessage />
+                </FormItem>
+            )}
+            />
+            <FormField
+            control={form.control}
+            name="bonusHours"
+            render={({ field }) => (
+                <FormItem>
+                <FormLabel>Bonus Hours</FormLabel>
+                <FormControl>
+                    <Input type="number" placeholder="0" {...field} />
+                </FormControl>
+                <FormMessage />
+                </FormItem>
+            )}
+            />
+        </div>
         <DialogFooter>
           <DialogClose asChild>
               <Button variant="outline">Cancel</Button>
@@ -408,5 +442,3 @@ export function ClientHistoryDialog({ client }: { client: Client }) {
         </Dialog>
     )
 }
-
-    
