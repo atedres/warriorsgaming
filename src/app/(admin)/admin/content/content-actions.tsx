@@ -118,9 +118,17 @@ function CloudinaryUploadButton({ onUpload }: { onUpload: (url: string) => void 
         });
 
         if (!uploadResponse.ok) {
-            const errorData = await uploadResponse.json();
-            console.error('Cloudinary upload failed:', errorData);
-            throw new Error(errorData.error.message || 'Upload failed');
+            let errorText = 'Upload failed due to an unknown error.';
+            try {
+              const errorData = await uploadResponse.json();
+              console.error('Cloudinary upload failed with JSON:', errorData);
+              errorText = errorData.error.message || JSON.stringify(errorData);
+            } catch (e) {
+              // If parsing as JSON fails, read the response as text.
+              errorText = await uploadResponse.text();
+              console.error('Cloudinary upload failed with text response:', errorText);
+            }
+            throw new Error(errorText);
         }
 
         const data = await uploadResponse.json();
@@ -280,7 +288,7 @@ export function ContentActions({ mode, item }: ContentActionsProps) {
         <DialogTrigger asChild>
           <Button size="sm" className="h-8 gap-1">
             <PlusCircle className="h-3.5 w-3.5" />
-            <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
+            <span className="sr-only sm:not-sr-only sm:whitespace-rap">
               Ajouter une promotion
             </span>
           </Button>
