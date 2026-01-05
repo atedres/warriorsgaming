@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { MoreHorizontal, PlusCircle } from 'lucide-react';
+import { MoreHorizontal, PlusCircle, UploadCloud } from 'lucide-react';
 import { useFirestore } from '@/firebase';
 import { doc, collection } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
@@ -14,7 +14,6 @@ import {
   deleteDocumentNonBlocking,
 } from '@/firebase/non-blocking-updates';
 import type { Promotion } from '@/app/lib/data';
-import { PlaceHolderImages } from '@/lib/placeholder-images';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -44,13 +43,6 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import Image from 'next/image';
 
 // Schemas
@@ -59,15 +51,74 @@ const promoSchema = z.object({
   title: z.string().min(3, 'Le titre est requis.'),
   description: z.string().min(10, 'La description est requise.'),
   image: z.string().url('Veuillez sélectionner une image.'),
-  imageHint: z.string(),
+  imageHint: z.string().optional(),
 });
 type PromoFormValues = z.infer<typeof promoSchema>;
-
 
 // Props
 type ContentActionsProps =
   | { mode: 'add'; item?: never }
   | { mode: 'actions'; item: Promotion };
+
+// Cloudinary Upload Widget
+function CloudinaryUploadButton({ onUpload }: { onUpload: (url: string) => void }) {
+  const [isUploading, setIsUploading] = useState(false);
+
+  const handleUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+
+    const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
+    const apiKey = process.env.NEXT_PUBLIC_CLOUDINARY_API_KEY;
+    if (!cloudName || !apiKey) {
+      console.error("Cloudinary environment variables are not set.");
+      setIsUploading(false);
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('upload_preset', 'warriors_gaming'); // Assurez-vous que cet upload preset existe
+    
+    try {
+        const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
+            method: 'POST',
+            body: formData,
+        });
+
+        if (!response.ok) {
+            throw new Error('Upload failed');
+        }
+
+        const data = await response.json();
+        onUpload(data.secure_url);
+
+    } catch (error) {
+        console.error('Upload error:', error);
+    } finally {
+        setIsUploading(false);
+    }
+  };
+
+  return (
+    <div className="relative">
+      <Button type="button" variant="outline" disabled={isUploading}>
+        <UploadCloud className="mr-2 h-4 w-4" />
+        {isUploading ? 'Uploading...' : 'Upload Image'}
+      </Button>
+      <input
+        type="file"
+        accept="image/*"
+        onChange={handleUpload}
+        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+        disabled={isUploading}
+      />
+    </div>
+  );
+}
+
 
 // Forms
 function PromotionForm({
@@ -122,38 +173,20 @@ function PromotionForm({
           render={({ field }) => (
             <FormItem>
               <FormLabel>Image</FormLabel>
-              <Select
-                onValueChange={(value) => {
-                  const selectedImage = PlaceHolderImages.find(
-                    (img) => img.imageUrl === value
-                  );
-                  field.onChange(value);
-                  form.setValue('imageHint', selectedImage?.imageHint || '');
-                }}
-                defaultValue={field.value}
-              >
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Sélectionnez une image" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  {PlaceHolderImages.map((img) => (
-                    <SelectItem key={img.id} value={img.imageUrl}>
-                      <div className="flex items-center gap-2">
-                        <Image
-                          src={img.imageUrl}
-                          width={40}
-                          height={40}
-                          alt={img.description}
-                          className="rounded-sm"
-                        />
-                        <span>{img.description}</span>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="flex items-center gap-4">
+                  <FormControl>
+                      <Input {...field} placeholder="Image URL" className="hidden" />
+                  </FormControl>
+                 <CloudinaryUploadButton onUpload={(url) => {
+                     field.onChange(url);
+                     form.setValue('image', url);
+                 }} />
+                  {field.value && (
+                    <div className="w-24 h-24 relative">
+                        <Image src={field.value} alt="Aperçu" fill className="rounded-md object-cover" />
+                    </div>
+                  )}
+              </div>
               <FormMessage />
             </FormItem>
           )}
