@@ -89,11 +89,12 @@ function CloudinaryUploadButton({ onUpload }: { onUpload: (url: string) => void 
     
     try {
         const timestamp = Math.round((new Date).getTime()/1000);
+        
+        // Parameters to be signed on the server
         const paramsToSign = {
           timestamp: timestamp,
           upload_preset: uploadPreset,
           folder: folder,
-          api_key: apiKey
         };
         
         const signResponse = await fetch('/api/sign-cloudinary-params', {
@@ -108,6 +109,7 @@ function CloudinaryUploadButton({ onUpload }: { onUpload: (url: string) => void 
 
         const { signature } = await signResponse.json();
 
+        // Final FormData to be sent to Cloudinary
         const formData = new FormData();
         formData.append('file', file);
         formData.append('api_key', apiKey);
