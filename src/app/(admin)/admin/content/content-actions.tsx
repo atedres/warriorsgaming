@@ -63,6 +63,7 @@ type ContentActionsProps =
 // Cloudinary Upload Widget
 function CloudinaryUploadButton({ onUpload }: { onUpload: (url: string) => void }) {
   const [isUploading, setIsUploading] = useState(false);
+  const { toast } = useToast();
 
   const handleUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -71,36 +72,58 @@ function CloudinaryUploadButton({ onUpload }: { onUpload: (url: string) => void 
     setIsUploading(true);
 
     const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
-    const uploadPreset = 'warriors_gaming'; // Assurez-vous que cet upload preset existe
-
-    if (!cloudName) {
-      console.error("Cloudinary CLOUD_NAME is not set.");
+    const apiKey = process.env.NEXT_PUBLIC_CLOUDINARY_API_KEY;
+    
+    if (!cloudName || !apiKey) {
+      console.error("Cloudinary config is not set.");
       toast({
         variant: 'destructive',
         title: 'Erreur de configuration',
-        description: 'Le nom du cloud Cloudinary n\'est pas configuré.'
+        description: 'Les informations Cloudinary (cloud name, api key) ne sont pas configurées.'
       });
       setIsUploading(false);
       return;
     }
-
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('upload_preset', uploadPreset);
     
     try {
-        const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
+        // 1. Get signature from the server
+        const timestamp = Math.round((new Date).getTime()/1000);
+        const paramsToSign = {
+          timestamp: timestamp,
+          upload_preset: 'warriors_gaming'
+        };
+        
+        const signResponse = await fetch('/api/sign-cloudinary-params', {
+          method: 'POST',
+          body: JSON.stringify({ paramsToSign }),
+        });
+        
+        if (!signResponse.ok) {
+            throw new Error('Failed to get signature from server.');
+        }
+
+        const { signature } = await signResponse.json();
+
+        // 2. Upload file to Cloudinary
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('api_key', apiKey);
+        formData.append('timestamp', String(timestamp));
+        formData.append('signature', signature);
+        formData.append('upload_preset', 'warriors_gaming');
+        
+        const uploadResponse = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
             method: 'POST',
             body: formData,
         });
 
-        if (!response.ok) {
-            const errorData = await response.json();
+        if (!uploadResponse.ok) {
+            const errorData = await uploadResponse.json();
             console.error('Cloudinary upload failed:', errorData);
             throw new Error(errorData.error.message || 'Upload failed');
         }
 
-        const data = await response.json();
+        const data = await uploadResponse.json();
         onUpload(data.secure_url);
 
     } catch (error: any) {

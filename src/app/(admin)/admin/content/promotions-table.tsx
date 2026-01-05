@@ -50,7 +50,7 @@ export function PromotionsTable() {
               <TableHead>Description</TableHead>
               <TableHead>
                 <div className="text-right">
-                    <ContentActions mode="add" type="promotion" />
+                    <ContentActions mode="add" />
                 </div>
               </TableHead>
             </TableRow>
@@ -75,7 +75,7 @@ export function PromotionsTable() {
                 <TableCell className="font-medium">{promo.title}</TableCell>
                 <TableCell>{promo.description}</TableCell>
                 <TableCell className="text-right">
-                  <ContentActions mode="actions" type="promotion" item={promo} />
+                  <ContentActions mode="actions" item={promo} />
                 </TableCell>
               </TableRow>
             ))}
