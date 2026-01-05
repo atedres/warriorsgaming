@@ -1,11 +1,11 @@
 
 'use client';
 
-import { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { MoreHorizontal, PlusCircle, UploadCloud } from 'lucide-react';
+import { MoreHorizontal, PlusCircle, UploadCloud, Crop } from 'lucide-react';
 import { useFirestore } from '@/firebase';
 import { doc, collection } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
@@ -45,6 +45,9 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import Image from 'next/image';
 
+import ReactCrop, { type Crop as CropType, centerCrop, makeAspectCrop } from 'react-image-crop';
+import 'react-image-crop/dist/ReactCrop.css';
+
 // Schemas
 const promoSchema = z.object({
   id: z.string().optional(),
@@ -60,48 +63,151 @@ type ContentActionsProps =
   | { mode: 'add'; item?: never }
   | { mode: 'actions'; item: Promotion };
 
-// Cloudinary Upload Widget
+  
+function getCroppedImg(
+    image: HTMLImageElement,
+    crop: CropType,
+    fileName: string
+): Promise<File> {
+    const canvas = document.createElement('canvas');
+    const scaleX = image.naturalWidth / image.width;
+    const scaleY = image.naturalHeight / image.height;
+    canvas.width = crop.width;
+    canvas.height = crop.height;
+    const ctx = canvas.getContext('2d');
+
+    if (!ctx) {
+        return Promise.reject(new Error('Canvas context is not available'));
+    }
+
+    const pixelRatio = window.devicePixelRatio;
+    canvas.width = crop.width * pixelRatio;
+    canvas.height = crop.height * pixelRatio;
+    ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+    ctx.imageSmoothingQuality = 'high';
+
+    ctx.drawImage(
+        image,
+        crop.x * scaleX,
+        crop.y * scaleY,
+        crop.width * scaleX,
+        crop.height * scaleY,
+        0,
+        0,
+        crop.width,
+        crop.height
+    );
+
+    return new Promise((resolve, reject) => {
+        canvas.toBlob(
+            (blob) => {
+                if (!blob) {
+                    reject(new Error('Canvas is empty'));
+                    return;
+                }
+                const file = new File([blob], fileName, { type: blob.type });
+                resolve(file);
+            },
+            'image/jpeg',
+            0.95
+        );
+    });
+}
+
+
+// Cloudinary Upload & Crop Component
 function CloudinaryUploadButton({ onUpload }: { onUpload: (url: string) => void }) {
   const [isUploading, setIsUploading] = useState(false);
   const { toast } = useToast();
+  const [imgSrc, setImgSrc] = useState('');
+  const [crop, setCrop] = useState<CropType>();
+  const [completedCrop, setCompletedCrop] = useState<CropType>();
+  const [isCropModalOpen, setIsCropModalOpen] = useState(false);
+  const imgRef = useRef<HTMLImageElement | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [originalFile, setOriginalFile] = useState<File | null>(null);
 
-  const handleUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
 
-    setIsUploading(true);
+  function centerAspectCrop(
+    mediaWidth: number,
+    mediaHeight: number,
+    aspect: number
+  ) {
+    return centerCrop(
+      makeAspectCrop(
+        {
+          unit: '%',
+          width: 90,
+        },
+        aspect,
+        mediaWidth,
+        mediaHeight
+      ),
+      mediaWidth,
+      mediaHeight
+    );
+  }
 
-    const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
-    const apiKey = process.env.NEXT_PUBLIC_CLOUDINARY_API_KEY;
-    const uploadPreset = 'warriors_gaming';
-    const folder = 'warriors_gaming';
-    
-    if (!cloudName || !apiKey) {
-      console.error("Cloudinary config is not set.");
-      toast({
-        variant: 'destructive',
-        title: 'Erreur de configuration',
-        description: 'La configuration Cloudinary (cloud name, api key) est incomplète.'
-      });
-      setIsUploading(false);
-      return;
+  function onImageLoad(e: React.SyntheticEvent<HTMLImageElement>) {
+    const { width, height } = e.currentTarget;
+    setCrop(centerAspectCrop(width, height, 3 / 2));
+  }
+
+
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files && event.target.files.length > 0) {
+      const file = event.target.files[0];
+      setOriginalFile(file);
+      setCrop(undefined); // Reste crop
+      const reader = new FileReader();
+      reader.addEventListener('load', () =>
+        setImgSrc(reader.result?.toString() || '')
+      );
+      reader.readAsDataURL(file);
+      setIsCropModalOpen(true);
+    }
+  };
+  
+  const handleUploadCroppedImage = async () => {
+    if (!completedCrop || !imgRef.current || !originalFile) {
+        toast({ variant: 'destructive', title: 'Erreur', description: 'Aucune zone de recadrage sélectionnée.' });
+        return;
     }
     
+    setIsUploading(true);
+
     try {
-        const timestamp = Math.round((new Date).getTime()/1000);
+        const croppedImageFile = await getCroppedImg(imgRef.current, completedCrop, originalFile.name);
+
+        const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
+        const apiKey = process.env.NEXT_PUBLIC_CLOUDINARY_API_KEY;
+        const uploadPreset = 'warriors_gaming';
+        const folder = 'warriors_gaming';
+
+        if (!cloudName || !apiKey) {
+            console.error("Cloudinary config is not set.");
+            toast({
+              variant: 'destructive',
+              title: 'Erreur de configuration',
+              description: 'La configuration Cloudinary (cloud name, api key) est incomplète.'
+            });
+            setIsUploading(false);
+            return;
+        }
+
+        const timestamp = Math.round(new Date().getTime() / 1000);
         
-        // Parameters to be signed on the server
         const paramsToSign = {
           timestamp: timestamp,
           upload_preset: uploadPreset,
           folder: folder,
         };
-        
+
         const signResponse = await fetch('/api/sign-cloudinary-params', {
           method: 'POST',
           body: JSON.stringify({ paramsToSign }),
         });
-        
+
         if (!signResponse.ok) {
             const errorText = await signResponse.text();
             throw new Error(`Failed to get signature from server: ${errorText}`);
@@ -109,9 +215,8 @@ function CloudinaryUploadButton({ onUpload }: { onUpload: (url: string) => void 
 
         const { signature } = await signResponse.json();
 
-        // Final FormData to be sent to Cloudinary
         const formData = new FormData();
-        formData.append('file', file);
+        formData.append('file', croppedImageFile);
         formData.append('api_key', apiKey);
         formData.append('timestamp', String(timestamp));
         formData.append('signature', signature);
@@ -138,6 +243,9 @@ function CloudinaryUploadButton({ onUpload }: { onUpload: (url: string) => void 
 
         const data = await uploadResponse.json();
         onUpload(data.secure_url);
+        
+        setIsCropModalOpen(false);
+        setImgSrc('');
 
     } catch (error: any) {
         console.error('Upload error:', error);
@@ -152,19 +260,58 @@ function CloudinaryUploadButton({ onUpload }: { onUpload: (url: string) => void 
   };
 
   return (
-    <div className="relative">
-      <Button type="button" variant="outline" disabled={isUploading}>
+    <>
+      <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()}>
         <UploadCloud className="mr-2 h-4 w-4" />
-        {isUploading ? 'Uploading...' : 'Upload Image'}
+        Choisir une image
       </Button>
       <input
+        ref={fileInputRef}
         type="file"
         accept="image/*"
-        onChange={handleUpload}
-        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-        disabled={isUploading}
+        onChange={handleFileSelect}
+        className="hidden"
       />
-    </div>
+
+      <Dialog open={isCropModalOpen} onOpenChange={setIsCropModalOpen}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Recadrer l'image</DialogTitle>
+            <DialogDescription>
+              Ajustez la sélection pour recadrer votre image.
+            </DialogDescription>
+          </DialogHeader>
+          {imgSrc && (
+             <div className="flex justify-center bg-muted p-4 rounded-md">
+                <ReactCrop
+                    crop={crop}
+                    onChange={(_, percentCrop) => setCrop(percentCrop)}
+                    onComplete={(c) => setCompletedCrop(c)}
+                    aspect={3 / 2}
+                    minWidth={300}
+                    minHeight={200}
+                >
+                    <Image
+                    ref={imgRef}
+                    alt="Crop preview"
+                    src={imgSrc}
+                    onLoad={onImageLoad}
+                    width={800}
+                    height={600}
+                    style={{ maxHeight: '70vh', objectFit: 'contain' }}
+                    />
+                </ReactCrop>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsCropModalOpen(false)}>Annuler</Button>
+            <Button onClick={handleUploadCroppedImage} disabled={isUploading}>
+              {isUploading ? 'Chargement...' : <><Crop className="mr-2 h-4 w-4" /> Recadrer et Uploader</>}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 
