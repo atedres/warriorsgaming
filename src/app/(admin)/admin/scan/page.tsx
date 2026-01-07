@@ -707,7 +707,7 @@ function calculatePrice(stationType: Station['type'], durationInMinutes: number)
         case 'VR':
         case 'Simulator':
             if (durationInMinutes <= 30) price = 30;
-            else if (durationInMinutes <= 60) price = 50; // Added 1 hour price
+            else if (durationInMinutes <= 60) price = 50;
             else price = Math.ceil(durationInMinutes / 30) * 30; // Fallback for > 1hr
             break;
     }
@@ -726,7 +726,7 @@ function ReleaseStationDialog({ station, client, allClients }: { station: Statio
     const { t } = useTranslation();
 
     const durationInMinutes = station.sessionStartTime ? differenceInMinutes(new Date(), new Date(station.sessionStartTime)) : 0;
-    const calculatedCost = calculatePrice(station.type, durationInMinutes);
+    const calculatedCost = useMemo(() => calculatePrice(station.type, durationInMinutes), [station.type, durationInMinutes]);
 
     useEffect(() => {
         if (isOpen) {
@@ -875,7 +875,7 @@ function ReleaseStationDialog({ station, client, allClients }: { station: Statio
                                     autoFocus
                                 />
                             ) : (
-                                <p className="text-xl font-bold">{formatCurrency(calculatedCost, 'MAD')}</p>
+                                <p className="text-xl font-bold">{formatCurrency(finalPrice, 'MAD')}</p>
                             )}
                         </div>
                     </div>
