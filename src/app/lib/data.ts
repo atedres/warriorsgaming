@@ -66,4 +66,13 @@ export type Promotion = {
     image: string;
     imageHint: string;
 }
+
+export type SubscriptionCard = {
+    id: string;
+    name: string;
+    description: string;
+    price: number;
+    hoursGranted: number;
+    bonusHoursGranted: number;
+}
     

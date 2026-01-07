@@ -247,6 +247,39 @@
         }
       },
       "required": ["id", "imageUrl"]
+    },
+    "SubscriptionCard": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Subscription Card",
+      "type": "object",
+      "description": "Represents a purchasable subscription package that grants hours to a client.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique ID for the subscription card type."
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the subscription (e.g., 'Bronze Pack')."
+        },
+        "description": {
+          "type": "string",
+          "description": "A short description of what the card offers."
+        },
+        "price": {
+          "type": "number",
+          "description": "The cost of the subscription card."
+        },
+        "hoursGranted": {
+          "type": "number",
+          "description": "The number of standard subscription hours granted."
+        },
+        "bonusHoursGranted": {
+          "type": "number",
+          "description": "The number of bonus hours granted with the purchase."
+        }
+      },
+      "required": ["id", "name", "price", "hoursGranted"]
     }
   },
   "auth": {
@@ -372,6 +405,22 @@
             {
               "name": "settingId",
               "description": "The unique ID for the setting, e.g., 'hero_image'."
+            }
+          ]
+        }
+      },
+       {
+        "path": "/subscriptionCards/{cardId}",
+        "definition": {
+          "entityName": "SubscriptionCard",
+          "schema": {
+            "$ref": "#/entities/SubscriptionCard"
+          },
+          "description": "Stores definitions for purchasable subscription cards. Writable only by admins.",
+          "params": [
+            {
+              "name": "cardId",
+              "description": "The unique ID for the subscription card type."
             }
           ]
         }

@@ -44,6 +44,11 @@ service cloud.firestore {
         allow write: if get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.role in ['manager', 'superadmin'];
     }
 
+    // Les admins peuvent gérer les cartes d'abonnement
+    match /subscriptionCards/{cardId} {
+      allow read, write: if get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.role in ['manager', 'superadmin'];
+    }
+
     // Les admins peuvent gérer tous les journaux d'utilisation.
     match /usageLogs/{logId} {
        allow read, list, write: if get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.role in ['manager', 'superadmin'];

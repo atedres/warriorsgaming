@@ -15,7 +15,7 @@ import {
   History,
   Calendar,
   LayoutGrid,
-  DollarSign,
+  CreditCard,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Logo } from "../logo";
@@ -30,7 +30,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useLanguage, useTranslation } from "@/hooks/use-translation";
-import { ThemeToggle } from "../theme-toggle";
 import { useEffect, useState } from "react";
 import { collection, collectionGroup, doc, getDocs, onSnapshot, query, where } from "firebase/firestore";
 import { useUser } from "@/firebase/provider";
@@ -96,6 +95,7 @@ export function AdminHeader() {
       { href: "/admin", icon: Home, label: t('dashboard') },
       { href: "/admin/clients", icon: Users2, label: t('clients') },
       { href: "/admin/stations", icon: Gamepad2, label: t('stations') },
+      { href: "/admin/subscriptions", icon: CreditCard, label: "Abonnements"},
       { href: "/admin/content", icon: LayoutGrid, label: "Contenu" },
       { href: "/admin/reservations", icon: Calendar, label: t('reservationManagement'), notifCount: pendingReservations},
       { href: "/admin/scan", icon: QrCode, label: t('scanner') },
@@ -237,6 +237,7 @@ export function AdminSidebar() {
     { href: "/admin", icon: Home, label: t('dashboard') },
     { href: "/admin/clients", icon: Users2, label: t('clients') },
     { href: "/admin/stations", icon: Gamepad2, label: t('stations') },
+    { href: "/admin/subscriptions", icon: CreditCard, label: "Abonnements" },
     { href: "/admin/content", icon: LayoutGrid, label: "Contenu" },
     { href: "/admin/reservations", icon: Calendar, label: t('reservationManagement'), notifCount: pendingReservations },
     { href: "/admin/scan", icon: QrCode, label: t('scanner') },

@@ -107,6 +107,7 @@ export const translations = {
     history_bonusUsed: "Used {bonusHours} bonus hours.",
     history_bonusAdded: "Added {bonusValue} bonus {bonusUnit} for {stationType}.",
     history_generalBonus: "Added {bonusValue} bonus {bonusUnit} for general use.",
+    history_recharge: "Recharged account with {cardName} ({hoursAdded}h + {bonusAdded}h bonus) for {price}.",
     
     // Station Statuses
     statusAvailable: "Available",
@@ -220,6 +221,7 @@ export const translations = {
     history_bonusUsed: "{bonusHours} heures bonus utilisées.",
     history_bonusAdded: "Ajout de {bonusValue} {bonusUnit} de bonus pour {stationType}.",
     history_generalBonus: "Ajout de {bonusValue} {bonusUnit} de bonus pour usage général.",
+    history_recharge: "Compte rechargé avec {cardName} ({hoursAdded}h + {bonusAdded}h bonus) pour {price}.",
     
     // Station Statuses
     statusAvailable: "Disponible",
@@ -332,6 +334,7 @@ export const translations = {
     history_bonusUsed: "تم استخدام {bonusHours} ساعة إضافية.",
     history_bonusAdded: "تمت إضافة {bonusValue} {bonusUnit} إضافية لـ {stationType}.",
     history_generalBonus: "تمت إضافة {bonusValue} {bonusUnit} إضافية للاستخدام العام.",
+    history_recharge: "تم شحن الحساب بـ {cardName} ({hoursAdded}س + {bonusAdded}س إضافية) مقابل {price}.",
     
     // Station Statuses
     statusAvailable: "متاح",
