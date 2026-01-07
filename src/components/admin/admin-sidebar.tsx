@@ -33,6 +33,7 @@ import { useLanguage, useTranslation } from "@/hooks/use-translation";
 import { useEffect, useState } from "react";
 import { collection, collectionGroup, doc, getDocs, onSnapshot, query, where } from "firebase/firestore";
 import { useUser } from "@/firebase/provider";
+import { ThemeToggle } from "../theme-toggle";
 
 export function AdminHeader() {
     const auth = useAuth();
