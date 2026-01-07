@@ -4,7 +4,7 @@
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import jsQR from "jsqr";
-import { QrCode, User, CheckCircle, Gift, Clock, LogOut, Gamepad2, VideoOff, Camera, MonitorPlay, Tv, Users, ScanLine, Wallet, Monitor, Star, Car, UserX, Edit, Plus, Minus } from "lucide-react";
+import { QrCode, User, CheckCircle, Gift, Clock, LogOut, Gamepad2, VideoOff, Camera, MonitorPlay, Tv, Users, ScanLine, Wallet, Monitor, Star, Car, UserX, Edit, Plus, Minus, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -613,7 +613,7 @@ function BonusPointsDialog({ clients, trigger, initialClient, stationType }: { c
                 <DialogHeader>
                     <DialogTitle>Attribuer des Points Bonus</DialogTitle>
                     <DialogDescription>
-                        Scannez le QR code ou utilisez le client actuel pour ajouter un bonus.
+                        Scannez le code QR ou utilisez le client actuel pour ajouter un bonus.
                     </DialogDescription>
                 </DialogHeader>
                 {!selectedClient ? (
@@ -707,7 +707,8 @@ function calculatePrice(stationType: Station['type'], durationInMinutes: number)
         case 'VR':
         case 'Simulator':
             if (durationInMinutes <= 30) price = 30;
-            else price = Math.ceil(durationInMinutes / 30) * 30; // 50 DH for 1 hour means 25DH per 30min, but rule says 30dh/30min
+            else if (durationInMinutes <= 60) price = 50; // Added 1 hour price
+            else price = Math.ceil(durationInMinutes / 30) * 30; // Fallback for > 1hr
             break;
     }
     return price;
@@ -717,9 +718,23 @@ function calculatePrice(stationType: Station['type'], durationInMinutes: number)
 function ReleaseStationDialog({ station, client, allClients }: { station: Station, client?: Client | null, allClients: Client[] | null }) {
     const [isOpen, setIsOpen] = useState(false);
     const [useBonus, setUseBonus] = useState(false);
+    const [isEditingPrice, setIsEditingPrice] = useState(false);
+    const [manualPrice, setManualPrice] = useState<string | number>("");
+
     const firestore = useFirestore();
     const { toast } = useToast();
     const { t } = useTranslation();
+
+    const durationInMinutes = station.sessionStartTime ? differenceInMinutes(new Date(), new Date(station.sessionStartTime)) : 0;
+    const calculatedCost = calculatePrice(station.type, durationInMinutes);
+
+    useEffect(() => {
+        if (isOpen) {
+            setManualPrice(calculatedCost);
+            setIsEditingPrice(false);
+            setUseBonus(false);
+        }
+    }, [isOpen, calculatedCost]);
 
     if (!station.sessionStartTime) {
         return (
@@ -733,25 +748,30 @@ function ReleaseStationDialog({ station, client, allClients }: { station: Statio
     const clientName = isAnonymous ? "Client de Passage" : client?.name;
     const clientSubscription = isAnonymous ? "Aucun" : client?.subscriptionTier;
 
-    const startTime = new Date(station.sessionStartTime);
-    const durationInMinutes = differenceInMinutes(new Date(), startTime);
-    const durationInHours = durationInMinutes / 60;
     const hours = Math.floor(durationInMinutes / 60);
     const minutes = durationInMinutes % 60;
     const durationString = `${hours}h ${minutes}m`;
-    const totalCost = calculatePrice(station.type, durationInMinutes);
-
+    
+    const finalPrice = Number(manualPrice);
     const clientBonusHours = client?.bonusHours || 0;
     
     let bonusHoursToUse = 0;
-    let remainingCost = totalCost;
+    let remainingCost = finalPrice;
     let remainingBonusHours = clientBonusHours;
 
-    if (useBonus && !isAnonymous) {
+    if (useBonus && !isAnonymous && clientBonusHours > 0) {
+        // Find how many minutes the bonus can cover
         const bonusInMinutes = clientBonusHours * 60;
+        
+        // Find cost equivalent of bonus time played. 
+        // We calculate what the price would have been for the duration covered by bonus.
         const usedBonusInMinutes = Math.min(bonusInMinutes, durationInMinutes);
         const costCoveredByBonus = calculatePrice(station.type, usedBonusInMinutes);
-        remainingCost = Math.max(0, totalCost - costCoveredByBonus);
+        
+        // Reduce the final price by the value of the bonus used.
+        remainingCost = Math.max(0, finalPrice - costCoveredByBonus);
+        
+        // Update remaining bonus hours
         remainingBonusHours = (bonusInMinutes - usedBonusInMinutes) / 60;
     }
 
@@ -760,17 +780,14 @@ function ReleaseStationDialog({ station, client, allClients }: { station: Statio
 
         const endTime = new Date().toISOString();
 
-        // 1. Update the UsageLog with endTime
         if (station.currentUsageLogId) {
             const usageLogRef = doc(firestore, "usageLogs", station.currentUsageLogId);
             updateDocumentNonBlocking(usageLogRef, { endTime: endTime });
         }
 
-        // 2. Update the Station
         const stationRef = doc(firestore, "stations", station.id);
         updateDocumentNonBlocking(stationRef, { status: 'available', currentClientId: null, sessionStartTime: null, sessionEndTime: null, currentUsageLogId: null });
 
-        // 3. Update the Client (if not anonymous)
         if(station.currentClientId && !isAnonymous && client) {
             const clientRef = doc(firestore, "clients", station.currentClientId);
             updateDocumentNonBlocking(clientRef, { 
@@ -788,7 +805,7 @@ function ReleaseStationDialog({ station, client, allClients }: { station: Statio
                     metadata: {
                         stationId: station.id,
                         duration: durationString,
-                        cost: formatCurrency(totalCost, 'MAD'),
+                        cost: formatCurrency(finalPrice, 'MAD'),
                         bonusUsed: bonusUsedString,
                     }
                 }
@@ -817,7 +834,7 @@ function ReleaseStationDialog({ station, client, allClients }: { station: Statio
                 <DialogHeader>
                     <DialogTitle>Finaliser la session de {clientName}</DialogTitle>
                     <DialogDescription>
-                        Vérifiez les détails de la session et confirmez le paiement.
+                        Vérifiez les détails de la session, ajustez le prix si nécessaire, et confirmez le paiement.
                     </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4 py-4">
@@ -836,14 +853,30 @@ function ReleaseStationDialog({ station, client, allClients }: { station: Statio
                             </div>
                         </div>
                     </div>
-                    <div className="flex justify-around text-center p-4 bg-muted rounded-lg">
-                        <div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="text-center p-4 bg-muted rounded-lg">
                             <p className="text-sm text-muted-foreground">Durée</p>
                             <p className="text-xl font-bold">{durationString}</p>
                         </div>
-                        <div>
-                            <p className="text-sm text-muted-foreground">Coût Total</p>
-                            <p className="text-xl font-bold">{formatCurrency(totalCost, 'MAD')}</p>
+                        <div className="text-center p-4 bg-muted rounded-lg">
+                            <div className="flex items-center justify-center gap-2">
+                                <p className="text-sm text-muted-foreground">Coût Calculé</p>
+                                <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => setIsEditingPrice(p => !p)}>
+                                    <Pencil className="h-3 w-3" />
+                                </Button>
+                            </div>
+                            {isEditingPrice ? (
+                                <Input 
+                                    type="number" 
+                                    value={manualPrice} 
+                                    onChange={(e) => setManualPrice(e.target.value)}
+                                    onBlur={() => setIsEditingPrice(false)}
+                                    className="text-xl font-bold text-center h-auto p-0 border-0 bg-transparent focus-visible:ring-0"
+                                    autoFocus
+                                />
+                            ) : (
+                                <p className="text-xl font-bold">{formatCurrency(calculatedCost, 'MAD')}</p>
+                            )}
                         </div>
                     </div>
                     
