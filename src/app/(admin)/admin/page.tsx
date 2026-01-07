@@ -72,7 +72,8 @@ function calculatePrice(stationType: Station['type'], durationInMinutes: number)
         case 'VR':
         case 'Simulator':
             if (durationInMinutes <= 30) price = 30;
-            else price = Math.ceil(durationInMinutes / 30) * 30; // 50 DH for 1 hour means 25DH per 30min, but rule says 30dh/30min
+            else if (durationInMinutes <= 60) price = 50;
+            else price = Math.ceil(durationInMinutes / 30) * 30; // Fallback for > 1hr
             break;
     }
     return price;
@@ -164,27 +165,36 @@ export default function AdminDashboard() {
     for (const log of usageLogs) {
       if (log.endTime) {
         const startTime = new Date(log.startTime);
-        const endTime = new Date(log.endTime);
-        const duration = differenceInMinutes(endTime, startTime);
+        
+        let cost = 0;
+        if (typeof log.finalCost === 'number') {
+            cost = log.finalCost;
+        } else {
+            const endTime = new Date(log.endTime);
+            const duration = differenceInMinutes(endTime, startTime);
+            const stationType = stationTypesMap.get(log.stationId);
+            if (stationType) {
+                cost = calculatePrice(stationType, duration);
+            }
+        }
+
+        if (isWithinInterval(startTime, revenueInterval)) {
+          totalRevenue += cost;
+        }
+        
+        // Weekly revenue for chart (always last 7 days)
+        const logDayKey = format(startTime, 'yyyy-MM-dd');
+        if(logDayKey in revenueByDay) {
+            revenueByDay[logDayKey] += cost;
+        }
+
+        // Station popularity
         const stationType = stationTypesMap.get(log.stationId);
-
         if (stationType) {
-          const cost = calculatePrice(stationType, duration);
-          
-          if (isWithinInterval(startTime, revenueInterval)) {
-            totalRevenue += cost;
-          }
-          
-          // Weekly revenue for chart (always last 7 days)
-          const logDayKey = format(startTime, 'yyyy-MM-dd');
-          if(logDayKey in revenueByDay) {
-              revenueByDay[logDayKey] += cost;
-          }
-
-          // Station popularity
-          if (duration > 0) { // Only count sessions that actually lasted some time
-            stationUsageCount[stationType] = (stationUsageCount[stationType] || 0) + 1;
-          }
+            const duration = differenceInMinutes(new Date(log.endTime), startTime);
+            if (duration > 0) {
+              stationUsageCount[stationType] = (stationUsageCount[stationType] || 0) + 1;
+            }
         }
       }
     }

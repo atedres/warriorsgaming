@@ -186,6 +186,10 @@
           "type": ["string", "null"],
           "description": "End time of the station usage.",
           "format": "date-time"
+        },
+        "finalCost": {
+            "type": "number",
+            "description": "The final cost of the session, including any manual adjustments."
         }
       },
       "required": [

@@ -782,7 +782,7 @@ function ReleaseStationDialog({ station, client, allClients }: { station: Statio
 
         if (station.currentUsageLogId) {
             const usageLogRef = doc(firestore, "usageLogs", station.currentUsageLogId);
-            updateDocumentNonBlocking(usageLogRef, { endTime: endTime });
+            updateDocumentNonBlocking(usageLogRef, { endTime: endTime, finalCost: finalPrice });
         }
 
         const stationRef = doc(firestore, "stations", station.id);

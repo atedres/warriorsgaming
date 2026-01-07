@@ -44,6 +44,7 @@ export type UsageLog = {
     stationId: string;
     startTime: string;
     endTime: string | null;
+    finalCost?: number;
 }
 
 export type HistoryLogDescription = {
