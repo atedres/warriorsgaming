@@ -7,6 +7,7 @@ import { useAuth, useUser, useFirestore } from '@/firebase';
 import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
+  sendPasswordResetEmail,
 } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
@@ -18,12 +19,92 @@ import {
   CardTitle,
   CardFooter,
 } from '@/components/ui/card';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Logo } from '@/components/logo';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
+
+function ForgotPasswordDialog() {
+    const [email, setEmail] = useState('');
+    const [isOpen, setIsOpen] = useState(false);
+    const [loading, setLoading] = useState(false);
+    const auth = useAuth();
+    const { toast } = useToast();
+
+    const handlePasswordReset = async () => {
+        if (!auth || !email) {
+            toast({
+                variant: "destructive",
+                title: "Adresse e-mail requise",
+                description: "Veuillez entrer votre adresse e-mail.",
+            });
+            return;
+        }
+        setLoading(true);
+        try {
+            await sendPasswordResetEmail(auth, email);
+            toast({
+                title: "E-mail envoyé",
+                description: "Si un compte existe pour cet e-mail, vous recevrez un lien pour réinitialiser votre mot de passe.",
+            });
+            setIsOpen(false);
+        } catch (error) {
+            console.error("Password reset error:", error);
+            // We show a generic message to avoid confirming if an email exists or not
+            toast({
+                title: "E-mail envoyé",
+                description: "Si un compte existe pour cet e-mail, vous recevrez un lien pour réinitialiser votre mot de passe.",
+            });
+        } finally {
+            setLoading(false);
+        }
+    };
+    
+    return (
+        <AlertDialog open={isOpen} onOpenChange={setIsOpen}>
+            <AlertDialogTrigger asChild>
+                <Button variant="link" className="px-0 h-auto text-xs text-muted-foreground">Mot de passe oublié ?</Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle>Réinitialiser votre mot de passe</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        Entrez votre adresse e-mail ci-dessous. Si un compte est associé, nous vous enverrons un lien pour réinitialiser votre mot de passe.
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <div className="py-4">
+                    <Label htmlFor="reset-email" className="sr-only">Email</Label>
+                    <Input
+                        id="reset-email"
+                        type="email"
+                        placeholder="vous@example.com"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                    />
+                </div>
+                <AlertDialogFooter>
+                    <AlertDialogCancel>Annuler</AlertDialogCancel>
+                    <Button onClick={handlePasswordReset} disabled={loading}>
+                        {loading ? "Envoi..." : "Envoyer le lien de réinitialisation"}
+                    </Button>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
+    )
+}
 
 export default function LoginClientPage() {
   const [email, setEmail] = useState('');
@@ -179,7 +260,10 @@ export default function LoginClientPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="password-login">Mot de passe</Label>
+                    <div className="flex items-center justify-between">
+                        <Label htmlFor="password-login">Mot de passe</Label>
+                        <ForgotPasswordDialog />
+                    </div>
                   <Input
                     id="password-login"
                     type="password"
