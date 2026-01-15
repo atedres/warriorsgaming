@@ -778,17 +778,34 @@ function ReleaseStationDialog({ station, client, allClients }: { station: Statio
     const { toast } = useToast();
     const { t } = useTranslation();
 
-    const { durationInMinutes, calculatedCost } = useMemo(() => {
-        const totalPausedSeconds = station.totalPausedDuration || 0;
-        const currentPauseDuration = station.isPaused && station.lastPauseStartTime ? differenceInSeconds(new Date(), new Date(station.lastPauseStartTime)) : 0;
-        const finalTotalPausedSeconds = totalPausedSeconds + currentPauseDuration;
-
-        const grossDurationInMinutes = station.sessionStartTime ? differenceInMinutes(new Date(), new Date(station.sessionStartTime)) : 0;
-        const activeDurationInMinutes = Math.max(0, grossDurationInMinutes - (finalTotalPausedSeconds / 60));
+    const { durationString, activeDurationInMinutes, calculatedCost } = useMemo(() => {
+        if (!station.sessionStartTime) {
+            return { durationString: "0m", activeDurationInMinutes: 0, calculatedCost: 0 };
+        }
         
-        const cost = calculatePrice(station.type, activeDurationInMinutes);
+        const now = new Date();
+        const startTime = new Date(station.sessionStartTime);
+        const totalPausedSeconds = station.totalPausedDuration || 0;
+        
+        let currentActiveDurationSeconds: number;
 
-        return { durationInMinutes: grossDurationInMinutes, calculatedCost: cost };
+        if (station.isPaused && station.lastPauseStartTime) {
+            const pauseStartTime = new Date(station.lastPauseStartTime);
+            currentActiveDurationSeconds = differenceInSeconds(pauseStartTime, startTime) - totalPausedSeconds;
+        } else {
+            currentActiveDurationSeconds = differenceInSeconds(now, startTime) - totalPausedSeconds;
+        }
+
+        currentActiveDurationSeconds = Math.max(0, currentActiveDurationSeconds);
+        const activeMinutes = Math.floor(currentActiveDurationSeconds / 60);
+        
+        const hours = Math.floor(activeMinutes / 60);
+        const minutes = activeMinutes % 60;
+        const durString = `${hours}h ${minutes}m`;
+        
+        const cost = calculatePrice(station.type, activeMinutes);
+
+        return { durationString: durString, activeDurationInMinutes: activeMinutes, calculatedCost: cost };
     }, [station.sessionStartTime, station.totalPausedDuration, station.isPaused, station.lastPauseStartTime, station.type]);
 
 
@@ -802,7 +819,7 @@ function ReleaseStationDialog({ station, client, allClients }: { station: Statio
 
     if (!station.sessionStartTime) {
         return (
-             <Button variant="destructive" size="sm" className="mt-2 w-full" disabled>
+             <Button variant="destructive" size="sm" className="w-full" disabled>
                 <LogOut className="mr-2 h-4 w-4"/> {t('releaseStation')}
             </Button>
         )
@@ -812,10 +829,6 @@ function ReleaseStationDialog({ station, client, allClients }: { station: Statio
     const clientName = isAnonymous ? "Client de Passage" : client?.name;
     const clientSubscription = isAnonymous ? "Aucun" : client?.subscriptionTier;
 
-    const hours = Math.floor(durationInMinutes / 60);
-    const minutes = durationInMinutes % 60;
-    const durationString = `${hours}h ${minutes}m`;
-    
     const finalPrice = Number(manualPrice);
     const clientBonusHours = client?.bonusHours || 0;
     
@@ -824,18 +837,12 @@ function ReleaseStationDialog({ station, client, allClients }: { station: Statio
     let remainingBonusHours = clientBonusHours;
 
     if (useBonus && !isAnonymous && clientBonusHours > 0) {
-        // Find how many minutes the bonus can cover
         const bonusInMinutes = clientBonusHours * 60;
-        
-        // Find cost equivalent of bonus time played. 
-        // We calculate what the price would have been for the duration covered by bonus.
-        const usedBonusInMinutes = Math.min(bonusInMinutes, durationInMinutes);
+        const usedBonusInMinutes = Math.min(bonusInMinutes, activeDurationInMinutes);
         const costCoveredByBonus = calculatePrice(station.type, usedBonusInMinutes);
         
-        // Reduce the final price by the value of the bonus used.
         remainingCost = Math.max(0, finalPrice - costCoveredByBonus);
         
-        // Update remaining bonus hours
         remainingBonusHours = (bonusInMinutes - usedBonusInMinutes) / 60;
     }
 
@@ -1114,22 +1121,37 @@ function SessionTimer({ station }: { station: Station }) {
         const updateTimer = () => {
             const now = new Date();
             const startTime = new Date(station.sessionStartTime!);
-            const elapsed = formatDistanceToNowStrict(startTime, { roundingMethod: 'floor' });
+            const totalPausedSeconds = station.totalPausedDuration || 0;
+            
+            let activeElapsedSeconds: number;
+
+            if (station.isPaused && station.lastPauseStartTime) {
+                // If paused, elapsed time is frozen at the moment of pausing.
+                const pauseStartTime = new Date(station.lastPauseStartTime);
+                activeElapsedSeconds = differenceInSeconds(pauseStartTime, startTime) - totalPausedSeconds;
+            } else {
+                // If running, calculate elapsed time minus total paused duration.
+                activeElapsedSeconds = differenceInSeconds(now, startTime) - totalPausedSeconds;
+            }
+
+            activeElapsedSeconds = Math.max(0, activeElapsedSeconds);
+
+            const elapsedDuration = intervalToDuration({ start: 0, end: activeElapsedSeconds * 1000 });
+            const elapsed = formatDuration(elapsedDuration, { format: ['hours', 'minutes'], zero: false }) || '0m';
             
             if (station.sessionEndTime) {
                 const endTime = new Date(station.sessionEndTime);
-                const totalDuration = intervalToDuration({ start: startTime, end: endTime });
+                const totalActiveSeconds = differenceInSeconds(endTime, startTime) - (station.totalPausedDuration || 0);
+                const totalDuration = intervalToDuration({ start: 0, end: totalActiveSeconds * 1000 });
                 const totalFormatted = formatDuration(totalDuration, { format: ['hours', 'minutes'] });
 
-                const totalSeconds = differenceInSeconds(endTime, startTime);
-                const elapsedSeconds = differenceInSeconds(now, startTime);
-                const percentage = totalSeconds > 0 ? (elapsedSeconds / totalSeconds) * 100 : 0;
+                const percentage = totalActiveSeconds > 0 ? (activeElapsedSeconds / totalActiveSeconds) * 100 : 0;
                 
                 setProgress({
                     elapsed: elapsed,
                     total: totalFormatted,
                     percentage: Math.min(100, percentage),
-                    isTimeUp: now > endTime,
+                    isTimeUp: activeElapsedSeconds >= totalActiveSeconds,
                 });
 
             } else {
@@ -1138,10 +1160,17 @@ function SessionTimer({ station }: { station: Station }) {
         };
 
         updateTimer();
-        const intervalId = setInterval(updateTimer, 10000); // update every 10s
-        return () => clearInterval(intervalId);
+        
+        let intervalId: NodeJS.Timeout | undefined;
+        if (!station.isPaused) {
+            intervalId = setInterval(updateTimer, 10000); // update every 10s if running
+        }
+        
+        return () => {
+            if (intervalId) clearInterval(intervalId);
+        };
 
-    }, [station.status, station.sessionStartTime, station.sessionEndTime]);
+    }, [station.status, station.sessionStartTime, station.sessionEndTime, station.isPaused, station.lastPauseStartTime, station.totalPausedDuration]);
     
     if (station.status !== 'in use') return null;
 
