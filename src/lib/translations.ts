@@ -1,4 +1,5 @@
 
+
 export const translations = {
   en: {
     welcome: "Welcome to Warriors Gaming",
@@ -360,8 +361,8 @@ const checkTranslations: Translations = translations;
     
 export function formatHistoryDescription(t: (key: any) => string, log: any): string {
     if (typeof log.description === 'string') {
-        // Handle legacy descriptions
-        return log.description;
+        // Handle legacy descriptions or new simple string descriptions
+        return log.description.includes('{') ? t('noHistoryFound') : log.description;
     }
     if (log.description && log.description.key) {
         let translated = t(log.description.key);
@@ -376,3 +377,4 @@ export function formatHistoryDescription(t: (key: any) => string, log: any): str
 }
 
     
+

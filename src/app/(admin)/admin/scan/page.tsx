@@ -4,7 +4,7 @@
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import jsQR from "jsqr";
-import { QrCode, User, CheckCircle, Gift, Clock, LogOut, Gamepad2, VideoOff, Camera, MonitorPlay, Tv, Users, ScanLine, Wallet, Monitor, Star, Car, UserX, Edit, Plus, Minus, Pencil } from "lucide-react";
+import { QrCode, User, CheckCircle, Gift, Clock, LogOut, Gamepad2, VideoOff, Camera, MonitorPlay, Tv, Users, ScanLine, Wallet, Monitor, Star, Car, UserX, Edit, Plus, Minus, Pencil, ArrowRightLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -46,6 +46,8 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { Progress } from "@/components/ui/progress";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 import { useTranslation } from "@/hooks/use-translation";
 import { cn, formatCurrency } from "@/lib/utils";
@@ -1090,11 +1092,131 @@ function SessionTimer({ station }: { station: Station }) {
     )
 }
 
-function StationCard({ station, client, isLoadingClients, allClients }: { 
+function TransferClientDialog({ fromStation, client, availableStations }: { fromStation: Station, client: Client | null, availableStations: Station[] }) {
+    const [isOpen, setIsOpen] = useState(false);
+    const [selectedStationId, setSelectedStationId] = useState<string | undefined>();
+    const firestore = useFirestore();
+    const { toast } = useToast();
+
+    useEffect(() => {
+        if (!isOpen) {
+            setSelectedStationId(undefined);
+        }
+    }, [isOpen]);
+    
+    if (!client) return null;
+
+    const handleConfirmTransfer = () => {
+        if (!firestore || !selectedStationId) {
+            toast({ variant: "destructive", title: "Aucun poste sélectionné." });
+            return;
+        }
+
+        const toStation = availableStations.find(s => s.id === selectedStationId);
+        if (!toStation) {
+            toast({ variant: "destructive", title: "Poste invalide", description: "Le poste sélectionné n'est plus disponible." });
+            return;
+        }
+        
+        // 1. Release old station
+        const fromStationRef = doc(firestore, "stations", fromStation.id);
+        updateDocumentNonBlocking(fromStationRef, { status: 'available', currentClientId: null, sessionStartTime: null, sessionEndTime: null, currentUsageLogId: null });
+        
+        // 2. Assign new station with same session details
+        const toStationRef = doc(firestore, "stations", toStation.id);
+        updateDocumentNonBlocking(toStationRef, {
+            status: 'in use',
+            currentClientId: fromStation.currentClientId,
+            sessionStartTime: fromStation.sessionStartTime,
+            sessionEndTime: fromStation.sessionEndTime,
+            currentUsageLogId: fromStation.currentUsageLogId,
+        });
+
+        // 3. Update client's current station
+        const clientRef = doc(firestore, "clients", client.id);
+        updateDocumentNonBlocking(clientRef, { currentStationId: toStation.id });
+
+        // 4. (Optional) Add a history log for the transfer
+        const historyRef = collection(firestore, 'clients', client.id, 'history');
+        addDocumentNonBlocking(historyRef, {
+            timestamp: new Date().toISOString(),
+            type: 'system', // or a new 'transfer' type
+            description: `Transféré du poste ${fromStation.id} au poste ${toStation.id}.`
+        });
+        
+        toast({
+            title: "Transfert Réussi!",
+            description: `${client.name} a été transféré vers le poste ${toStation.id}.`
+        });
+        
+        setIsOpen(false);
+    };
+
+    return (
+        <Dialog open={isOpen} onOpenChange={setIsOpen}>
+            <DialogTrigger asChild>
+                <Button variant="outline" size="sm">
+                    <ArrowRightLeft className="mr-2 h-4 w-4" /> Transférer
+                </Button>
+            </DialogTrigger>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Transférer {client.name}</DialogTitle>
+                    <DialogDescription>
+                        Déplacer la session actuelle du poste <strong>{fromStation.id}</strong> vers un autre poste disponible.
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="py-4">
+                    <Label htmlFor="station-select">Sélectionner un nouveau poste :</Label>
+                    {availableStations.length > 0 ? (
+                        <RadioGroup 
+                            id="station-select" 
+                            value={selectedStationId}
+                            onValueChange={setSelectedStationId}
+                            className="mt-2"
+                        >
+                            <ScrollArea className="h-64">
+                                <div className="space-y-2 p-1">
+                                {availableStations.map(station => (
+                                    <Label 
+                                        key={station.id}
+                                        htmlFor={station.id}
+                                        className={cn(
+                                            "flex items-center gap-3 rounded-md border p-3 hover:bg-accent",
+                                            selectedStationId === station.id && "bg-accent"
+                                        )}
+                                    >
+                                        <RadioGroupItem value={station.id} id={station.id} />
+                                        <span>{station.id}</span>
+                                        <Badge variant="secondary">{station.type}</Badge>
+                                    </Label>
+                                ))}
+                                </div>
+                            </ScrollArea>
+                        </RadioGroup>
+                    ) : (
+                        <div className="mt-4 text-center text-muted-foreground border rounded-md p-8">
+                            Aucun autre poste n'est disponible pour le moment.
+                        </div>
+                    )}
+                </div>
+                <DialogFooter>
+                    <Button variant="outline" onClick={() => setIsOpen(false)}>Annuler</Button>
+                    <Button onClick={handleConfirmTransfer} disabled={!selectedStationId}>
+                        Confirmer le Transfert
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    )
+}
+
+function StationCard({ station, client, isLoadingClients, allClients, availableStations }: { 
     station: Station, 
     client?: Client | null, 
     isLoadingClients: boolean,
-    allClients: Client[] | null
+    allClients: Client[] | null,
+    availableStations: Station[]
 }) {
     const { t } = useTranslation();
     const [timeIsUp, setTimeIsUp] = useState(false);
@@ -1179,7 +1301,12 @@ function StationCard({ station, client, isLoadingClients, allClients }: {
                             <p className="font-semibold">{isAnonymous ? "Client de Passage" : (client ? client.name : "Chargement...")}</p>
                             <SessionTimer station={station} />
                         </div>
-                        <ReleaseStationDialog station={station} client={client} allClients={allClients} />
+                        <div className="w-full flex flex-col gap-2">
+                            <div className="flex gap-2">
+                               {!isAnonymous && client && <TransferClientDialog fromStation={station} client={client} availableStations={availableStations} />}
+                               <ReleaseStationDialog station={station} client={client} allClients={allClients} />
+                            </div>
+                        </div>
                     </>
                 ) : station.status === 'available' ? (
                     <>
@@ -1248,6 +1375,10 @@ export default function ScanPage() {
     'VR',
     'Simulator',
   ];
+  
+  const availableStationsForTransfer = useMemo(() => {
+    return stations?.filter(s => s.status === 'available') || [];
+  }, [stations]);
 
   const filteredStations = useMemo(() => {
     let results = stationsWithClients;
@@ -1275,7 +1406,7 @@ export default function ScanPage() {
             trigger={
                 <Button size="sm" className="h-8 gap-1">
                     <Gift className="h-3.5 w-3.5" />
-                    <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
+                    <span className="sr-only sm:not-sr-only sm:whitespace-rap">
                         Attribuer un bonus
                     </span>
                 </Button>
@@ -1326,6 +1457,7 @@ export default function ScanPage() {
                     client={client} 
                     isLoadingClients={isLoadingClients}
                     allClients={clients}
+                    availableStations={availableStationsForTransfer.filter(s => s.id !== station.id)}
                   />
               ))}
                {!isLoading && filteredStations?.length === 0 && (
