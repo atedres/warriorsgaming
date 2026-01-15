@@ -41,6 +41,13 @@ export type Game = {
     name: string;
 }
 
+export type ConsumedItem = {
+    itemId: string;
+    itemName: string;
+    quantity: number;
+    pricePerItem: number;
+}
+
 export type UsageLog = {
     id?: string;
     clientId: string;
@@ -48,6 +55,7 @@ export type UsageLog = {
     startTime: string;
     endTime: string | null;
     finalCost?: number;
+    consumptions?: ConsumedItem[];
 }
 
 export type HistoryLogDescription = {
@@ -86,4 +94,6 @@ export type Consumable = {
     imageUrl: string;
     imageHint: string;
 }
+    
+
     

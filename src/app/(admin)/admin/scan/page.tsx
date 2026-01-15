@@ -4,7 +4,7 @@
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import jsQR from "jsqr";
-import { QrCode, User, CheckCircle, Gift, Clock, LogOut, Gamepad2, VideoOff, Camera, MonitorPlay, Tv, Users, ScanLine, Wallet, Monitor, Star, Car, UserX, Edit, Plus, Minus, Pencil, ArrowRightLeft, Pause, Play } from "lucide-react";
+import { QrCode, User, CheckCircle, Gift, Clock, LogOut, Gamepad2, VideoOff, Camera, MonitorPlay, Tv, Users, ScanLine, Wallet, Monitor, Star, Car, UserX, Edit, Plus, Minus, Pencil, ArrowRightLeft, Pause, Play, ShoppingCart, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -13,7 +13,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import type { Client, Station, UsageLog } from "@/app/lib/data";
+import type { Client, Station, UsageLog, Consumable, ConsumedItem } from "@/app/lib/data";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
@@ -33,6 +33,7 @@ import {
   DialogTitle,
   DialogTrigger,
   DialogFooter,
+  DialogClose,
 } from "@/components/ui/dialog";
 import {
   AlertDialog,
@@ -54,6 +55,7 @@ import { cn, formatCurrency } from "@/lib/utils";
 import { formatDistanceToNowStrict, differenceInMinutes, addMinutes, addHours, formatDuration, intervalToDuration, format, differenceInSeconds, getDay, getHours, addSeconds } from 'date-fns';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import Image from "next/image";
 
 function QrScanner({ onScan, onPermissionChange, onDevices, onCameraChange, currentDeviceId }: {
     onScan: (data: string) => void;
@@ -768,15 +770,103 @@ function PauseResumeButton({ station }: { station: Station }) {
     );
 }
 
+function AddConsumptionDialog({ consumables, onConfirm, trigger }: { consumables: Consumable[] | null, onConfirm: (items: ConsumedItem[]) => void, trigger: React.ReactNode }) {
+    const [isOpen, setIsOpen] = useState(false);
+    const [selectedItems, setSelectedItems] = useState<Record<string, number>>({});
+
+    const handleQuantityChange = (itemId: string, newQuantity: number) => {
+        if (newQuantity < 0) return;
+        setSelectedItems(prev => ({
+            ...prev,
+            [itemId]: newQuantity
+        }));
+    };
+
+    const handleConfirm = () => {
+        if (!consumables) return;
+        const itemsToConfirm = Object.entries(selectedItems)
+            .filter(([_, quantity]) => quantity > 0)
+            .map(([itemId, quantity]) => {
+                const consumable = consumables.find(c => c.id === itemId);
+                return {
+                    itemId,
+                    itemName: consumable?.name || 'Unknown',
+                    quantity,
+                    pricePerItem: consumable?.price || 0
+                };
+            });
+        onConfirm(itemsToConfirm);
+        setIsOpen(false);
+    };
+    
+    useEffect(() => {
+        if (!isOpen) {
+            setSelectedItems({});
+        }
+    }, [isOpen]);
+
+    return (
+        <Dialog open={isOpen} onOpenChange={setIsOpen}>
+            <DialogTrigger asChild>{trigger}</DialogTrigger>
+            <DialogContent className="max-w-2xl">
+                <DialogHeader>
+                    <DialogTitle>Ajouter des consommations</DialogTitle>
+                    <DialogDescription>Sélectionnez les articles et les quantités à ajouter à la session.</DialogDescription>
+                </DialogHeader>
+                <ScrollArea className="h-96">
+                    <div className="space-y-4 p-1">
+                        {consumables?.map(item => (
+                            <div key={item.id} className="flex items-center justify-between gap-4 p-2 rounded-md border">
+                                <div className="flex items-center gap-4">
+                                    <Image src={item.imageUrl} alt={item.name} width={40} height={40} className="rounded-md" />
+                                    <div>
+                                        <p className="font-medium">{item.name}</p>
+                                        <p className="text-sm text-muted-foreground">{formatCurrency(item.price)}</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <Button size="icon" variant="outline" className="h-8 w-8" onClick={() => handleQuantityChange(item.id, (selectedItems[item.id] || 0) - 1)}>
+                                        <Minus className="h-4 w-4" />
+                                    </Button>
+                                    <Input 
+                                        type="number" 
+                                        className="h-8 w-14 text-center" 
+                                        value={selectedItems[item.id] || 0}
+                                        onChange={(e) => handleQuantityChange(item.id, parseInt(e.target.value) || 0)}
+                                    />
+                                    <Button size="icon" variant="outline" className="h-8 w-8" onClick={() => handleQuantityChange(item.id, (selectedItems[item.id] || 0) + 1)}>
+                                        <Plus className="h-4 w-4" />
+                                    </Button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </ScrollArea>
+                <DialogFooter>
+                    <DialogClose asChild><Button variant="outline">Annuler</Button></DialogClose>
+                    <Button onClick={handleConfirm}>Ajouter à la session</Button>
+                </DialogFooter>
+            </DialogContent>
+        );
+}
+
+
 function ReleaseStationDialog({ station, client, allClients }: { station: Station, client?: Client | null, allClients: Client[] | null }) {
     const [isOpen, setIsOpen] = useState(false);
     const [useBonus, setUseBonus] = useState(false);
     const [isEditingPrice, setIsEditingPrice] = useState(false);
     const [manualPrice, setManualPrice] = useState<string | number>("");
+    const [consumedItems, setConsumedItems] = useState<ConsumedItem[]>([]);
 
     const firestore = useFirestore();
     const { toast } = useToast();
     const { t } = useTranslation();
+    
+    const consumablesQuery = useMemoFirebase(
+      () => (firestore ? query(collection(firestore, 'consumables')) : null),
+      [firestore]
+    );
+    const { data: consumables } = useCollection<Consumable>(consumablesQuery);
 
     const { durationString, activeDurationInMinutes, calculatedCost } = useMemo(() => {
         if (!station.sessionStartTime) {
@@ -814,6 +904,7 @@ function ReleaseStationDialog({ station, client, allClients }: { station: Statio
             setManualPrice(calculatedCost);
             setIsEditingPrice(false);
             setUseBonus(false);
+            setConsumedItems([]);
         }
     }, [isOpen, calculatedCost]);
 
@@ -829,7 +920,9 @@ function ReleaseStationDialog({ station, client, allClients }: { station: Statio
     const clientName = isAnonymous ? "Client de Passage" : client?.name;
     const clientSubscription = isAnonymous ? "Aucun" : client?.subscriptionTier;
 
-    const finalPrice = Number(manualPrice);
+    const sessionCost = Number(manualPrice);
+    const consumptionCost = consumedItems.reduce((acc, item) => acc + item.quantity * item.pricePerItem, 0);
+    const finalPrice = sessionCost + consumptionCost;
     const clientBonusHours = client?.bonusHours || 0;
     
     let bonusHoursToUse = 0;
@@ -853,7 +946,11 @@ function ReleaseStationDialog({ station, client, allClients }: { station: Statio
 
         if (station.currentUsageLogId) {
             const usageLogRef = doc(firestore, "usageLogs", station.currentUsageLogId);
-            updateDocumentNonBlocking(usageLogRef, { endTime: endTime, finalCost: finalPrice });
+            updateDocumentNonBlocking(usageLogRef, { 
+                endTime: endTime, 
+                finalCost: sessionCost,
+                consumptions: consumedItems 
+            });
         }
 
         const stationRef = doc(firestore, "stations", station.id);
@@ -885,7 +982,7 @@ function ReleaseStationDialog({ station, client, allClients }: { station: Statio
                     metadata: {
                         stationId: station.id,
                         duration: durationString,
-                        cost: formatCurrency(finalPrice, 'MAD'),
+                        cost: formatCurrency(sessionCost, 'MAD'),
                         bonusUsed: bonusUsedString,
                     }
                 }
@@ -910,95 +1007,114 @@ function ReleaseStationDialog({ station, client, allClients }: { station: Statio
                     <LogOut className="mr-2 h-4 w-4"/> {t('releaseStation')}
                 </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="max-w-md">
                 <DialogHeader>
                     <DialogTitle>Finaliser la session de {clientName}</DialogTitle>
                     <DialogDescription>
-                        Vérifiez les détails de la session, ajustez le prix si nécessaire, et confirmez le paiement.
+                        Vérifiez les détails de la session, ajoutez des consommations et confirmez le paiement.
                     </DialogDescription>
                 </DialogHeader>
-                <div className="space-y-4 py-4">
-                     <div className="flex items-center gap-4 p-3 rounded-lg bg-muted/50 border">
-                        {isAnonymous ? <UserX className="h-10 w-10 text-muted-foreground" /> : <User className="h-10 w-10 text-muted-foreground" />}
-                        <div>
-                            <p className="font-semibold">{clientName}</p>
-                            <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                                <span>{clientSubscription}</span>
-                                {!isAnonymous && (
-                                    <div className="flex items-center gap-1">
-                                        <Star className="h-4 w-4 text-yellow-400" />
-                                        <span>{bonusHoursDisplay}h {bonusMinutesDisplay}m bonus</span>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="text-center p-4 bg-muted rounded-lg">
-                            <p className="text-sm text-muted-foreground">Durée</p>
-                            <p className="text-xl font-bold">{durationString}</p>
-                        </div>
-                        <div className="text-center p-4 bg-muted rounded-lg">
-                            <div className="flex items-center justify-center gap-2">
-                                <p className="text-sm text-muted-foreground">Coût Calculé</p>
-                                <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => setIsEditingPrice(p => !p)}>
-                                    <Pencil className="h-3 w-3" />
-                                </Button>
-                            </div>
-                            {isEditingPrice ? (
-                                <Input 
-                                    type="number" 
-                                    value={manualPrice} 
-                                    onChange={(e) => setManualPrice(e.target.value)}
-                                    onBlur={() => setIsEditingPrice(false)}
-                                    className="text-xl font-bold text-center h-auto p-0 border-0 bg-transparent focus-visible:ring-0"
-                                    autoFocus
-                                />
-                            ) : (
-                                <p className="text-xl font-bold">{formatCurrency(finalPrice, 'MAD')}</p>
-                            )}
-                        </div>
-                    </div>
-                    
-                    {!isAnonymous && <Separator />}
-
-                    {!isAnonymous && (
-                        <div className="space-y-4">
-                            <div className="flex items-center justify-between p-3 rounded-lg border">
+                <ScrollArea className="max-h-[70vh] p-1">
+                    <div className="space-y-4 py-4 pr-4">
+                        <div className="flex items-center gap-4 p-3 rounded-lg bg-muted/50 border">
+                            {isAnonymous ? <UserX className="h-10 w-10 text-muted-foreground" /> : <User className="h-10 w-10 text-muted-foreground" />}
                             <div>
-                                <Label htmlFor="use-bonus" className="font-medium">Utiliser le solde bonus</Label>
-                                <p className="text-xs text-muted-foreground">Appliquer les heures bonus pour réduire le coût.</p>
+                                <p className="font-semibold">{clientName}</p>
+                                <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                                    <span>{clientSubscription}</span>
+                                    {!isAnonymous && (
+                                        <div className="flex items-center gap-1">
+                                            <Star className="h-4 w-4 text-yellow-400" />
+                                            <span>{bonusHoursDisplay}h {bonusMinutesDisplay}m bonus</span>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
-                            <Switch id="use-bonus" checked={useBonus} onCheckedChange={setUseBonus} disabled={clientBonusHours <= 0} />
-                            </div>
+                        </div>
 
-                            {useBonus && (
-                                <div className="text-sm text-center text-muted-foreground">
-                                    <p>{(clientBonusHours - remainingBonusHours).toFixed(2)}h de bonus seront utilisées.</p>
-                                    <p>Nouveau solde bonus : {remainingBonusHours.toFixed(2)}h</p>
+                        <div className="space-y-2 p-3 rounded-lg border">
+                           <div className="flex justify-between items-center">
+                                <span className="text-muted-foreground">Coût de la session ({durationString})</span>
+                                <div className="flex items-center gap-1">
+                                    {isEditingPrice ? (
+                                        <Input 
+                                            type="number" 
+                                            value={manualPrice} 
+                                            onChange={(e) => setManualPrice(e.target.value)}
+                                            onBlur={() => setIsEditingPrice(false)}
+                                            className="text-right h-7 p-1 w-20"
+                                            autoFocus
+                                        />
+                                    ) : (
+                                        <span className="font-medium">{formatCurrency(sessionCost)}</span>
+                                    )}
+                                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setIsEditingPrice(p => !p)}>
+                                        <Pencil className="h-3 w-3" />
+                                    </Button>
+                                </div>
+                           </div>
+                           <div className="flex justify-between items-center">
+                               <span className="text-muted-foreground">Consommations</span>
+                               <span className="font-medium">{formatCurrency(consumptionCost)}</span>
+                           </div>
+                           {consumedItems.length > 0 && (
+                               <div className="pl-4 border-l-2 ml-2">
+                                   {consumedItems.map(item => (
+                                       <div key={item.itemId} className="text-xs text-muted-foreground flex justify-between">
+                                           <span>{item.itemName} x{item.quantity}</span>
+                                           <span>{formatCurrency(item.quantity * item.pricePerItem)}</span>
+                                       </div>
+                                   ))}
+                               </div>
+                           )}
+
+                           {!isAnonymous && useBonus && (
+                               <div className="flex justify-between items-center text-green-600 border-t pt-2 mt-2">
+                                   <span className="font-medium">Bonus utilisé</span>
+                                   <span className="font-medium">- {formatCurrency(finalPrice - remainingCost)}</span>
+                               </div>
+                           )}
+                           <Separator />
+                           <div className="flex justify-between items-center font-bold text-lg">
+                               <span className="text-primary">Total à payer</span>
+                               <span className="text-primary">{formatCurrency(remainingCost)}</span>
+                           </div>
+                        </div>
+                        
+                        <div className="flex flex-col gap-2">
+                            <AddConsumptionDialog 
+                                consumables={consumables}
+                                onConfirm={setConsumedItems}
+                                trigger={
+                                    <Button variant="outline"><ShoppingCart className="mr-2 h-4 w-4"/> Ajouter une consommation</Button>
+                                }
+                            />
+                            {!isAnonymous && (
+                                <div className="flex items-center justify-between p-3 rounded-lg border">
+                                    <div>
+                                        <Label htmlFor="use-bonus" className="font-medium">Utiliser le solde bonus</Label>
+                                        <p className="text-xs text-muted-foreground">Appliquer les heures bonus pour réduire le coût.</p>
+                                    </div>
+                                    <Switch id="use-bonus" checked={useBonus} onCheckedChange={setUseBonus} disabled={clientBonusHours <= 0} />
                                 </div>
                             )}
                         </div>
-                    )}
 
-                    <div className="p-4 bg-primary/10 rounded-lg text-center">
-                        <p className="text-sm text-primary">Montant final à payer</p>
-                        <p className="text-3xl font-bold text-primary">{formatCurrency(remainingCost, 'MAD')}</p>
+                         <div className="flex flex-col gap-2 pt-4">
+                            {!isAnonymous && client && (
+                                <BonusPointsDialog
+                                    clients={allClients}
+                                    initialClient={client}
+                                    stationType={station.type}
+                                    trigger={<Button variant="outline" className="w-full"><Gift className="mr-2 h-4 w-4"/> Attribuer un bonus</Button>}
+                                />
+                            )}
+                             <Button onClick={handleConfirmRelease} className="w-full">
+                                <CheckCircle className="mr-2 h-4 w-4"/> Confirmer et Libérer
+                            </Button>
+                        </div>
                     </div>
-                     <div className="flex flex-col gap-2 pt-4">
-                        {!isAnonymous && client && (
-                            <BonusPointsDialog
-                                clients={allClients}
-                                initialClient={client}
-                                stationType={station.type}
-                                trigger={<Button variant="outline" className="w-full"><Gift className="mr-2 h-4 w-4"/> Attribuer un bonus</Button>}
-                            />
-                        )}
-                         <Button onClick={handleConfirmRelease} className="w-full">
-                            <CheckCircle className="mr-2 h-4 w-4"/> Confirmer et Libérer
-                        </Button>
-                    </div>
-                </div>
+                </ScrollArea>
             </DialogContent>
         </Dialog>
     )
@@ -1591,3 +1707,5 @@ export default function ScanPage() {
     </>
   );
 }
+
+    

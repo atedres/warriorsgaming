@@ -203,6 +203,20 @@
         "finalCost": {
             "type": "number",
             "description": "The final cost of the session, including any manual adjustments."
+        },
+        "consumptions": {
+          "type": "array",
+          "description": "List of consumed items during the session.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "itemId": { "type": "string" },
+              "itemName": { "type": "string" },
+              "quantity": { "type": "number" },
+              "pricePerItem": { "type": "number" }
+            },
+            "required": ["itemId", "itemName", "quantity", "pricePerItem"]
+          }
         }
       },
       "required": [
@@ -488,3 +502,5 @@
     "reasoning": "The Firestore structure is designed to manage data for the Warriors Gaming center application, focusing on clients, stations, reservations, and usage logs. The structure emphasizes authorization independence and supports the application's core features, including real-time station monitoring, online reservations, QR code management, and usage analytics.\n\n**Authorization Independence:**\nAuthorization Independence is achieved by leveraging path-based ownership for private user data (e.g., client profiles) and avoiding hierarchical authorization dependencies (`get()` calls in security rules). There is no explicit collaborative data, so membership maps are not currently required.\n\n**Structural Segregation:**\nData with different access needs is segregated into separate collections. This simplifies security rules by ensuring that all documents within a collection share the same security posture. For instance, client profiles are stored in a dedicated collection (`clients`), separate from station data or reservation information. A subcollection `history` is added under each client to store their activity log, a new `admins` collection is added to store administrator UIDs for role-based access control, and reservations are stored in a subcollection under each client, ensuring data is co-located with the client and can be queried independently and securely.\n\n**Access Modeling:**\n- **Client Data:** Each client has their own document in the `clients` collection, accessible to admins for management and to the client themselves (if self-service features are implemented). \n- **Station Data:** Station data is stored in the `stations` collection, and is generally read-only by clients but writable by admins.\n- **Reservations and Usage Logs:** Reservations are stored in a subcollection under each client. Usage logs are stored in a separate collection (`usageLogs`). Each document contains references to the relevant client and station, facilitating efficient querying and reporting.\n\n**QAPs (Rules are not Filters):**\nThe structure supports secure `list` operations by ensuring that clients cannot list reservations or usage logs for other clients. Admin can list all clients, stations, reservations, and usage logs.\n\nThe structure also supports the integrity of ownership, timestamps, and denormalized data by using atomic operations (transactions/batches) when updating related documents.\n"
   }
 }
+
+    
