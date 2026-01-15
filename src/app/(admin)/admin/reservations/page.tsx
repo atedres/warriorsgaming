@@ -65,8 +65,13 @@ export default function ReservationsPage() {
 
         const allReservations: EnrichedReservation[] = querySnapshot.docs.map(doc => {
             const data = doc.data() as ReservationType;
-            const parentClientId = doc.ref.parent.parent!.id; 
+            const parentClientId = data.clientId; 
             const clientData = clientsMap.get(parentClientId);
+
+            if (!parentClientId) {
+                console.warn(`Reservation document ${doc.id} is missing a clientId.`);
+                return null;
+            }
             
             return {
               ...data,
@@ -75,7 +80,7 @@ export default function ReservationsPage() {
               clientName: clientData?.name || 'Unknown Client',
               clientPhone: clientData?.phone || 'N/A'
             };
-        });
+        }).filter((r): r is EnrichedReservation => r !== null);
         
         setReservations(allReservations);
         setIsLoading(false);
