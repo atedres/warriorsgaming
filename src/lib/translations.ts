@@ -114,6 +114,13 @@ export const translations = {
     statusAvailable: "Available",
     statusInUse: "In Use",
     statusMaintenance: "Maintenance",
+    statusPaused: "Paused",
+    pauseSession: "Pause Session",
+    resumeSession: "Resume Session",
+    sessionPaused: "Session Paused",
+    sessionPausedDescription: "The session on station {stationId} has been paused.",
+    sessionResumed: "Session Resumed",
+    sessionResumedDescription: "The session on station {stationId} has been resumed.",
   },
   fr: {
     welcome: "Bienvenue chez Warriors Gaming",
@@ -228,6 +235,13 @@ export const translations = {
     statusAvailable: "Disponible",
     statusInUse: "En cours",
     statusMaintenance: "Maintenance",
+    statusPaused: "En pause",
+    pauseSession: "Mettre en pause",
+    resumeSession: "Reprendre",
+    sessionPaused: "Session en pause",
+    sessionPausedDescription: "La session sur le poste {stationId} est maintenant en pause.",
+    sessionResumed: "Session reprise",
+    sessionResumedDescription: "La session sur le poste {stationId} a repris.",
   },
   ar: {
     welcome: "مرحباً بكم في ووريورز جيمنج",
@@ -341,6 +355,13 @@ export const translations = {
     statusAvailable: "متاح",
     statusInUse: "قيد الاستخدام",
     statusMaintenance: "صيانة",
+    statusPaused: "متوقفة",
+    pauseSession: "إيقاف مؤقت",
+    resumeSession: "استئناف",
+    sessionPaused: "تم إيقاف الجلسة مؤقتاً",
+    sessionPausedDescription: "تم إيقاف الجلسة على المحطة {stationId} مؤقتاً.",
+    sessionResumed: "تم استئناف الجلسة",
+    sessionResumedDescription: "تم استئناف الجلسة على المحطة {stationId}.",
   },
 };
 
@@ -377,4 +398,3 @@ export function formatHistoryDescription(t: (key: any) => string, log: any): str
 }
 
     
-

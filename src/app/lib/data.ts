@@ -9,6 +9,9 @@ export type Station = {
   sessionEndTime?: string | null; // Heure de fin de session (si limitée)
   games?: string[];
   currentUsageLogId?: string | null;
+  isPaused?: boolean;
+  lastPauseStartTime?: string | null;
+  totalPausedDuration?: number; // Total pause duration in seconds
 };
 
 export type Client = {

@@ -4,7 +4,7 @@
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import jsQR from "jsqr";
-import { QrCode, User, CheckCircle, Gift, Clock, LogOut, Gamepad2, VideoOff, Camera, MonitorPlay, Tv, Users, ScanLine, Wallet, Monitor, Star, Car, UserX, Edit, Plus, Minus, Pencil, ArrowRightLeft } from "lucide-react";
+import { QrCode, User, CheckCircle, Gift, Clock, LogOut, Gamepad2, VideoOff, Camera, MonitorPlay, Tv, Users, ScanLine, Wallet, Monitor, Star, Car, UserX, Edit, Plus, Minus, Pencil, ArrowRightLeft, Pause, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -51,7 +51,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 import { useTranslation } from "@/hooks/use-translation";
 import { cn, formatCurrency } from "@/lib/utils";
-import { formatDistanceToNowStrict, differenceInMinutes, addMinutes, addHours, formatDuration, intervalToDuration, format, differenceInSeconds, getDay, getHours } from 'date-fns';
+import { formatDistanceToNowStrict, differenceInMinutes, addMinutes, addHours, formatDuration, intervalToDuration, format, differenceInSeconds, getDay, getHours, addSeconds } from 'date-fns';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 
@@ -716,6 +716,57 @@ function calculatePrice(stationType: Station['type'], durationInMinutes: number)
     return price;
 }
 
+function PauseResumeButton({ station }: { station: Station }) {
+    const firestore = useFirestore();
+    const { toast } = useToast();
+    const { t } = useTranslation();
+
+    const handlePause = () => {
+        if (!firestore) return;
+        const stationRef = doc(firestore, "stations", station.id);
+        updateDocumentNonBlocking(stationRef, {
+            isPaused: true,
+            lastPauseStartTime: new Date().toISOString()
+        });
+        toast({ title: t('sessionPaused'), description: t('sessionPausedDescription', { stationId: station.id }) as string });
+    };
+
+    const handleResume = () => {
+        if (!firestore || !station.lastPauseStartTime) return;
+
+        const pauseDurationInSeconds = differenceInSeconds(new Date(), new Date(station.lastPauseStartTime));
+        const newTotalPausedDuration = (station.totalPausedDuration || 0) + pauseDurationInSeconds;
+        
+        const stationUpdate: Partial<Station> = {
+            isPaused: false,
+            lastPauseStartTime: null,
+            totalPausedDuration: newTotalPausedDuration,
+        };
+
+        if (station.sessionEndTime) {
+            const newEndTime = addSeconds(new Date(station.sessionEndTime), pauseDurationInSeconds);
+            stationUpdate.sessionEndTime = newEndTime.toISOString();
+        }
+
+        const stationRef = doc(firestore, "stations", station.id);
+        updateDocumentNonBlocking(stationRef, stationUpdate);
+        toast({ title: t('sessionResumed'), description: t('sessionResumedDescription', { stationId: station.id }) as string });
+    };
+
+    if (station.isPaused) {
+        return (
+            <Button onClick={handleResume} variant="outline" size="sm" className="w-full bg-green-500/10 text-green-600 border-green-500/50 hover:bg-green-500/20 hover:text-green-700">
+                <Play className="mr-2 h-4 w-4" /> {t('resumeSession')}
+            </Button>
+        );
+    }
+
+    return (
+        <Button onClick={handlePause} variant="outline" size="sm" className="w-full">
+            <Pause className="mr-2 h-4 w-4" /> {t('pauseSession')}
+        </Button>
+    );
+}
 
 function ReleaseStationDialog({ station, client, allClients }: { station: Station, client?: Client | null, allClients: Client[] | null }) {
     const [isOpen, setIsOpen] = useState(false);
@@ -727,8 +778,19 @@ function ReleaseStationDialog({ station, client, allClients }: { station: Statio
     const { toast } = useToast();
     const { t } = useTranslation();
 
-    const durationInMinutes = station.sessionStartTime ? differenceInMinutes(new Date(), new Date(station.sessionStartTime)) : 0;
-    const calculatedCost = useMemo(() => calculatePrice(station.type, durationInMinutes), [station.type, durationInMinutes]);
+    const { durationInMinutes, calculatedCost } = useMemo(() => {
+        const totalPausedSeconds = station.totalPausedDuration || 0;
+        const currentPauseDuration = station.isPaused && station.lastPauseStartTime ? differenceInSeconds(new Date(), new Date(station.lastPauseStartTime)) : 0;
+        const finalTotalPausedSeconds = totalPausedSeconds + currentPauseDuration;
+
+        const grossDurationInMinutes = station.sessionStartTime ? differenceInMinutes(new Date(), new Date(station.sessionStartTime)) : 0;
+        const activeDurationInMinutes = Math.max(0, grossDurationInMinutes - (finalTotalPausedSeconds / 60));
+        
+        const cost = calculatePrice(station.type, activeDurationInMinutes);
+
+        return { durationInMinutes: grossDurationInMinutes, calculatedCost: cost };
+    }, [station.sessionStartTime, station.totalPausedDuration, station.isPaused, station.lastPauseStartTime, station.type]);
+
 
     useEffect(() => {
         if (isOpen) {
@@ -788,7 +850,16 @@ function ReleaseStationDialog({ station, client, allClients }: { station: Statio
         }
 
         const stationRef = doc(firestore, "stations", station.id);
-        updateDocumentNonBlocking(stationRef, { status: 'available', currentClientId: null, sessionStartTime: null, sessionEndTime: null, currentUsageLogId: null });
+        updateDocumentNonBlocking(stationRef, { 
+            status: 'available', 
+            currentClientId: null, 
+            sessionStartTime: null, 
+            sessionEndTime: null, 
+            currentUsageLogId: null,
+            isPaused: false,
+            lastPauseStartTime: null,
+            totalPausedDuration: 0,
+        });
 
         if(station.currentClientId && !isAnonymous && client) {
             const clientRef = doc(firestore, "clients", station.currentClientId);
@@ -1073,6 +1144,15 @@ function SessionTimer({ station }: { station: Station }) {
     }, [station.status, station.sessionStartTime, station.sessionEndTime]);
     
     if (station.status !== 'in use') return null;
+
+    if (station.isPaused) {
+        return (
+            <div className="text-center my-2">
+                <p className="text-xl font-bold font-mono text-blue-500">EN PAUSE</p>
+                <p className="text-xs text-muted-foreground">{progress.elapsed} écoulées</p>
+            </div>
+        )
+    }
     
     return (
         <div className="w-full space-y-2 text-center">
@@ -1118,7 +1198,7 @@ function TransferClientDialog({ fromStation, client, availableStations }: { from
         
         // 1. Release old station
         const fromStationRef = doc(firestore, "stations", fromStation.id);
-        updateDocumentNonBlocking(fromStationRef, { status: 'available', currentClientId: null, sessionStartTime: null, sessionEndTime: null, currentUsageLogId: null });
+        updateDocumentNonBlocking(fromStationRef, { status: 'available', currentClientId: null, sessionStartTime: null, sessionEndTime: null, currentUsageLogId: null, isPaused: false, lastPauseStartTime: null, totalPausedDuration: 0 });
         
         // 2. Assign new station with same session details
         const toStationRef = doc(firestore, "stations", toStation.id);
@@ -1128,6 +1208,9 @@ function TransferClientDialog({ fromStation, client, availableStations }: { from
             sessionStartTime: fromStation.sessionStartTime,
             sessionEndTime: fromStation.sessionEndTime,
             currentUsageLogId: fromStation.currentUsageLogId,
+            isPaused: fromStation.isPaused,
+            lastPauseStartTime: fromStation.lastPauseStartTime,
+            totalPausedDuration: fromStation.totalPausedDuration,
         });
 
         // 3. Update client's current station (only if it's a registered client)
@@ -1266,6 +1349,7 @@ function StationCard({ station, client, isLoadingClients, allClients, availableS
       };
     
     const getStatusKey = (status: Station['status']) => {
+        if (station.isPaused) return 'statusPaused';
         switch(status) {
             case 'available': return 'statusAvailable';
             case 'in use': return 'statusInUse';
@@ -1284,11 +1368,12 @@ function StationCard({ station, client, isLoadingClients, allClients, availableS
                     <span className="break-all">{station.id}</span>
                 </CardTitle>
                 <div className="flex items-center gap-2">
-                    {station.status === 'in use' && station.sessionEndTime && <ModifyTimeDialog station={station} />}
+                    {station.status === 'in use' && station.sessionEndTime && !station.isPaused && <ModifyTimeDialog station={station} />}
                     <Badge variant='outline' className={cn(
                         "flex-shrink-0 capitalize border-none text-white",
                         station.status === 'available' && "bg-green-500",
-                        station.status === 'in use' && "bg-orange-500",
+                        station.isPaused && "bg-blue-500",
+                        !station.isPaused && station.status === 'in use' && "bg-orange-500",
                         station.status === 'maintenance' && "bg-red-500",
                     )}>{t(getStatusKey(station.status))}</Badge>
                 </div>
@@ -1302,10 +1387,17 @@ function StationCard({ station, client, isLoadingClients, allClients, availableS
                             <SessionTimer station={station} />
                         </div>
                         <div className="w-full flex flex-col gap-2">
-                            <div className="flex gap-2">
-                               <TransferClientDialog fromStation={station} client={client} availableStations={availableStations} />
-                               <ReleaseStationDialog station={station} client={client} allClients={allClients} />
-                            </div>
+                            {station.isPaused ? (
+                                <PauseResumeButton station={station} />
+                            ) : (
+                                <>
+                                    <PauseResumeButton station={station} />
+                                    <div className="flex gap-2">
+                                       <TransferClientDialog fromStation={station} client={client} availableStations={availableStations} />
+                                       <ReleaseStationDialog station={station} client={client} allClients={allClients} />
+                                    </div>
+                                </>
+                            )}
                         </div>
                     </>
                 ) : station.status === 'available' ? (

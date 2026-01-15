@@ -117,6 +117,19 @@
         "sessionStartTime": {
             "type": ["string", "null"],
             "format": "date-time"
+        },
+        "isPaused": {
+            "type": "boolean",
+            "description": "Indicates if the current session is paused."
+        },
+        "lastPauseStartTime": {
+            "type": ["string", "null"],
+            "format": "date-time",
+            "description": "Timestamp for when the session was last paused."
+        },
+        "totalPausedDuration": {
+            "type": "number",
+            "description": "Total accumulated pause duration for the session in seconds."
         }
       },
       "required": [
