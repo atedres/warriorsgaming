@@ -16,6 +16,7 @@ import {
   Calendar,
   LayoutGrid,
   CreditCard,
+  ShoppingBasket,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Logo } from "../logo";
@@ -96,6 +97,7 @@ export function AdminHeader() {
       { href: "/admin", icon: Home, label: t('dashboard') },
       { href: "/admin/clients", icon: Users2, label: t('clients') },
       { href: "/admin/stations", icon: Gamepad2, label: t('stations') },
+      { href: "/admin/consumption", icon: ShoppingBasket, label: t('consumption') },
       { href: "/admin/subscriptions", icon: CreditCard, label: "Abonnements"},
       { href: "/admin/content", icon: LayoutGrid, label: "Contenu" },
       { href: "/admin/reservations", icon: Calendar, label: t('reservationManagement'), notifCount: pendingReservations},
@@ -238,6 +240,7 @@ export function AdminSidebar() {
     { href: "/admin", icon: Home, label: t('dashboard') },
     { href: "/admin/clients", icon: Users2, label: t('clients') },
     { href: "/admin/stations", icon: Gamepad2, label: t('stations') },
+    { href: "/admin/consumption", icon: ShoppingBasket, label: t('consumption') },
     { href: "/admin/subscriptions", icon: CreditCard, label: "Abonnements" },
     { href: "/admin/content", icon: LayoutGrid, label: "Contenu" },
     { href: "/admin/reservations", icon: Calendar, label: t('reservationManagement'), notifCount: pendingReservations },

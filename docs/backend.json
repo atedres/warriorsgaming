@@ -293,6 +293,36 @@
         }
       },
       "required": ["id", "name", "price", "hoursGranted"]
+    },
+    "Consumable": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Consumable",
+      "type": "object",
+      "description": "Represents a consumable item that can be sold (e.g., drink, snack).",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique ID for the consumable item."
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the item (e.g., 'Coca-Cola')."
+        },
+        "price": {
+          "type": "number",
+          "description": "The selling price of the item."
+        },
+        "imageUrl": {
+          "type": "string",
+          "description": "URL for the item's image.",
+          "format": "uri"
+        },
+        "imageHint": {
+          "type": "string",
+          "description": "A hint for AI image generation tools."
+        }
+      },
+      "required": ["id", "name", "price", "imageUrl"]
     }
   },
   "auth": {
@@ -434,6 +464,22 @@
             {
               "name": "cardId",
               "description": "The unique ID for the subscription card type."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/consumables/{consumableId}",
+        "definition": {
+          "entityName": "Consumable",
+          "schema": {
+            "$ref": "#/entities/Consumable"
+          },
+          "description": "Stores definitions for purchasable consumable items. Writable only by admins.",
+          "params": [
+            {
+              "name": "consumableId",
+              "description": "The unique ID for the consumable item."
             }
           ]
         }

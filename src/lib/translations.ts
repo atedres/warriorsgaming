@@ -22,6 +22,7 @@ export const translations = {
     logOut: "Log Out",
     history: "History",
     pricing: "Pricing",
+    consumption: "Consumption",
 
     // Admin Pages
     clientManagement: "Client Management",
@@ -36,6 +37,15 @@ export const translations = {
     qrCodeScannerDescription: "Scan a client's QR code to check them in or manage their account.",
     dashboardDescription: "Here's a look at your gaming lounge's performance.",
     historyDescription: "A global log of all activities within the gaming center.",
+    consumptionManagement: "Consumption Management",
+    consumptionManagementDescription: "Manage items that can be sold to clients, like drinks and snacks.",
+    consumables: "Consumable Items",
+    consumablesDescription: "A list of all available items for sale.",
+    addConsumable: "Add Item",
+    itemName: "Item Name",
+    price: "Price",
+    noConsumablesFound: "No consumable items found.",
+
 
     // General Admin
     actions: "Actions",
@@ -143,6 +153,7 @@ export const translations = {
     logOut: "Déconnexion",
     history: "Historique",
     pricing: "Tarifs",
+    consumption: "Consommation",
 
     // Admin Pages
     clientManagement: "Gestion des Clients",
@@ -157,6 +168,14 @@ export const translations = {
     qrCodeScannerDescription: "Scannez le code QR d'un client pour l'enregistrer ou gérer son compte.",
     dashboardDescription: "Voici un aperçu des performances de votre salle de jeu.",
     historyDescription: "Un journal global de toutes les activités au sein de la salle de jeu.",
+    consumptionManagement: "Gestion de la Consommation",
+    consumptionManagementDescription: "Gérez les articles qui peuvent être vendus aux clients, comme les boissons et les snacks.",
+    consumables: "Articles Consommables",
+    consumablesDescription: "Liste de tous les articles disponibles à la vente.",
+    addConsumable: "Ajouter un article",
+    itemName: "Nom de l'article",
+    price: "Prix",
+    noConsumablesFound: "Aucun article consommable trouvé.",
 
 
     // General Admin
@@ -264,6 +283,7 @@ export const translations = {
     logOut: "تسجيل الخروج",
     history: "السجل",
     pricing: "الأسعار",
+    consumption: "الاستهلاك",
 
     // Admin Pages
     clientManagement: "إدارة العملاء",
@@ -278,6 +298,14 @@ export const translations = {
     qrCodeScannerDescription: "امسح رمز الاستجابة السريعة للعميل لتسجيل الوصول أو إدارة حسابه.",
     dashboardDescription: "إليك نظرة على أداء صالة الألعاب الخاصة بك.",
     historyDescription: "سجل عالمي لجميع الأنشطة داخل مركز الألعاب.",
+    consumptionManagement: "إدارة الاستهلاك",
+    consumptionManagementDescription: "إدارة العناصر التي يمكن بيعها للعملاء، مثل المشروبات والوجبات الخفيفة.",
+    consumables: "المواد الاستهلاكية",
+    consumablesDescription: "قائمة بجميع المواد المتاحة للبيع.",
+    addConsumable: "إضافة عنصر",
+    itemName: "اسم العنصر",
+    price: "السعر",
+    noConsumablesFound: "لم يتم العثور على مواد استهلاكية.",
 
     // General Admin
     actions: "الإجراءات",

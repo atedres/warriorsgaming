@@ -78,4 +78,12 @@ export type SubscriptionCard = {
     hoursGranted: number;
     bonusHoursGranted: number;
 }
+
+export type Consumable = {
+    id: string;
+    name: string;
+    price: number;
+    imageUrl: string;
+    imageHint: string;
+}
     
