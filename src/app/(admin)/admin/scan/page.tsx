@@ -852,23 +852,16 @@ function AddConsumptionDialog({ consumables, onConfirm, trigger }: { consumables
 }
 
 
-function ReleaseStationDialog({ station, client, allClients }: { station: Station, client?: Client | null, allClients: Client[] | null }) {
+function ReleaseStationDialog({ station, client, allClients, consumedItems }: { station: Station, client?: Client | null, allClients: Client[] | null, consumedItems: ConsumedItem[] }) {
     const [isOpen, setIsOpen] = useState(false);
     const [useBonus, setUseBonus] = useState(false);
     const [isEditingPrice, setIsEditingPrice] = useState(false);
     const [manualPrice, setManualPrice] = useState<string | number>("");
-    const [consumedItems, setConsumedItems] = useState<ConsumedItem[]>([]);
-
+    
     const firestore = useFirestore();
     const { toast } = useToast();
     const { t } = useTranslation();
     
-    const consumablesQuery = useMemoFirebase(
-      () => (firestore ? query(collection(firestore, 'consumables')) : null),
-      [firestore]
-    );
-    const { data: consumables } = useCollection<Consumable>(consumablesQuery);
-
     const { durationString, activeDurationInMinutes, calculatedCost } = useMemo(() => {
         if (!station.sessionStartTime) {
             return { durationString: "0m", activeDurationInMinutes: 0, calculatedCost: 0 };
@@ -905,7 +898,6 @@ function ReleaseStationDialog({ station, client, allClients }: { station: Statio
             setManualPrice(calculatedCost);
             setIsEditingPrice(false);
             setUseBonus(false);
-            setConsumedItems([]);
         }
     }, [isOpen, calculatedCost]);
 
@@ -1012,7 +1004,7 @@ function ReleaseStationDialog({ station, client, allClients }: { station: Statio
                 <DialogHeader>
                     <DialogTitle>Finaliser la session de {clientName}</DialogTitle>
                     <DialogDescription>
-                        Vérifiez les détails de la session, ajoutez des consommations et confirmez le paiement.
+                        Vérifiez les détails de la session et confirmez le paiement.
                     </DialogDescription>
                 </DialogHeader>
                 <ScrollArea className="max-h-[70vh] p-1">
@@ -1083,13 +1075,6 @@ function ReleaseStationDialog({ station, client, allClients }: { station: Statio
                         </div>
                         
                         <div className="flex flex-col gap-2">
-                            <AddConsumptionDialog 
-                                consumables={consumables}
-                                onConfirm={setConsumedItems}
-                                trigger={
-                                    <Button variant="outline"><ShoppingCart className="mr-2 h-4 w-4"/> Ajouter une consommation</Button>
-                                }
-                            />
                             {!isAnonymous && (
                                 <div className="flex items-center justify-between p-3 rounded-lg border">
                                     <div>
@@ -1384,7 +1369,7 @@ function TransferClientDialog({ fromStation, client, availableStations }: { from
     return (
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
             <DialogTrigger asChild>
-                <Button variant="outline" size="sm">
+                <Button variant="outline" size="sm" className="flex-1">
                     <ArrowRightLeft className="mr-2 h-4 w-4" /> Transférer
                 </Button>
             </DialogTrigger>
@@ -1449,7 +1434,21 @@ function StationCard({ station, client, isLoadingClients, allClients, availableS
 }) {
     const { t } = useTranslation();
     const [timeIsUp, setTimeIsUp] = useState(false);
+    const [consumedItems, setConsumedItems] = useState<ConsumedItem[]>([]);
+    const firestore = useFirestore();
     const isAnonymous = station.currentClientId?.startsWith('anonymous_');
+
+     const consumablesQuery = useMemoFirebase(
+      () => (firestore ? query(collection(firestore, 'consumables')) : null),
+      [firestore]
+    );
+    const { data: consumables } = useCollection<Consumable>(consumablesQuery);
+
+    useEffect(() => {
+        if (station.status !== 'in use') {
+            setConsumedItems([]);
+        }
+    }, [station.status]);
 
     useEffect(() => {
         if (station.status !== 'in use') {
@@ -1538,9 +1537,18 @@ function StationCard({ station, client, isLoadingClients, allClients, availableS
                             ) : (
                                 <>
                                     <PauseResumeButton station={station} />
+                                    <AddConsumptionDialog
+                                        consumables={consumables}
+                                        onConfirm={setConsumedItems}
+                                        trigger={
+                                            <Button variant="outline" size="sm" className="w-full">
+                                                <ShoppingCart className="mr-2 h-4 w-4" /> Ajouter Conso.
+                                            </Button>
+                                        }
+                                    />
                                     <div className="flex gap-2">
                                        <TransferClientDialog fromStation={station} client={client} availableStations={availableStations} />
-                                       <ReleaseStationDialog station={station} client={client} allClients={allClients} />
+                                       <ReleaseStationDialog station={station} client={client} allClients={allClients} consumedItems={consumedItems} />
                                     </div>
                                 </>
                             )}
