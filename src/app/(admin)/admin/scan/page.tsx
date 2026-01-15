@@ -1104,8 +1104,6 @@ function TransferClientDialog({ fromStation, client, availableStations }: { from
         }
     }, [isOpen]);
     
-    if (!client) return null;
-
     const handleConfirmTransfer = () => {
         if (!firestore || !selectedStationId) {
             toast({ variant: "destructive", title: "Aucun poste sélectionné." });
@@ -1132,21 +1130,23 @@ function TransferClientDialog({ fromStation, client, availableStations }: { from
             currentUsageLogId: fromStation.currentUsageLogId,
         });
 
-        // 3. Update client's current station
-        const clientRef = doc(firestore, "clients", client.id);
-        updateDocumentNonBlocking(clientRef, { currentStationId: toStation.id });
+        // 3. Update client's current station (only if it's a registered client)
+        if (client) {
+            const clientRef = doc(firestore, "clients", client.id);
+            updateDocumentNonBlocking(clientRef, { currentStationId: toStation.id });
 
-        // 4. (Optional) Add a history log for the transfer
-        const historyRef = collection(firestore, 'clients', client.id, 'history');
-        addDocumentNonBlocking(historyRef, {
-            timestamp: new Date().toISOString(),
-            type: 'system', // or a new 'transfer' type
-            description: `Transféré du poste ${fromStation.id} au poste ${toStation.id}.`
-        });
+            // 4. (Optional) Add a history log for the transfer
+            const historyRef = collection(firestore, 'clients', client.id, 'history');
+            addDocumentNonBlocking(historyRef, {
+                timestamp: new Date().toISOString(),
+                type: 'system', // or a new 'transfer' type
+                description: `Transféré du poste ${fromStation.id} au poste ${toStation.id}.`
+            });
+        }
         
         toast({
             title: "Transfert Réussi!",
-            description: `${client.name} a été transféré vers le poste ${toStation.id}.`
+            description: `${client?.name || 'Le client de passage'} a été transféré vers le poste ${toStation.id}.`
         });
         
         setIsOpen(false);
@@ -1161,7 +1161,7 @@ function TransferClientDialog({ fromStation, client, availableStations }: { from
             </DialogTrigger>
             <DialogContent>
                 <DialogHeader>
-                    <DialogTitle>Transférer {client.name}</DialogTitle>
+                    <DialogTitle>Transférer {client?.name || 'le client de passage'}</DialogTitle>
                     <DialogDescription>
                         Déplacer la session actuelle du poste <strong>{fromStation.id}</strong> vers un autre poste disponible.
                     </DialogDescription>
@@ -1303,7 +1303,7 @@ function StationCard({ station, client, isLoadingClients, allClients, availableS
                         </div>
                         <div className="w-full flex flex-col gap-2">
                             <div className="flex gap-2">
-                               {!isAnonymous && client && <TransferClientDialog fromStation={station} client={client} availableStations={availableStations} />}
+                               <TransferClientDialog fromStation={station} client={client} availableStations={availableStations} />
                                <ReleaseStationDialog station={station} client={client} allClients={allClients} />
                             </div>
                         </div>
