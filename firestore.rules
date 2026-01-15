@@ -72,7 +72,7 @@ service cloud.firestore {
 
     // Règle pour la collection de groupe 'reservations' (permet aux admins de lister toutes les réservations)
     match /{path=**}/reservations/{reservationId} {
-      allow read, list: if get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.role in ['manager', 'superadmin'];
+      allow read, list, write: if get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.role in ['manager', 'superadmin'];
     }
   }
 }
