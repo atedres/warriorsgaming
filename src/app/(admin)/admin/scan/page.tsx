@@ -843,11 +843,12 @@ function AddConsumptionDialog({ consumables, onConfirm, trigger }: { consumables
                     </div>
                 </ScrollArea>
                 <DialogFooter>
-                    <DialogClose asChild><Button variant="outline">Annuler</Button></DialogClose>
+                    <Button variant="outline" onClick={() => setIsOpen(false)}>Annuler</Button>
                     <Button onClick={handleConfirm}>Ajouter à la session</Button>
                 </DialogFooter>
             </DialogContent>
-        );
+        </Dialog>
+    );
 }
 
 
@@ -982,7 +983,7 @@ function ReleaseStationDialog({ station, client, allClients }: { station: Statio
                     metadata: {
                         stationId: station.id,
                         duration: durationString,
-                        cost: formatCurrency(sessionCost, 'MAD'),
+                        cost: formatCurrency(finalPrice, 'MAD'),
                         bonusUsed: bonusUsedString,
                     }
                 }
@@ -1707,5 +1708,3 @@ export default function ScanPage() {
     </>
   );
 }
-
-    
