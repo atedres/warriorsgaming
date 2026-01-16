@@ -17,6 +17,7 @@ import {
   LayoutGrid,
   CreditCard,
   ShoppingBasket,
+  LineChart,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Logo } from "../logo";
@@ -95,6 +96,7 @@ export function AdminHeader() {
 
     const navItems = [
       { href: "/admin", icon: Home, label: t('dashboard') },
+      { href: "/admin/statistics", icon: LineChart, label: t('advancedStatistics') },
       { href: "/admin/clients", icon: Users2, label: t('clients') },
       { href: "/admin/stations", icon: Gamepad2, label: t('stations') },
       { href: "/admin/consumption", icon: ShoppingBasket, label: t('consumption') },
@@ -238,6 +240,7 @@ export function AdminSidebar() {
   
   const navItems = [
     { href: "/admin", icon: Home, label: t('dashboard') },
+    { href: "/admin/statistics", icon: LineChart, label: t('advancedStatistics') },
     { href: "/admin/clients", icon: Users2, label: t('clients') },
     { href: "/admin/stations", icon: Gamepad2, label: t('stations') },
     { href: "/admin/consumption", icon: ShoppingBasket, label: t('consumption') },

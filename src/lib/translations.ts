@@ -45,6 +45,12 @@ export const translations = {
     itemName: "Item Name",
     price: "Price",
     noConsumablesFound: "No consumable items found.",
+    advancedStatistics: "Advanced Stats",
+    advancedStatisticsDescription: "A detailed breakdown of revenue, usage, and trends over time.",
+    revenueByDay: "Revenue by Day",
+    revenueByMonth: "Revenue by Month",
+    totalRevenueSinceLaunch: "Total Revenue (All Time)",
+    bestMonth: "Best Month",
 
 
     // General Admin
@@ -176,6 +182,12 @@ export const translations = {
     itemName: "Nom de l'article",
     price: "Prix",
     noConsumablesFound: "Aucun article consommable trouvé.",
+    advancedStatistics: "Statistiques Avancées",
+    advancedStatisticsDescription: "Une analyse détaillée des revenus, de l'utilisation et des tendances au fil du temps.",
+    revenueByDay: "Revenus par jour",
+    revenueByMonth: "Revenus par mois",
+    totalRevenueSinceLaunch: "Revenu Total (Global)",
+    bestMonth: "Meilleur Mois",
 
 
     // General Admin
@@ -306,6 +318,12 @@ export const translations = {
     itemName: "اسم العنصر",
     price: "السعر",
     noConsumablesFound: "لم يتم العثور على مواد استهلاكية.",
+    advancedStatistics: "إحصائيات متقدمة",
+    advancedStatisticsDescription: "تحليل مفصل للإيرادات والاستخدام والاتجاهات بمرور الوقت.",
+    revenueByDay: "الإيرادات حسب اليوم",
+    revenueByMonth: "الإيرادات حسب الشهر",
+    totalRevenueSinceLaunch: "إجمالي الإيرادات (منذ البداية)",
+    bestMonth: "أفضل شهر",
 
     // General Admin
     actions: "الإجراءات",

@@ -2,7 +2,8 @@
 'use client';
 
 import { useMemo, useEffect, useState } from 'react';
-import { BarChart, DollarSign, Gamepad2, Users } from 'lucide-react';
+import Link from 'next/link';
+import { BarChart, DollarSign, Gamepad2, Users, LineChart } from 'lucide-react';
 import {
   Card,
   CardContent,
@@ -39,6 +40,7 @@ import { collection, query, onSnapshot } from 'firebase/firestore';
 import { useTranslation } from '@/hooks/use-translation';
 import type { UsageLog, Station, Client } from '@/app/lib/data';
 import { differenceInMinutes, subDays, format, isWithinInterval, startOfToday, endOfToday, startOfWeek, endOfWeek, startOfMonth, endOfMonth, getDay, getHours } from 'date-fns';
+import { Button } from '@/components/ui/button';
 
 function calculatePrice(stationType: Station['type'], durationInMinutes: number): number {
     if (durationInMinutes <= 0) return 0;
@@ -230,7 +232,14 @@ export default function AdminDashboard() {
         title={t('dashboard')}
         description={t('dashboardDescription')}
         className="px-0"
-      />
+      >
+        <Button asChild>
+            <Link href="/admin/statistics">
+                <LineChart className="mr-2 h-4 w-4" />
+                {t('advancedStatistics')}
+            </Link>
+        </Button>
+      </PageHeader>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
